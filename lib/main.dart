@@ -155,8 +155,8 @@ class _LoadingScreenState extends State<LoadingScreen>
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                Colors.blue.shade600,
-                                Colors.purple.shade500,
+                                Colors.lime.shade600,
+                                Colors.cyan.shade500,
                               ],
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
@@ -294,7 +294,7 @@ class _LoadingScreenState extends State<LoadingScreen>
   @override
   Widget build(BuildContext context) {
     final background = Colors.grey.shade800.withValues(alpha: 0.4);
-    final accent = Colors.purple.shade400;
+    final accent = Colors.cyan.shade400;
 
     return Scaffold(
       backgroundColor: background,
@@ -320,7 +320,7 @@ class _LoadingScreenState extends State<LoadingScreen>
               width: 200,
               child: LinearProgressIndicator(
                 color: accent,
-                backgroundColor: Colors.white.withOpacity(0.1),
+                backgroundColor: Colors.white.withValues(alpha: 0.1),
                 minHeight: 6,
               ),
             ),

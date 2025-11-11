@@ -3,6 +3,9 @@
 // Flutter imports
 import 'package:flutter/material.dart';
 
+// Local imports - Elements
+import 'package:sd_companion/elements/modern_slider.dart';
+
 // Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
 
@@ -106,205 +109,64 @@ class GenerationSettingsState extends State<GenerationSettings> {
             ),
 
             // Spacer
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
             // Denoising Strength
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title
-                const Text(
-                  'Denoising Strength',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-
-                // Spacer
-                const SizedBox(height: 2),
-
-                // Slider
-                Row(
-                  children: [
-                    // Slider
-                    Expanded(
-                      child: Slider(
-                        value: globalDenoiseStrength,
-                        min: 0.1,
-                        max: 1.0,
-                        divisions: 18,
-                        activeColor: Colors.purple.shade400,
-                        inactiveColor: Colors.white.withAlpha(77),
-                        onChanged: (value) {
-                          setState(() {
-                            globalDenoiseStrength = value;
-                            saveDenoiseStrength();
-                          });
-                        },
-                      ),
-                    ),
-
-                    // Spacer
-                    const SizedBox(width: 8),
-
-                    // Current Steps
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade400.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        globalDenoiseStrength.toStringAsFixed(1),
-                        style: TextStyle(
-                          color: Colors.white.withAlpha(204),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            ModernSlider(
+              label: 'Denoising Strength',
+              value: globalDenoiseStrength,
+              min: 0.1,
+              max: 1.0,
+              divisions: 18,
+              onChanged: (value) {
+                setState(() {
+                  globalDenoiseStrength = value;
+                  saveDenoiseStrength();
+                });
+              },
+              valueFormatter: (val) => val.toStringAsFixed(2),
             ),
 
             // Spacer
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // Mask Blur
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title
-                const Text(
-                  'Mask Blur',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-
-                // Spacer
-                const SizedBox(height: 2),
-
-                // Slider
-                Row(
-                  children: [
-                    // Slider
-                    Expanded(
-                      child: Slider(
-                        value: globalMaskBlur.toDouble(),
-                        min: 0,
-                        max: 64,
-                        divisions: 64,
-                        activeColor: Colors.purple.shade400,
-                        inactiveColor: Colors.white.withAlpha(77),
-                        onChanged: (value) {
-                          setState(() {
-                            globalMaskBlur = value.toInt();
-                            saveMaskBlur();
-                          });
-                        },
-                      ),
-                    ),
-
-                    // Spacer
-                    const SizedBox(width: 8),
-
-                    // Current Steps
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade400.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        globalMaskBlur.toString(),
-                        style: TextStyle(
-                          color: Colors.white.withAlpha(204),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            ModernSlider(
+              label: 'Mask Blur',
+              value: globalMaskBlur.toDouble(),
+              min: 0,
+              max: 16,
+              divisions: 16,
+              onChanged: (value) {
+                setState(() {
+                  globalMaskBlur = value.toInt();
+                  saveMaskBlur();
+                });
+              },
+              valueFormatter: (val) => val.toInt().toString(),
             ),
 
             // Spacer
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // Batch Size
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title
-                const Text(
-                  'Batch Size',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-
-                // Spacer
-                const SizedBox(height: 2),
-
-                // Slider
-                Row(
-                  children: [
-                    // Slider
-                    Expanded(
-                      child: Slider(
-                        value: globalBatchSize.toDouble(),
-                        min: 1,
-                        max: 5,
-                        divisions: 4,
-                        activeColor: Colors.purple.shade400,
-                        inactiveColor: Colors.white.withAlpha(77),
-                        onChanged: (value) {
-                          setState(() {
-                            globalBatchSize = value.toInt();
-                            saveBatchSize();
-                          });
-                        },
-                      ),
-                    ),
-
-                    // Spacer
-                    const SizedBox(width: 8),
-
-                    // Current Steps
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade400.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        globalBatchSize.toString(),
-                        style: TextStyle(
-                          color: Colors.white.withAlpha(204),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            ModernSlider(
+              label: 'Batch Size',
+              value: globalBatchSize.toDouble(),
+              min: 1,
+              max: 5,
+              divisions: 4,
+              onChanged: (value) {
+                setState(() {
+                  globalBatchSize = value.toInt();
+                  saveBatchSize();
+                });
+              },
+              valueFormatter: (val) => val.toInt().toString(),
             ),
 
             // Spacer
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // Masked Content Toggle
             Column(
@@ -316,6 +178,8 @@ class GenerationSettingsState extends State<GenerationSettings> {
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    letterSpacing: 0.3,
                   ),
                 ),
 
@@ -339,7 +203,7 @@ class GenerationSettingsState extends State<GenerationSettings> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
-                              color: Colors.purple.shade400,
+                              color: Colors.cyan.shade400,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             alignment: Alignment.center,
@@ -372,7 +236,7 @@ class GenerationSettingsState extends State<GenerationSettings> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
-                              color: Colors.purple.shade400,
+                              color: Colors.cyan.shade400,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             alignment: Alignment.center,
@@ -405,7 +269,7 @@ class GenerationSettingsState extends State<GenerationSettings> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
-                              color: Colors.purple.shade400,
+                              color: Colors.cyan.shade400,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             alignment: Alignment.center,
@@ -440,7 +304,7 @@ class GenerationSettingsState extends State<GenerationSettings> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
-                              color: Colors.purple.shade400,
+                              color: Colors.cyan.shade400,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             alignment: Alignment.center,
@@ -461,7 +325,7 @@ class GenerationSettingsState extends State<GenerationSettings> {
             ),
 
             // Spacer
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // Negative Prompt - Title
             const Text(
@@ -469,6 +333,8 @@ class GenerationSettingsState extends State<GenerationSettings> {
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
+                fontSize: 15,
+                letterSpacing: 0.3,
               ),
             ),
 

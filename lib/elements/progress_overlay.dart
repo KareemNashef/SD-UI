@@ -42,12 +42,12 @@ class ProgressOverlay extends StatelessWidget {
             ),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.purple.shade400.withValues(alpha:0.5),
+              color: Colors.cyan.shade400.withValues(alpha:0.5),
               width: 2,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.purple.shade400.withValues(alpha:0.3),
+                color: Colors.cyan.shade400.withValues(alpha:0.3),
                 blurRadius: 20,
                 spreadRadius: 2,
               ),
@@ -62,7 +62,7 @@ class ProgressOverlay extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.auto_awesome,
-                    color: Colors.purple.shade300,
+                    color: Colors.cyan.shade300,
                     size: 28,
                   ),
                   const SizedBox(width: 12),
@@ -87,7 +87,7 @@ class ProgressOverlay extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.purple.shade400.withValues(alpha:0.8),
+                      color: Colors.cyan.shade400.withValues(alpha:0.8),
                       width: 2,
                     ),
                   ),
@@ -139,15 +139,15 @@ class ProgressOverlay extends StatelessWidget {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  Colors.purple.shade400,
-                                  Colors.purple.shade300,
-                                  Colors.blue.shade400,
+                                  Colors.cyan.shade400,
+                                  Colors.cyan.shade300,
+                                  Colors.lime.shade400,
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(6),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.purple.shade400.withValues(alpha:
+                                  color: Colors.cyan.shade400.withValues(alpha:
                                     0.5,
                                   ),
                                   blurRadius: 8,
@@ -205,7 +205,7 @@ class ProgressOverlay extends StatelessWidget {
                           Text(
                             '$samplingStep / $samplingSteps',
                             style: TextStyle(
-                              color: Colors.purple.shade300,
+                              color: Colors.cyan.shade300,
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
@@ -230,7 +230,7 @@ class ProgressOverlay extends StatelessWidget {
                           Text(
                             '${jobNo + 1} / $jobCount',
                             style: TextStyle(
-                              color: Colors.blue.shade300,
+                              color: Colors.lime.shade300,
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
@@ -276,7 +276,7 @@ class ProgressOverlay extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [Colors.purple.shade400, Colors.blue.shade400],
+                    colors: [Colors.cyan.shade400, Colors.lime.shade400],
                   ),
                 ),
                 child: Center(
@@ -316,7 +316,7 @@ class ProgressOverlay extends StatelessWidget {
             ),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.purple.shade400.withValues(alpha:0.5),
+              color: Colors.cyan.shade400.withValues(alpha:0.5),
               width: 2,
             ),
           ),
@@ -329,7 +329,7 @@ class ProgressOverlay extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [Colors.purple.shade400, Colors.blue.shade400],
+                    colors: [Colors.cyan.shade400, Colors.lime.shade400],
                   ),
                 ),
                 child: Center(

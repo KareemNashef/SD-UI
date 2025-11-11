@@ -24,7 +24,7 @@ class ServerSettingsState extends State<ServerSettings> {
 
   // ===== Lifecycle Methods ===== //
 
-@override
+  @override
   void initState() {
     super.initState();
   }
@@ -66,132 +66,134 @@ class ServerSettingsState extends State<ServerSettings> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Container(
+        // Theme
+        decoration: BoxDecoration(
+          color: Colors.grey.shade800.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(12.0),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
 
-      // Theme
-      decoration: BoxDecoration(
-        color: Colors.grey.shade800.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      ),
+        // Padding
+        padding: const EdgeInsets.all(16.0),
 
-      // Padding
-      padding: const EdgeInsets.all(16.0),
-
-      // Content
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Title with Icon
-          Row(
-            children: [
-              Icon(
-                Icons.storage_rounded,
-                color: Colors.white.withValues(alpha: 0.8),
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Server Settings',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+        // Content
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Title with Icon
+            Row(
+              children: [
+                Icon(
+                  Icons.storage_rounded,
+                  color: Colors.white.withValues(alpha: 0.8),
+                  size: 20,
                 ),
-              ),
-            ],
-          ),
-
-          // Spacer
-          const SizedBox(height: 16),
-
-          // Server IP and Port
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Server IP
-              Expanded(
-                child: TextField(
-                  controller: serverIP,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                  decoration: modernInputDecoration(hint: 'Server IP'),
-                ),
-              ),
-
-              // Spacer
-              const SizedBox(width: 12),
-
-              // Server Port
-              SizedBox(
-                width: 90,
-                child: TextField(
-                  controller: serverPort,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                  decoration: modernInputDecoration(hint: 'Port'),
-                ),
-              ),
-            ],
-          ),
-
-          // Spacer
-          const SizedBox(height: 16),
-
-          // Connect Button
-          SizedBox(
-            width: double.infinity,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue.shade600, Colors.purple.shade500],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
+                const SizedBox(width: 8),
+                const Text(
+                  'Server Settings',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
+              ],
+            ),
 
-                      // Set Server Settings
-                      globalServerIP.value = serverIP.text;
-                      globalServerPort.value = serverPort.text;
+            // Spacer
+            const SizedBox(height: 16),
 
-                      // Save Server Settings
-                      saveServerSettings(serverIP.text, serverPort.text);
+            // Server IP and Port
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Server IP
+                Expanded(
+                  child: TextField(
+                    controller: serverIP,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    decoration: modernInputDecoration(hint: 'Server IP'),
+                  ),
+                ),
 
-                      // Check if server is online
-                      checkServerStatus();
+                // Spacer
+                const SizedBox(width: 12),
 
-                    },
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 14.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.wifi, color: Colors.white, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Connect',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                // Server Port
+                SizedBox(
+                  width: 90,
+                  child: TextField(
+                    controller: serverPort,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    decoration: modernInputDecoration(hint: 'Port'),
+                  ),
+                ),
+              ],
+            ),
+
+            // Spacer
+            const SizedBox(height: 16),
+
+            // Connect Button
+            SizedBox(
+              width: double.infinity,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.lime.shade600, Colors.cyan.shade500],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        // Set Server Settings
+                        globalServerIP.value = serverIP.text;
+                        globalServerPort.value = serverPort.text;
+
+                        // Save Server Settings
+                        saveServerSettings(serverIP.text, serverPort.text);
+
+                        // Check if server is online
+                        checkServerStatus();
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 14.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.wifi, color: Colors.white, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Connect',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

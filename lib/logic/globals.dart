@@ -173,6 +173,9 @@ Future<void> loadGenerationSettings() async {
 
 // ===== Inpaint Variables ===== //
 
+// Current inpaint image
+final ValueNotifier<String?> globalImageToEdit = ValueNotifier(null);
+
 // Current inpaint prompt
 String globalInpaintPrompt = '';
 

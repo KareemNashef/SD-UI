@@ -1,3 +1,4 @@
+// results_carousel.dart:
 // ==================== Enhanced Results Carousel ==================== //
 
 // Flutter imports
@@ -31,6 +32,9 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   /// The key is the full base64 data URL, the value is the decoded bytes.
   /// This prevents decoding the same image over and over again.
   final Map<String, Uint8List> _imageCache = {};
+
+  /// FIX 1: Keep track of the last known image list to handle deletions correctly.
+  List<String> _lastKnownImageList = [];
 
   // ===== Lifecycle Methods ===== //
 
@@ -75,11 +79,34 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
 
     // Step 2: Update the selected image URL.
     String? newSelectedImage = _selectedImageUrl;
-    if (isInitialSetup ||
-        (_selectedImageUrl != null && !imageSet.contains(_selectedImageUrl))) {
-      // If it's the first time, or the selected image was deleted,
-      // select the first image in the new list (or null if empty).
+    if (isInitialSetup) {
       newSelectedImage = imageList.isNotEmpty ? imageList.first : null;
+    } else if (_selectedImageUrl != null &&
+        !imageSet.contains(_selectedImageUrl)) {
+      // FIX 1: The selected image was deleted. Find the next logical selection.
+      final oldList = _lastKnownImageList;
+      final deletedIndex = oldList.indexOf(_selectedImageUrl!);
+
+      if (deletedIndex != -1 && oldList.length > 1) {
+        if (deletedIndex < oldList.length - 1) {
+          // Not the last item. Select the item that was after it.
+          newSelectedImage = oldList[deletedIndex + 1];
+        } else {
+          // Was the last item. Select the item that was before it.
+          newSelectedImage = oldList[deletedIndex - 1];
+        }
+      } else {
+        // Was the only item, or something went wrong. Fallback to first.
+        newSelectedImage = imageList.isNotEmpty ? imageList.first : null;
+      }
+    }
+
+    // On initial setup, we may need to rebuild even if the selection is the same
+    // to ensure the UI is in sync.
+    if (isInitialSetup) {
+      setState(() {
+        _selectedImageUrl = newSelectedImage;
+      });
     }
 
     // Step 3: Call setState only if something has changed.
@@ -87,11 +114,10 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
       setState(() {
         _selectedImageUrl = newSelectedImage;
       });
-    } else if (isInitialSetup) {
-      // On initial setup, we may need to rebuild even if the selection is the same
-      // to ensure the UI is in sync.
-      setState(() {});
     }
+
+    // FIX 1: Update the last known list for the next change detection cycle.
+    _lastKnownImageList = imageList;
   }
 
   /// Helper method to check if a URL is a base64 data URL
@@ -134,8 +160,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
 
       if (_isBase64DataUrl(_selectedImageUrl!)) {
         // Use the cached bytes if available, otherwise decode.
-        final bytes =
-            _imageCache[_selectedImageUrl!] ??
+        final bytes = _imageCache[_selectedImageUrl!] ??
             base64Decode(_extractBase64Data(_selectedImageUrl!));
         final file = File(savePath);
         await file.writeAsBytes(bytes);
@@ -173,6 +198,14 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
     final currentSet = Set<String>.from(globalResultImages.value);
     currentSet.remove(_selectedImageUrl!);
     globalResultImages.value = currentSet;
+    // FIX 1: The logic is now handled entirely within the _onImagesChanged listener.
+  }
+
+  /// FIX 2: Send the selected image to the inpaint tab for editing.
+  void _editSelectedImage() {
+    if (_selectedImageUrl == null) return;
+    globalImageToEdit.value = _selectedImageUrl;
+    globalPageIndex.value = 0; // Switch to the first tab (Inpaint)
   }
 
   // ===== Class Widgets ===== //
@@ -191,16 +224,16 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.purple.shade400.withValues(alpha: 0.2),
+                    color: Colors.cyan.shade400.withValues(alpha: 0.2),
                     border: Border.all(
-                      color: Colors.purple.shade400.withValues(alpha: 0.5),
+                      color: Colors.cyan.shade400.withValues(alpha: 0.5),
                       width: 2,
                     ),
                   ),
                   child: Icon(
                     Icons.auto_awesome,
                     size: 64,
-                    color: Colors.purple.shade300,
+                    color: Colors.cyan.shade300,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -299,18 +332,18 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
           borderRadius: BorderRadius.circular(12),
           child: _isBase64DataUrl(_selectedImageUrl!)
               ? (_imageCache[_selectedImageUrl!] != null
-                    ? Image.memory(
-                        _imageCache[_selectedImageUrl!]!,
-                        fit: BoxFit.contain,
-                        gaplessPlayback: true, // IMPORTANT: Prevents flicker
-                      )
-                    : _buildImageError())
+                  ? Image.memory(
+                      _imageCache[_selectedImageUrl!]!,
+                      fit: BoxFit.contain,
+                      gaplessPlayback: true, // IMPORTANT: Prevents flicker
+                    )
+                  : _buildImageError())
               : CachedNetworkImage(
                   imageUrl: _selectedImageUrl!,
                   fit: BoxFit.contain,
                   placeholder: (context, url) => Center(
                     child: CircularProgressIndicator(
-                      color: Colors.purple.shade300,
+                      color: Colors.cyan.shade300,
                     ),
                   ),
                   errorWidget: (context, url, error) => _buildImageError(),
@@ -355,14 +388,14 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: isSelected
-                        ? Colors.purple.shade400
+                        ? Colors.cyan.shade400
                         : Colors.white.withValues(alpha: 0.3),
                     width: isSelected ? 3.0 : 1.5,
                   ),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: Colors.purple.shade400.withValues(alpha: 0.5),
+                            color: Colors.cyan.shade400.withValues(alpha: 0.5),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),
@@ -373,18 +406,18 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                   borderRadius: BorderRadius.circular(6),
                   child: _isBase64DataUrl(imageUrl)
                       ? (_imageCache[imageUrl] != null
-                            ? Image.memory(
-                                _imageCache[imageUrl]!,
-                                fit: BoxFit.cover,
-                                gaplessPlayback:
-                                    true, // IMPORTANT: Prevents flicker
-                              )
-                            : Icon(Icons.error, color: Colors.red.shade700))
+                          ? Image.memory(
+                              _imageCache[imageUrl]!,
+                              fit: BoxFit.cover,
+                              gaplessPlayback:
+                                  true, // IMPORTANT: Prevents flicker
+                            )
+                          : Icon(Icons.error, color: Colors.red.shade700))
                       : CachedNetworkImage(
                           imageUrl: imageUrl,
                           fit: BoxFit.cover,
-                          placeholder: (context, url) =>
-                              Container(color: Colors.black.withValues(alpha: 0.5)),
+                          placeholder: (context, url) => Container(
+                              color: Colors.black.withValues(alpha: 0.5)),
                           errorWidget: (context, url, error) =>
                               Icon(Icons.error, color: Colors.red.shade700),
                         ),
@@ -401,6 +434,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Expanded(
             child: ElevatedButton.icon(
@@ -426,8 +460,31 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
               ),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                backgroundColor: Colors.purple.shade500,
+                backgroundColor: Colors.cyan.shade500,
                 disabledBackgroundColor: Colors.grey.shade600,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // FIX 2: Added Edit button
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _selectedImageUrl == null ? null : _editSelectedImage,
+              icon: const Icon(Icons.edit_rounded),
+              label: const Text('EDIT'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                foregroundColor: _selectedImageUrl == null
+                    ? Colors.grey.shade600
+                    : Colors.cyan.shade300,
+                side: BorderSide(
+                  color: _selectedImageUrl == null
+                      ? Colors.grey.shade600
+                      : Colors.cyan.shade300.withValues(alpha: 0.5),
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -437,9 +494,8 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
           const SizedBox(width: 12),
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: _selectedImageUrl == null
-                  ? null
-                  : _deleteSelectedImage,
+              onPressed:
+                  _selectedImageUrl == null ? null : _deleteSelectedImage,
               icon: const Icon(Icons.delete_rounded),
               label: const Text('DELETE'),
               style: OutlinedButton.styleFrom(

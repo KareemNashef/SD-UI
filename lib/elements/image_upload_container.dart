@@ -1,3 +1,4 @@
+// image_upload_container.dart:
 // ==================== Image Container ==================== //
 
 // Flutter imports
@@ -9,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/gestures.dart';
+import 'package:path_provider/path_provider.dart'; // FIX 2: Required for temp directory
 import 'package:sd_companion/logic/api_calls.dart';
 
 // Local imports - Logic
@@ -64,115 +66,326 @@ class _ImageContainerState extends State<ImageContainer> {
 
   // Controller
   final userPrompt = TextEditingController();
-  FocusNode _promptFocusNode = FocusNode();
+  final FocusNode _promptFocusNode = FocusNode();
   // ===== Lifecycle Methods ===== //
 
   @override
   void initState() {
     super.initState();
+    // FIX 2: Listen for requests to edit an image from the results carousel.
+    globalImageToEdit.addListener(_onEditImageRequest);
   }
 
   @override
   void dispose() {
     userPrompt.dispose();
+    _promptFocusNode.dispose();
+    // FIX 2: Remove the listener to prevent memory leaks.
+    globalImageToEdit.removeListener(_onEditImageRequest);
     super.dispose();
   }
 
   // ===== Class Functions ===== //
 
+  /// FIX 2: Handles the request to load an image for editing.
+  Future<void> _onEditImageRequest() async {
+    final imageUrl = globalImageToEdit.value;
+    if (imageUrl == null || !mounted) return;
+
+    // Reset the notifier so this doesn't trigger again on rebuild.
+    globalImageToEdit.value = null;
+
+    // Show a snackbar to indicate loading.
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Loading image for editing...')));
+
+    await _loadImageFromUrl(imageUrl);
+  }
+
+  /// FIX 2: Loads an image from a URL (network or base64) and resets the canvas.
+  Future<void> _loadImageFromUrl(String url) async {
+    try {
+      Uint8List imageBytes;
+
+      if (url.startsWith('data:image/')) {
+        // Handle base64 data URL
+        final commaIndex = url.indexOf(',');
+        if (commaIndex != -1) {
+          final base64Data = url.substring(commaIndex + 1);
+          imageBytes = base64Decode(base64Data);
+        } else {
+          throw Exception('Invalid base64 data URL');
+        }
+      } else {
+        // Handle standard network URL
+        final response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200) {
+          imageBytes = response.bodyBytes;
+        } else {
+          throw Exception('Failed to download image: ${response.statusCode}');
+        }
+      }
+
+      // To use Image.file and have a consistent workflow, we write the bytes
+      // to a temporary file.
+      final tempDir = await getTemporaryDirectory();
+      final tempPath =
+          '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.png';
+      final file = File(tempPath);
+      await file.writeAsBytes(imageBytes);
+
+      final ui.Image image = await decodeImageFromList(imageBytes);
+
+      // This is the "reset the container" step.
+      setState(() {
+        _imageFile = file;
+        _decodedImage = image;
+        _paths.clear();
+        _undoHistory.clear();
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text('Error loading image for editing: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+      }
+    }
+  }
+
   void _showInpaintHistory(BuildContext context) {
+    // A local, mutable copy of the history for the modal
     final historyList = globalInpaintHistory.toList().reversed.toList();
+
+    // State for multi-selection
+    bool isMultiSelectMode = false;
+    Set<String> selectedItems = {};
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true, // Important for FractionallySizedBox
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter modalSetState) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade800.withValues(alpha: 0.95),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16.0),
-                  topRight: Radius.circular(16.0),
-                ),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'Prompt History',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+            // Helper function to handle deleting selected items
+            void deleteSelected() {
+              // Remove from global state
+              globalInpaintHistory.removeAll(selectedItems);
+              saveInpaintHistory();
+
+              // Update local state for the UI
+              modalSetState(() {
+                historyList.removeWhere((item) => selectedItems.contains(item));
+                selectedItems.clear();
+                isMultiSelectMode = false;
+              });
+            }
+
+            return FractionallySizedBox(
+              heightFactor: 0.4, // FIX 1: Keep modal size consistent
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade800.withValues(alpha: 0.95),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16.0),
+                    topRight: Radius.circular(16.0),
                   ),
-
-                  if (historyList.isEmpty)
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  children: [
+                    // --- HEADER ---
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 32.0),
-                      child: Text(
-                        'Your prompt history is empty.',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    )
-                  else
-                    Flexible(
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: historyList.length,
-                        itemBuilder: (context, index) {
-                          final item = historyList[index];
-                          return Dismissible(
-                            key: Key(item),
-                            direction: DismissDirection.endToStart,
-                            onDismissed: (direction) {
-                              setState(() {
-                                globalInpaintHistory.remove(item);
-                                saveInpaintHistory();
-                              });
-                              modalSetState(() {
-                                historyList.removeAt(index);
-                              });
-                            },
-
-                            background: Container(
-                              color: Colors.red.shade800,
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20.0,
+                      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Show Cancel button in multi-select mode
+                          if (isMultiSelectMode)
+                            IconButton(
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.white,
                               ),
-                              child: const Icon(
-                                Icons.delete_sweep_outlined,
-                                color: Colors.white70,
-                              ),
-                            ),
-
-                            child: ListTile(
-                              title: Text(
-                                item,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                              onTap: () {
-                                userPrompt.text = item;
-                                Navigator.pop(context);
+                              onPressed: () {
+                                modalSetState(() {
+                                  isMultiSelectMode = false;
+                                  selectedItems.clear();
+                                });
                               },
                             ),
-                          );
-                        },
+
+                          // Title or Selection Count
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12.0),
+                            child: Text(
+                              isMultiSelectMode
+                                  ? '${selectedItems.length} selected'
+                                  : 'Prompt History',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+
+                          // Show Delete button in multi-select mode
+                          if (isMultiSelectMode)
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: Colors.white,
+                              ),
+                              onPressed: selectedItems.isEmpty
+                                  ? null
+                                  : deleteSelected,
+                            )
+                          // Show Clear All button in normal mode
+                          else if (historyList.isNotEmpty)
+                            IconButton(
+                              icon: const Icon(
+                                Icons
+                                    .delete_forever_outlined, // FIX 2: Clear All button
+                                color: Colors.white70,
+                              ),
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (dialogContext) => AlertDialog(
+                                    title: const Text('Clear History?'),
+                                    content: const Text(
+                                      'Are you sure you want to delete all prompts from your history?',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        child: const Text('Cancel'),
+                                        onPressed: () =>
+                                            Navigator.pop(dialogContext),
+                                      ),
+                                      TextButton(
+                                        child: const Text('Clear All'),
+                                        onPressed: () {
+                                          globalInpaintHistory.clear();
+                                          saveInpaintHistory();
+                                          modalSetState(() {
+                                            historyList.clear();
+                                          });
+                                          Navigator.pop(dialogContext);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
                       ),
                     ),
-                  const SizedBox(height: 16),
-                ],
+
+                    // --- CONTENT ---
+                    if (historyList.isEmpty)
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            'Your prompt history is empty.',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: historyList.length,
+                          itemBuilder: (context, index) {
+                            final item = historyList[index];
+                            final isSelected = selectedItems.contains(item);
+
+                            return Dismissible(
+                              key: Key(item),
+                              direction: isMultiSelectMode
+                                  ? DismissDirection
+                                      .none // Disable swipe in multi-select
+                                  : DismissDirection.endToStart,
+                              onDismissed: (direction) {
+                                setState(() {
+                                  globalInpaintHistory.remove(item);
+                                  saveInpaintHistory();
+                                });
+                                modalSetState(() {
+                                  historyList.removeAt(index);
+                                });
+                              },
+                              background: Container(
+                                color: Colors.red.shade800,
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20.0,
+                                ),
+                                child: const Icon(
+                                  Icons.delete_sweep_outlined,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                              child: ListTile(
+                                // FIX 3: Multi-select logic
+                                onLongPress: () {
+                                  modalSetState(() {
+                                    isMultiSelectMode = true;
+                                    selectedItems.add(item);
+                                  });
+                                },
+                                onTap: () {
+                                  if (isMultiSelectMode) {
+                                    modalSetState(() {
+                                      if (isSelected) {
+                                        selectedItems.remove(item);
+                                      } else {
+                                        selectedItems.add(item);
+                                      }
+                                    });
+                                  } else {
+                                    userPrompt.text = item;
+                                    Navigator.pop(context);
+                                  }
+                                },
+                                title: Text(
+                                  item,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                // Visual feedback for selection
+                                tileColor: isSelected
+                                    ? Colors.purple.withValues(alpha: 0.2)
+                                    : null,
+                                trailing: isMultiSelectMode
+                                    ? Icon(
+                                        isSelected
+                                            ? Icons.check_circle
+                                            : Icons.radio_button_unchecked,
+                                        color: isSelected
+                                            ? Colors.purple.shade300
+                                            : Colors.white54,
+                                      )
+                                    : null,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             );
           },
@@ -299,12 +512,10 @@ class _ImageContainerState extends State<ImageContainer> {
       );
     }
 
-    final imageX =
-        (localPosition.dx - displayOffset.dx) /
+    final imageX = (localPosition.dx - displayOffset.dx) /
         displaySize.width *
         imageSize.width;
-    final imageY =
-        (localPosition.dy - displayOffset.dy) /
+    final imageY = (localPosition.dy - displayOffset.dy) /
         displaySize.height *
         imageSize.height;
 
@@ -610,21 +821,23 @@ class _ImageContainerState extends State<ImageContainer> {
                   gestures: <Type, GestureRecognizerFactory>{
                     AlwaysWinPanGestureRecognizer:
                         GestureRecognizerFactoryWithHandlers<
-                          AlwaysWinPanGestureRecognizer
-                        >(() => AlwaysWinPanGestureRecognizer(), (
-                          AlwaysWinPanGestureRecognizer instance,
-                        ) {
-                          instance
-                            ..onStart = (DragStartDetails details) {
-                              _onPanStart(details, constraints.biggest);
-                            }
-                            ..onUpdate = (DragUpdateDetails details) {
-                              _onPanUpdate(details, constraints.biggest);
-                            }
-                            ..onEnd = (DragEndDetails details) {
-                              _onPanEnd(details);
-                            };
-                        }),
+                            AlwaysWinPanGestureRecognizer>(
+                      () => AlwaysWinPanGestureRecognizer(),
+                      (
+                        AlwaysWinPanGestureRecognizer instance,
+                      ) {
+                        instance
+                          ..onStart = (DragStartDetails details) {
+                            _onPanStart(details, constraints.biggest);
+                          }
+                          ..onUpdate = (DragUpdateDetails details) {
+                            _onPanUpdate(details, constraints.biggest);
+                          }
+                          ..onEnd = (DragEndDetails details) {
+                            _onPanEnd(details);
+                          };
+                      },
+                    ),
                   },
                   child: Stack(
                     alignment: Alignment.topLeft,
@@ -677,7 +890,6 @@ class _ImageContainerState extends State<ImageContainer> {
             },
           ),
         ),
-
         Container(
           decoration: BoxDecoration(
             color: Colors.grey.shade800.withValues(alpha: 0.4),
@@ -707,14 +919,12 @@ class _ImageContainerState extends State<ImageContainer> {
                       ],
                     ),
                   ),
-
                   Row(
                     children: [
                       IconButton(
                         icon: const Icon(Icons.undo, color: Colors.white),
                         onPressed: _undoHistory.isNotEmpty ? _undo : null,
                       ),
-
                       IconButton(
                         icon: const Icon(
                           Icons.layers_clear,
@@ -722,7 +932,6 @@ class _ImageContainerState extends State<ImageContainer> {
                         ),
                         onPressed: _paths.isNotEmpty ? _clearMask : null,
                       ),
-
                       IconButton(
                         icon: const Icon(
                           Icons.replay_circle_filled,
@@ -734,21 +943,19 @@ class _ImageContainerState extends State<ImageContainer> {
                   ),
                 ],
               ),
-
               Row(
                 children: [
                   Icon(
                     Icons.line_weight,
                     color: Colors.white.withValues(alpha: 0.7),
                   ),
-
                   Expanded(
                     child: Slider(
                       value: _strokeWidth,
                       min: 1.0,
                       max: 100.0,
                       divisions: 99,
-                      activeColor: Colors.purple.shade400,
+                      activeColor: Colors.cyan.shade400,
                       label: _strokeWidth.round().toString(),
                       onChanged: (value) =>
                           setState(() => _strokeWidth = value),
@@ -770,7 +977,7 @@ class _ImageContainerState extends State<ImageContainer> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.purple.shade400 : Colors.transparent,
+          color: isSelected ? Colors.cyan.shade400 : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
@@ -823,7 +1030,6 @@ class _ImageContainerState extends State<ImageContainer> {
       onTap: () {
         FocusScope.of(context).unfocus();
       },
-
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(
@@ -856,18 +1062,14 @@ class _ImageContainerState extends State<ImageContainer> {
                     : _buildImageWithDrawing(),
               ),
             ),
-
             const SizedBox(height: 16),
-
             Container(
               decoration: BoxDecoration(
                 color: Colors.grey.shade800.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(12.0),
                 border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
               ),
-
               padding: const EdgeInsets.all(16.0),
-
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -891,9 +1093,7 @@ class _ImageContainerState extends State<ImageContainer> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
                   Row(
                     children: [
                       Expanded(
@@ -903,8 +1103,8 @@ class _ImageContainerState extends State<ImageContainer> {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  Colors.blue.shade600,
-                                  Colors.purple.shade500,
+                                  Colors.lime.shade600,
+                                  Colors.cyan.shade500,
                                 ],
                                 begin: Alignment.centerLeft,
                                 end: Alignment.centerRight,
@@ -917,7 +1117,8 @@ class _ImageContainerState extends State<ImageContainer> {
                                   _promptFocusNode.unfocus();
                                   if (userPrompt.text.isNotEmpty) {
                                     setState(() {
-                                      globalInpaintHistory.add(userPrompt.text);
+                                      globalInpaintHistory
+                                          .add(userPrompt.text);
                                       saveInpaintHistory();
                                     });
 
@@ -925,7 +1126,8 @@ class _ImageContainerState extends State<ImageContainer> {
                                   }
                                 },
                                 child: const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 14.0),
+                                  padding:
+                                      EdgeInsets.symmetric(vertical: 14.0),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
@@ -951,9 +1153,7 @@ class _ImageContainerState extends State<ImageContainer> {
                           ),
                         ),
                       ),
-
                       const SizedBox(width: 8),
-
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.1),

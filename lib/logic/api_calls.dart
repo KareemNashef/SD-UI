@@ -24,7 +24,14 @@ Future<void> checkServerStatus() async {
 }
 
 // Get checkpoint data from the server
-Future<void> syncCheckpointDataFromServer() async {
+Future<void> syncCheckpointDataFromServer({bool force = false}) async {
+  // Force the server to refresh the list of checkpoints
+  final refreshURL =
+      'http://${globalServerIP.value}:${globalServerPort.value}/sdapi/v1/refresh-checkpoints';
+
+  // Post request to refresh the list of checkpoints
+  await http.post(Uri.parse(refreshURL));
+
   final serverUrl =
       'http://${globalServerIP.value}:${globalServerPort.value}/sdapi/v1/sd-models';
   try {
@@ -43,7 +50,7 @@ Future<void> syncCheckpointDataFromServer() async {
 
     for (final model in models) {
       final modelName = model['model_name'];
-      if (!globalCheckpointDataMap.containsKey(modelName)) {
+      if (force || !globalCheckpointDataMap.containsKey(modelName)) {
         final hash = model['hash'];
 
         // Get preview image from Civitai
