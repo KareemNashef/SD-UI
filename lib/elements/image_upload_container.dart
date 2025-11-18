@@ -98,7 +98,9 @@ class _ImageContainerState extends State<ImageContainer> {
     // Show a snackbar to indicate loading.
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Loading image for editing...')));
+      ..showSnackBar(
+        const SnackBar(content: Text('Loading image for editing...')),
+      );
 
     await _loadImageFromUrl(imageUrl);
   }
@@ -196,7 +198,9 @@ class _ImageContainerState extends State<ImageContainer> {
                     topLeft: Radius.circular(16.0),
                     topRight: Radius.circular(16.0),
                   ),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Column(
                   children: [
@@ -314,7 +318,7 @@ class _ImageContainerState extends State<ImageContainer> {
                               key: Key(item),
                               direction: isMultiSelectMode
                                   ? DismissDirection
-                                      .none // Disable swipe in multi-select
+                                        .none // Disable swipe in multi-select
                                   : DismissDirection.endToStart,
                               onDismissed: (direction) {
                                 setState(() {
@@ -512,10 +516,12 @@ class _ImageContainerState extends State<ImageContainer> {
       );
     }
 
-    final imageX = (localPosition.dx - displayOffset.dx) /
+    final imageX =
+        (localPosition.dx - displayOffset.dx) /
         displaySize.width *
         imageSize.width;
-    final imageY = (localPosition.dy - displayOffset.dy) /
+    final imageY =
+        (localPosition.dy - displayOffset.dy) /
         displaySize.height *
         imageSize.height;
 
@@ -667,17 +673,16 @@ class _ImageContainerState extends State<ImageContainer> {
         "denoising_strength": globalDenoiseStrength,
         "init_images": [base64Image],
         "mask": base64Mask,
+        "width": _decodedImage!.width,
+        "height": _decodedImage!.height,
         "save_images": true,
         "send_images": true,
-        "scheduler": "Karras",
         "mask_blur": globalMaskBlur,
         "inpainting_fill": _getInpaintingFillValue(globalMaskFill),
         "inpaint_full_res_padding": 32,
         "inpaint_full_res": true,
         "inpainting_mask_invert": 0,
         "mask_round": true,
-        "resize_mode": 0,
-        "image_cfg_scale": 1.5,
       });
 
       final response = await http.post(url, headers: headers, body: body);
@@ -821,23 +826,21 @@ class _ImageContainerState extends State<ImageContainer> {
                   gestures: <Type, GestureRecognizerFactory>{
                     AlwaysWinPanGestureRecognizer:
                         GestureRecognizerFactoryWithHandlers<
-                            AlwaysWinPanGestureRecognizer>(
-                      () => AlwaysWinPanGestureRecognizer(),
-                      (
-                        AlwaysWinPanGestureRecognizer instance,
-                      ) {
-                        instance
-                          ..onStart = (DragStartDetails details) {
-                            _onPanStart(details, constraints.biggest);
-                          }
-                          ..onUpdate = (DragUpdateDetails details) {
-                            _onPanUpdate(details, constraints.biggest);
-                          }
-                          ..onEnd = (DragEndDetails details) {
-                            _onPanEnd(details);
-                          };
-                      },
-                    ),
+                          AlwaysWinPanGestureRecognizer
+                        >(() => AlwaysWinPanGestureRecognizer(), (
+                          AlwaysWinPanGestureRecognizer instance,
+                        ) {
+                          instance
+                            ..onStart = (DragStartDetails details) {
+                              _onPanStart(details, constraints.biggest);
+                            }
+                            ..onUpdate = (DragUpdateDetails details) {
+                              _onPanUpdate(details, constraints.biggest);
+                            }
+                            ..onEnd = (DragEndDetails details) {
+                              _onPanEnd(details);
+                            };
+                        }),
                   },
                   child: Stack(
                     alignment: Alignment.topLeft,
@@ -1117,8 +1120,7 @@ class _ImageContainerState extends State<ImageContainer> {
                                   _promptFocusNode.unfocus();
                                   if (userPrompt.text.isNotEmpty) {
                                     setState(() {
-                                      globalInpaintHistory
-                                          .add(userPrompt.text);
+                                      globalInpaintHistory.add(userPrompt.text);
                                       saveInpaintHistory();
                                     });
 
@@ -1126,8 +1128,7 @@ class _ImageContainerState extends State<ImageContainer> {
                                   }
                                 },
                                 child: const Padding(
-                                  padding:
-                                      EdgeInsets.symmetric(vertical: 14.0),
+                                  padding: EdgeInsets.symmetric(vertical: 14.0),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [

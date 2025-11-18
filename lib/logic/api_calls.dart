@@ -90,6 +90,8 @@ Future<void> syncCheckpointDataFromServer({bool force = false}) async {
 Future<void> setCheckpoint() async {
   final serverUrl =
       'http://${globalServerIP.value}:${globalServerPort.value}/sdapi/v1/options';
+  final progressUrl =
+      'http://${globalServerIP.value}:${globalServerPort.value}/sdapi/v1/progress';
 
   try {
     final checkpointData = globalCheckpointDataMap[globalCurrentCheckpointName];
@@ -98,11 +100,26 @@ Future<void> setCheckpoint() async {
       return;
     }
 
+    // Send the checkpoint change request
     await http.post(
       Uri.parse(serverUrl),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({"sd_model_checkpoint": checkpointData.title}),
     );
+
+    // Poll the progress endpoint until the model is loaded
+    while (true) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      final response = await http.get(Uri.parse(progressUrl));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // When progress is 0 and state is empty, the model change is complete
+        if (data['progress'] == 0 && (data['state']['job'] == null || data['state']['job'].isEmpty)) {
+          break;
+        }
+      }
+    }
   } catch (e) {
     debugPrint('Failed to set checkpoint: $e');
   }

@@ -29,6 +29,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
       .toList();
 
   bool isLoading = false;
+  bool _isChangingCheckpoint = false;
 
   final samplerNames = [
     "DPM++ 2M",
@@ -233,7 +234,8 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                                           option == globalCurrentCheckpointName;
 
                                       return GestureDetector(
-                                        onTap: () {
+                                        onTap: () async {
+                                          // Start flashing animation
                                           setState(() {
                                             globalCurrentCheckpointName =
                                                 option;
@@ -242,18 +244,23 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                                             if (data != null) {
                                               globalCurrentSamplingSteps =
                                                   data.samplingSteps;
-
                                               globalCurrentSamplingMethod =
                                                   data.samplingMethod;
-
                                               globalCurrentCfgScale =
                                                   data.cfgScale;
                                             }
+                                            _isChangingCheckpoint = true;
                                             saveCheckpointDataMap();
-
-                                            setCheckpoint();
                                           });
                                           Navigator.pop(context);
+
+                                          // Wait for checkpoint change to complete
+                                          await setCheckpoint();
+
+                                          // Stop flashing animation
+                                          setState(() {
+                                            _isChangingCheckpoint = false;
+                                          });
                                         },
                                         child: Container(
                                           decoration: BoxDecoration(
@@ -426,68 +433,97 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
               },
 
               // Selector
-              child: Container(
-                height: 100,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 500),
+                height: 200,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: _isChangingCheckpoint
+                      ? Colors.white.withValues(alpha: 0.3)
+                      : Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
+                  border: _isChangingCheckpoint
+                      ? Border.all(color: Colors.cyan.shade300, width: 2)
+                      : null,
                 ),
                 child: Column(
                   children: [
                     // Image Section
                     Expanded(
-                      flex: 2,
-                      child: Container(
-                        width: double.infinity,
-                        decoration: const BoxDecoration(
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(16),
-                            topRight: Radius.circular(16),
-                          ),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(16),
-                            topRight: Radius.circular(16),
-                          ),
-                          child: globalCurrentCheckpointName.isNotEmpty
-                              ? CachedNetworkImage(
-                                  imageUrl:
-                                      _checkpointImages[_checkpointOptions
-                                          .indexOf(
-                                            globalCurrentCheckpointName,
-                                          )],
-                                  fit: BoxFit.cover,
-                                  placeholder: (context, url) => Container(
-                                    color: Colors.grey.shade700,
-                                    child: const Center(
-                                      child: CircularProgressIndicator(
-                                        color: Colors.cyan,
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-                                  ),
-                                  errorWidget: (context, url, error) =>
-                                      Container(
+                      flex: 5,
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            decoration: const BoxDecoration(
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(16),
+                                topRight: Radius.circular(16),
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(16),
+                                topRight: Radius.circular(16),
+                              ),
+                              child: globalCurrentCheckpointName.isNotEmpty
+                                  ? CachedNetworkImage(
+                                      imageUrl:
+                                          _checkpointImages[_checkpointOptions
+                                              .indexOf(
+                                                globalCurrentCheckpointName,
+                                              )],
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) => Container(
                                         color: Colors.grey.shade700,
-                                        child: Icon(
-                                          Icons.image_not_supported,
-                                          color: Colors.white.withValues(
-                                            alpha: 0.6,
+                                        child: const Center(
+                                          child: CircularProgressIndicator(
+                                            color: Colors.cyan,
+                                            strokeWidth: 2,
                                           ),
-                                          size: 24,
                                         ),
                                       ),
-                                )
-                              : Container(
-                                  color: Colors.grey.shade700,
-                                  child: Icon(
-                                    Icons.add_photo_alternate,
-                                    color: Colors.white.withValues(alpha: 0.6),
-                                    size: 24,
-                                  ),
+                                      errorWidget: (context, url, error) =>
+                                          Container(
+                                            color: Colors.grey.shade700,
+                                            child: Icon(
+                                              Icons.image_not_supported,
+                                              color: Colors.white.withValues(
+                                                alpha: 0.6,
+                                              ),
+                                              size: 24,
+                                            ),
+                                          ),
+                                    )
+                                  : Container(
+                                      color: Colors.grey.shade700,
+                                      child: Icon(
+                                        Icons.add_photo_alternate,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                        size: 24,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          // Loading overlay
+                          if (_isChangingCheckpoint)
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(16),
+                                  topRight: Radius.circular(16),
                                 ),
-                        ),
+                              ),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.cyan,
+                                  strokeWidth: 3,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                     // Text Section
