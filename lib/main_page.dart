@@ -39,6 +39,13 @@ class MainPageState extends State<MainPage> {
     super.initState();
   }
 
+  // ===== Helper Method ===== //
+
+  // This performs the "Hard Unfocus" globally
+  void _dismissKeyboard() {
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
   // ===== Class Widgets ===== //
 
   // Switches between main pages
@@ -65,7 +72,12 @@ class MainPageState extends State<MainPage> {
             AnimatedBottomBarItem(icon: Icons.article, title: 'Results'),
             AnimatedBottomBarItem(icon: Icons.settings, title: 'Settings'),
           ],
-          onTabSelected: (i) => globalPageIndex.value = i,
+          onTabSelected: (i) {
+            // FIX 1: Kill focus immediately when a tab is clicked
+            // This prevents the keyboard from lingering or popping up on the new page
+            _dismissKeyboard();
+            globalPageIndex.value = i;
+          },
         );
       },
     );
@@ -77,13 +89,22 @@ class MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          pageSwitcher(),
-          if (!isKeyboardOpen)
-            Positioned(left: 0, right: 0, bottom: 20, child: navigationBar()),
-        ],
+    // FIX 2: Global GestureDetector
+    // Wrapping the Scaffold here ensures that tapping the empty background
+    // on ANY page (Inpaint, Results, Settings) will dismiss the keyboard.
+    return GestureDetector(
+      onTap: _dismissKeyboard,
+      child: Scaffold(
+        // We use resizeToAvoidBottomInset: false if you don't want the
+        // whole page to squish up when keyboard opens (optional preference)
+        resizeToAvoidBottomInset: false,
+        body: Stack(
+          children: [
+            pageSwitcher(),
+            if (!isKeyboardOpen)
+              Positioned(left: 0, right: 0, bottom: 20, child: navigationBar()),
+          ],
+        ),
       ),
     );
   }

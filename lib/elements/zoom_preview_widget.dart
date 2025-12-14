@@ -57,10 +57,6 @@ class ZoomPreviewWidget extends StatelessWidget {
     double viewportLeft = pointOnDisplay.dx - (viewportWidth / 2);
     double viewportTop = pointOnDisplay.dy - (viewportHeight / 2);
 
-    // Clamp the viewport to the display boundaries
-    viewportLeft = viewportLeft.clamp(0.0, displayRect.width - viewportWidth);
-    viewportTop = viewportTop.clamp(0.0, displayRect.height - viewportHeight);
-
     final viewportRect = Rect.fromLTWH(viewportLeft, viewportTop, viewportWidth, viewportHeight);
 
     return Container(

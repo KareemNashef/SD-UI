@@ -44,6 +44,8 @@ class CheckpointData {
   double samplingSteps;
   String samplingMethod;
   double cfgScale;
+  double resolutionHeight;
+  double resolutionWidth;
 
   CheckpointData({
     required this.title,
@@ -51,6 +53,8 @@ class CheckpointData {
     required this.samplingSteps,
     required this.samplingMethod,
     required this.cfgScale,
+    required this.resolutionHeight,
+    required this.resolutionWidth,
   });
 
   Map<String, dynamic> toJson() => {
@@ -59,6 +63,8 @@ class CheckpointData {
     'samplingSteps': samplingSteps,
     'samplingMethod': samplingMethod,
     'cfgScale': cfgScale,
+    'resolutionHeight': resolutionHeight,
+    'resolutionWidth': resolutionWidth,
   };
 
   factory CheckpointData.fromJson(Map<String, dynamic> json) => CheckpointData(
@@ -67,6 +73,8 @@ class CheckpointData {
     samplingSteps: (json['samplingSteps'] as num).toDouble(),
     samplingMethod: json['samplingMethod'],
     cfgScale: (json['cfgScale'] as num).toDouble(),
+    resolutionHeight: (json['resolutionHeight'] ?? 512 as num).toDouble(),
+    resolutionWidth: (json['resolutionWidth'] ?? 512 as num).toDouble(),
   );
 }
 
@@ -104,13 +112,22 @@ Future<void> loadCheckpointDataMap() async {
   // Load the name of the last selected checkpoint
   globalCurrentCheckpointName = prefs.getString('currentCheckpointName') ?? '';
 
+  // Check if the last selected checkpoint exists
+  if (!globalCheckpointDataMap.containsKey(globalCurrentCheckpointName)) {
+    globalCurrentCheckpointName = globalCheckpointDataMap.keys.first;
+  }
+
   // Sync all other plain globals after loading.
   final data = globalCheckpointDataMap[globalCurrentCheckpointName];
   if (data != null) {
+    globalCurrentResolutionHeight = data.resolutionHeight;
+    globalCurrentResolutionWidth = data.resolutionWidth;
     globalCurrentSamplingSteps = data.samplingSteps;
     globalCurrentSamplingMethod = data.samplingMethod;
     globalCurrentCfgScale = data.cfgScale;
   } else {
+    globalCurrentResolutionHeight = 512;
+    globalCurrentResolutionWidth = 512;
     globalCurrentSamplingSteps = 20;
     globalCurrentSamplingMethod = 'DPM++ 2M';
     globalCurrentCfgScale = 3.5;
@@ -119,6 +136,10 @@ Future<void> loadCheckpointDataMap() async {
 
 // Selected checkpoint name
 late String globalCurrentCheckpointName;
+
+// Selected resolution
+late double globalCurrentResolutionHeight;
+late double globalCurrentResolutionWidth;
 
 // Selected checkpoint sampling steps
 late double globalCurrentSamplingSteps;
@@ -170,6 +191,14 @@ Future<void> loadGenerationSettings() async {
   globalBatchSize = prefs.getInt('batchSize') ?? 2;
   globalNegativePrompt = prefs.getString('negativePrompt') ?? '';
 }
+
+// ===== Checkpoint Testing Variables ===== //
+
+ValueNotifier<bool> globalIsCheckpointTesting = ValueNotifier<bool>(false);
+ValueNotifier<String?> globalCurrentTestingCheckpoint = ValueNotifier<String?>(null);
+ValueNotifier<int> globalCurrentCheckpointTestIndex = ValueNotifier<int>(0);
+ValueNotifier<int> globalTotalCheckpointsToTest = ValueNotifier<int>(0);
+ValueNotifier<bool> globalIsChangingCheckpoint = ValueNotifier<bool>(false);
 
 // ===== Inpaint Variables ===== //
 

@@ -54,7 +54,24 @@ Future<void> syncCheckpointDataFromServer({bool force = false}) async {
         final hash = model['hash'];
 
         // Get preview image from Civitai
+
+        bool isImage(Map img) {
+          final type = img['type']?.toString().toLowerCase();
+          if (type != null) return type == 'image';
+
+          final mime = img['mimeType']?.toString().toLowerCase();
+          if (mime != null) return mime.startsWith('image/');
+
+          final url = img['url']?.toString().toLowerCase() ?? '';
+          return url.endsWith('.png') ||
+              url.endsWith('.jpg') ||
+              url.endsWith('.jpeg') ||
+              url.endsWith('.webp');
+        }
+
         String imageUrl = '';
+        const placeholder = 'https://cdn-media.sforum.vn/storage/app/media/Van%20Pham/civitai-ai-thumbnail.jpg'; // replace
+
         try {
           final civitaiRes = await http.get(
             Uri.parse(
@@ -62,13 +79,22 @@ Future<void> syncCheckpointDataFromServer({bool force = false}) async {
             ),
           );
           if (civitaiRes.statusCode == 200) {
-            final civitaiData = jsonDecode(civitaiRes.body);
-            if (civitaiData['images'] != null &&
-                civitaiData['images'].isNotEmpty) {
-              imageUrl = civitaiData['images'][0]['url'] ?? '';
+            final data = jsonDecode(civitaiRes.body);
+            final images = data['images'];
+            if (images is List) {
+              for (final img in images) {
+                if (img is Map &&
+                    isImage(img) &&
+                    (img['url']?.toString().isNotEmpty ?? false)) {
+                  imageUrl = img['url'];
+                  break;
+                }
+              }
             }
           }
         } catch (_) {}
+
+        if (imageUrl.isEmpty) imageUrl = placeholder;
 
         globalCheckpointDataMap[modelName] = CheckpointData(
           title: model['title'],
@@ -76,6 +102,8 @@ Future<void> syncCheckpointDataFromServer({bool force = false}) async {
           samplingSteps: 20,
           samplingMethod: 'DPM++ 2M',
           cfgScale: 3.5,
+          resolutionHeight: 512,
+          resolutionWidth: 512,
         );
       }
     }
@@ -110,12 +138,13 @@ Future<void> setCheckpoint() async {
     // Poll the progress endpoint until the model is loaded
     while (true) {
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       final response = await http.get(Uri.parse(progressUrl));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         // When progress is 0 and state is empty, the model change is complete
-        if (data['progress'] == 0 && (data['state']['job'] == null || data['state']['job'].isEmpty)) {
+        if (data['progress'] == 0 &&
+            (data['state']['job'] == null || data['state']['job'].isEmpty)) {
           break;
         }
       }

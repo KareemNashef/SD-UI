@@ -67,6 +67,14 @@ class _ImageContainerState extends State<ImageContainer> {
   // Controller
   final userPrompt = TextEditingController();
   final FocusNode _promptFocusNode = FocusNode();
+
+  // Checkpoint Testing
+  bool _isCheckpointTesting = false;
+  List<String> _checkpointsToTest = [];
+  int _currentCheckpointIndex = 0;
+  String? _currentTestingCheckpoint;
+  CheckpointData? _originalConfig;
+
   // ===== Lifecycle Methods ===== //
 
   @override
@@ -94,13 +102,6 @@ class _ImageContainerState extends State<ImageContainer> {
 
     // Reset the notifier so this doesn't trigger again on rebuild.
     globalImageToEdit.value = null;
-
-    // Show a snackbar to indicate loading.
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: Text('Loading image for editing...')),
-      );
 
     await _loadImageFromUrl(imageUrl);
   }
@@ -667,14 +668,15 @@ class _ImageContainerState extends State<ImageContainer> {
         "prompt": userPrompt.text,
         "negative_prompt": globalNegativePrompt,
         "sampler_name": globalCurrentSamplingMethod,
+        "scheduler": "Automatic",
+        "width": globalCurrentResolutionWidth.toInt(),
+        "height": globalCurrentResolutionHeight.toInt(),
         "n_iter": globalBatchSize,
         "steps": globalCurrentSamplingSteps.toInt(),
         "cfg_scale": globalCurrentCfgScale,
         "denoising_strength": globalDenoiseStrength,
         "init_images": [base64Image],
         "mask": base64Mask,
-        "width": _decodedImage!.width,
-        "height": _decodedImage!.height,
         "save_images": true,
         "send_images": true,
         "mask_blur": globalMaskBlur,
@@ -739,6 +741,423 @@ class _ImageContainerState extends State<ImageContainer> {
         return 3;
       default:
         return 0;
+    }
+  }
+
+  void _showCheckpointTesterModal(BuildContext context) {
+    final availableCheckpoints = globalCheckpointDataMap.keys.toList();
+
+    if (availableCheckpoints.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No checkpoints available to test'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    Set<String> selectedCheckpoints = {};
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter modalSetState) {
+            return FractionallySizedBox(
+              heightFactor: 0.6,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade800.withValues(alpha: 0.95),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16.0),
+                    topRight: Radius.circular(16.0),
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.science_outlined,
+                                color: Colors.cyan.shade400,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Checkpoint Tester',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.close,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Selection controls
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${selectedCheckpoints.length} of ${availableCheckpoints.length} selected',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontSize: 14,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              modalSetState(() {
+                                if (selectedCheckpoints.length ==
+                                    availableCheckpoints.length) {
+                                  selectedCheckpoints.clear();
+                                } else {
+                                  selectedCheckpoints = Set.from(
+                                    availableCheckpoints,
+                                  );
+                                }
+                              });
+                            },
+                            child: Text(
+                              selectedCheckpoints.length ==
+                                      availableCheckpoints.length
+                                  ? 'Deselect All'
+                                  : 'Select All',
+                              style: TextStyle(
+                                color: Colors.cyan.shade400,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Checkpoint list
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        itemCount: availableCheckpoints.length,
+                        itemBuilder: (context, index) {
+                          final checkpointName = availableCheckpoints[index];
+                          final isSelected = selectedCheckpoints.contains(
+                            checkpointName,
+                          );
+                          final data = globalCheckpointDataMap[checkpointName];
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.cyan.shade400.withValues(alpha: 0.2)
+                                  : Colors.white.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? Colors.cyan.shade400.withValues(
+                                        alpha: 0.5,
+                                      )
+                                    : Colors.white.withValues(alpha: 0.1),
+                                width: isSelected ? 2 : 1,
+                              ),
+                            ),
+                            child: ListTile(
+                              onTap: () {
+                                modalSetState(() {
+                                  if (isSelected) {
+                                    selectedCheckpoints.remove(checkpointName);
+                                  } else {
+                                    selectedCheckpoints.add(checkpointName);
+                                  }
+                                });
+                              },
+                              leading: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Colors.cyan.shade400
+                                      : Colors.white.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  isSelected
+                                      ? Icons.check_circle
+                                      : Icons.circle_outlined,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                              title: Text(
+                                checkpointName,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: data != null
+                                  ? Text(
+                                      '${data.resolutionWidth.toInt()}x${data.resolutionHeight.toInt()} • Steps: ${data.samplingSteps.toInt()} • CFG: ${data.cfgScale}',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                        fontSize: 12,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    // Start button
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: selectedCheckpoints.isEmpty
+                                  ? LinearGradient(
+                                      colors: [
+                                        Colors.grey.shade700,
+                                        Colors.grey.shade600,
+                                      ],
+                                    )
+                                  : LinearGradient(
+                                      colors: [
+                                        Colors.cyan.shade500,
+                                        Colors.lime.shade500,
+                                      ],
+                                    ),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: selectedCheckpoints.isEmpty
+                                    ? null
+                                    : () {
+                                        Navigator.pop(context);
+                                        _startCheckpointTesting(
+                                          selectedCheckpoints.toList(),
+                                        );
+                                      },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16.0,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.play_arrow_rounded,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Start Testing (${selectedCheckpoints.length})',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _startCheckpointTesting(List<String> checkpoints) async {
+    if (_imageFile == null || _decodedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select an image first'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (userPrompt.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a prompt first'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    await checkServerStatus();
+    if (!globalServerStatus.value) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Server not connected'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Save original configuration
+    _originalConfig = CheckpointData(
+      title: globalCurrentCheckpointName,
+      imageURL: '',
+      samplingSteps: globalCurrentSamplingSteps,
+      samplingMethod: globalCurrentSamplingMethod,
+      cfgScale: globalCurrentCfgScale,
+      resolutionHeight: globalCurrentResolutionHeight,
+      resolutionWidth: globalCurrentResolutionWidth,
+    );
+
+    setState(() {
+      _isCheckpointTesting = true;
+      _checkpointsToTest = checkpoints;
+      _currentCheckpointIndex = 0;
+    });
+
+    // ADD THESE LINES: Update global notifiers for ProgressOverlay
+    globalIsCheckpointTesting.value = true;
+    globalTotalCheckpointsToTest.value = checkpoints.length;
+
+    // Switch to results page
+    globalPageIndex.value = 1;
+
+    for (int i = 0; i < checkpoints.length; i++) {
+      if (!_isCheckpointTesting) break; // Allow cancellation
+
+      setState(() {
+        _currentCheckpointIndex = i;
+        _currentTestingCheckpoint = checkpoints[i];
+      });
+
+      // ADD THESE LINES: Update global notifiers in the loop
+      globalCurrentCheckpointTestIndex.value = i;
+      globalCurrentTestingCheckpoint.value = checkpoints[i];
+
+      await _testCheckpoint(checkpoints[i]);
+
+      // Small delay between tests
+      if (i < checkpoints.length - 1) {
+        await Future.delayed(const Duration(seconds: 1));
+      }
+    }
+
+    // Restore original configuration
+    if (_originalConfig != null) {
+      setState(() {
+        globalCurrentCheckpointName = _originalConfig!.title;
+        globalCurrentSamplingSteps = _originalConfig!.samplingSteps;
+        globalCurrentSamplingMethod = _originalConfig!.samplingMethod;
+        globalCurrentCfgScale = _originalConfig!.cfgScale;
+        globalCurrentResolutionWidth = _originalConfig!.resolutionWidth;
+        globalCurrentResolutionHeight = _originalConfig!.resolutionHeight;
+      });
+      await setCheckpoint();
+      saveCheckpointDataMap();
+    }
+
+    setState(() {
+      _isCheckpointTesting = false;
+      _currentTestingCheckpoint = null;
+    });
+
+    // ADD THESE LINES: Reset global notifiers at the end
+    globalIsCheckpointTesting.value = false;
+    globalCurrentTestingCheckpoint.value = null;
+  }
+
+  Future<void> _testCheckpoint(String checkpointName) async {
+    try {
+      // Set changing checkpoint flag BEFORE changing checkpoint
+      globalIsChangingCheckpoint.value = true;
+
+      // Apply checkpoint configuration
+      final data = globalCheckpointDataMap[checkpointName];
+      if (data == null) {
+        globalIsChangingCheckpoint.value = false;
+        return;
+      }
+
+      setState(() {
+        globalCurrentCheckpointName = checkpointName;
+        globalCurrentSamplingSteps = data.samplingSteps;
+        globalCurrentSamplingMethod = data.samplingMethod;
+        globalCurrentCfgScale = data.cfgScale;
+        globalCurrentResolutionWidth = data.resolutionWidth;
+        globalCurrentResolutionHeight = data.resolutionHeight;
+      });
+      saveCheckpointDataMap();
+
+      // Change checkpoint on server
+      await setCheckpoint();
+
+      // Small delay to ensure checkpoint is loaded
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Clear the changing checkpoint flag BEFORE generating
+      globalIsChangingCheckpoint.value = false;
+
+      // Generate image
+      await generateImage();
+    } catch (e) {
+      globalIsChangingCheckpoint.value = false;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error testing checkpoint $checkpointName: ${e.toString()}',
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+      print('Error in _testCheckpoint: $e');
     }
   }
 
@@ -1028,13 +1447,24 @@ class _ImageContainerState extends State<ImageContainer> {
   }
 
   @override
+  void deactivate() {
+    _promptFocusNode.unfocus();
+    super.deactivate();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      // 2. UPDATED: The "Hard" Unfocus
+      // Instead of just .unfocus(), we explicitly request a new focus.
+      // This stops the "momentary" unfocus issue.
       onTap: () {
-        FocusScope.of(context).unfocus();
+        FocusScope.of(context).requestFocus(FocusNode());
       },
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
+        // 3. ADD THIS: Allows you to drag the screen down to dismiss keyboard
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         child: Column(
           children: [
             GestureDetector(
@@ -1117,13 +1547,15 @@ class _ImageContainerState extends State<ImageContainer> {
                               color: Colors.transparent,
                               child: InkWell(
                                 onTap: () {
-                                  _promptFocusNode.unfocus();
+                                  // Unfocus immediately on Generate
+                                  FocusScope.of(
+                                    context,
+                                  ).requestFocus(FocusNode());
                                   if (userPrompt.text.isNotEmpty) {
                                     setState(() {
                                       globalInpaintHistory.add(userPrompt.text);
                                       saveInpaintHistory();
                                     });
-
                                     generateImage();
                                   }
                                 },
@@ -1161,7 +1593,31 @@ class _ImageContainerState extends State<ImageContainer> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: IconButton(
-                          onPressed: () => _showInpaintHistory(context),
+                          onPressed: () {
+                            // Hard Unfocus before modal
+                            FocusScope.of(context).requestFocus(FocusNode());
+                            _showCheckpointTesterModal(context);
+                          },
+                          icon: const Icon(
+                            Icons.science_outlined,
+                            color: Colors.white,
+                          ),
+                          tooltip: 'Checkpoint Tester',
+                          splashRadius: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: IconButton(
+                          onPressed: () {
+                            // Hard Unfocus before modal
+                            FocusScope.of(context).requestFocus(FocusNode());
+                            _showInpaintHistory(context);
+                          },
                           icon: const Icon(Icons.history, color: Colors.white),
                           tooltip: 'Prompt History',
                           splashRadius: 20,

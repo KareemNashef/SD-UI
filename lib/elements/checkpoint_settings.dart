@@ -55,6 +55,33 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
     "Euler CFG++",
   ];
 
+  // ===== Class Widgets ===== //
+
+  InputDecoration modernInputDecoration({required String hint}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.1),
+
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: Colors.white.withValues(alpha: 0.5),
+          width: 1.5,
+        ),
+      ),
+
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
   // ===== Build Method ===== //
 
   @override
@@ -248,6 +275,11 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                                                   data.samplingMethod;
                                               globalCurrentCfgScale =
                                                   data.cfgScale;
+                                                  
+                                              globalCurrentResolutionWidth =
+                                                  data.resolutionWidth;
+                                              globalCurrentResolutionHeight =
+                                                  data.resolutionHeight;
                                             }
                                             _isChangingCheckpoint = true;
                                             saveCheckpointDataMap();
@@ -727,6 +759,50 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                 });
               },
               valueFormatter: (val) => val.toStringAsFixed(1),
+            ),
+
+            // Spacer
+            const SizedBox(height: 20),
+
+            // Resolution - Width
+            ModernSlider(
+              label: 'Width',
+              value: globalCurrentResolutionWidth,
+              min: 256,
+              max: 2048,
+              divisions: 56, // Steps of 32
+              onChanged: (value) {
+                setState(() {
+                  globalCurrentResolutionWidth = (value / 32).round() * 32.0;
+                  globalCheckpointDataMap[globalCurrentCheckpointName]!
+                          .resolutionWidth =
+                      globalCurrentResolutionWidth;
+                  saveCheckpointDataMap();
+                });
+              },
+              valueFormatter: (val) => '${val.toInt()}px',
+            ),
+
+            // Spacer
+            const SizedBox(height: 20),
+
+            // Resolution - Height
+            ModernSlider(
+              label: 'Height',
+              value: globalCurrentResolutionHeight,
+              min: 256,
+              max: 2048,
+              divisions: 56, // Steps of 32
+              onChanged: (value) {
+                setState(() {
+                  globalCurrentResolutionHeight = (value / 32).round() * 32.0;
+                  globalCheckpointDataMap[globalCurrentCheckpointName]!
+                          .resolutionHeight =
+                      globalCurrentResolutionHeight;
+                  saveCheckpointDataMap();
+                });
+              },
+              valueFormatter: (val) => '${val.toInt()}px',
             ),
           ],
         ),
