@@ -278,6 +278,7 @@ class _LoadingScreenState extends State<LoadingScreen>
     await loadGenerationSettings();
     await loadInpaintHistory();
     await syncCheckpointDataFromServer();
+    await loadLoraDataFromServer();
 
     if (!mounted) return;
     Navigator.of(

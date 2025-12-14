@@ -70,7 +70,8 @@ Future<void> syncCheckpointDataFromServer({bool force = false}) async {
         }
 
         String imageUrl = '';
-        const placeholder = 'https://cdn-media.sforum.vn/storage/app/media/Van%20Pham/civitai-ai-thumbnail.jpg'; // replace
+        const placeholder =
+            'https://cdn-media.sforum.vn/storage/app/media/Van%20Pham/civitai-ai-thumbnail.jpg'; // replace
 
         try {
           final civitaiRes = await http.get(
@@ -153,3 +154,55 @@ Future<void> setCheckpoint() async {
     debugPrint('Failed to set checkpoint: $e');
   }
 }
+
+// Load lora data from the server
+Future<void> loadLoraDataFromServer() async {
+  final baseUrl =
+      'http://${globalServerIP.value}:${globalServerPort.value}';
+
+  try {
+    // 1. Refresh loras
+    final refreshResponse = await http.post(
+      Uri.parse('$baseUrl/sdapi/v1/refresh-loras'),
+    );
+
+    if (refreshResponse.statusCode != 200) {
+      debugPrint('Failed to refresh loras');
+      return;
+    }
+
+    // 2. Load loras
+    final loraResponse = await http.get(
+      Uri.parse('$baseUrl/sdapi/v1/loras'),
+    );
+
+    if (loraResponse.statusCode != 200) return;
+
+    final data = jsonDecode(loraResponse.body) as List<dynamic>;
+    globalLoraDataMap.clear();
+
+    for (final lora in data) {
+      final String name = lora['name'] ?? '';
+      final String alias = lora['alias'] ?? name;
+      final Set<String> tags = {};
+
+      if (lora['metadata']?['ss_tag_frequency'] is Map) {
+        final Map tagFreqData = lora['metadata']['ss_tag_frequency'];
+        for (final group in tagFreqData.values) {
+          if (group is Map) {
+            tags.addAll(group.keys.cast<String>());
+          }
+        }
+      }
+
+      globalLoraDataMap[name] = LoraData(
+        title: name,
+        alias: alias,
+        tags: tags,
+      );
+    }
+  } catch (e) {
+    debugPrint('Failed to load lora data from server: $e');
+  }
+}
+

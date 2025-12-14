@@ -20,7 +20,8 @@ class CheckpointSettings extends StatefulWidget {
   State<CheckpointSettings> createState() => CheckpointSettingsState();
 }
 
-class CheckpointSettingsState extends State<CheckpointSettings> {
+class CheckpointSettingsState extends State<CheckpointSettings>
+    with SingleTickerProviderStateMixin {
   // ===== Class Variables ===== //
 
   List<String> _checkpointOptions = globalCheckpointDataMap.keys.toList();
@@ -28,8 +29,10 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
       .map((e) => e.imageURL)
       .toList();
 
-  bool isLoading = false;
-  bool _isChangingCheckpoint = false;
+  bool _isChangingCheckpoint = false; // Used for the main preview loading state
+
+  // Refresh Animation Controller
+  late AnimationController _refreshController;
 
   final samplerNames = [
     "DPM++ 2M",
@@ -55,30 +58,281 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
     "Euler CFG++",
   ];
 
-  // ===== Class Widgets ===== //
+  @override
+  void initState() {
+    super.initState();
+    _refreshController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+  }
 
-  InputDecoration modernInputDecoration({required String hint}) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+  @override
+  void dispose() {
+    _refreshController.dispose();
+    super.dispose();
+  }
 
-      filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.1),
+  // ===== Modal Logic ===== //
 
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
+  void _showModelSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter modalSetState) {
+            return FractionallySizedBox(
+              heightFactor: 0.85,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade900,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24.0),
+                    topRight: Radius.circular(24.0),
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    // --- Header ---
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.grid_view_rounded,
+                            color: Colors.cyan.shade300,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Select Model',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const Spacer(),
+                          // Refresh Button
+                          RotationTransition(
+                            turns: _refreshController,
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.refresh_rounded,
+                                color: Colors.white70,
+                              ),
+                              onPressed: () async {
+                                if (_refreshController.isAnimating) return;
 
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: Colors.white.withValues(alpha: 0.5),
-          width: 1.5,
-        ),
-      ),
+                                _refreshController.repeat(); // Start spinning
 
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                await syncCheckpointDataFromServer(force: true);
+
+                                // Update lists
+                                modalSetState(() {
+                                  _checkpointOptions = globalCheckpointDataMap
+                                      .keys
+                                      .toList();
+                                  _checkpointImages = globalCheckpointDataMap
+                                      .values
+                                      .map((e) => e.imageURL)
+                                      .toList();
+                                });
+
+                                // Update parent as well
+                                setState(() {});
+
+                                _refreshController.stop(); // Stop spinning
+                                _refreshController.reset();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.close,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // --- Grid ---
+                    Expanded(
+                      child: GridView.builder(
+                        padding: const EdgeInsets.all(16),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 0.8,
+                            ),
+                        itemCount: _checkpointOptions.length,
+                        itemBuilder: (context, index) {
+                          final option = _checkpointOptions[index];
+                          final imageUrl = _checkpointImages[index];
+                          final isSelected =
+                              option == globalCurrentCheckpointName;
+
+                          return _AnimatedModelCard(
+                            name: option,
+                            imageUrl: imageUrl,
+                            isSelected: isSelected,
+                            onTap: () async {
+                              Navigator.pop(context);
+
+                              // Trigger main loading state
+                              setState(() {
+                                _isChangingCheckpoint = true;
+                                globalCurrentCheckpointName = option;
+
+                                // Update settings based on new checkpoint
+                                final data =
+                                    globalCheckpointDataMap[globalCurrentCheckpointName];
+                                if (data != null) {
+                                  globalCurrentSamplingSteps =
+                                      data.samplingSteps;
+                                  globalCurrentSamplingMethod =
+                                      data.samplingMethod;
+                                  globalCurrentCfgScale = data.cfgScale;
+                                  globalCurrentResolutionWidth =
+                                      data.resolutionWidth;
+                                  globalCurrentResolutionHeight =
+                                      data.resolutionHeight;
+                                }
+                                saveCheckpointDataMap();
+                              });
+
+                              // Wait for backend
+                              await setCheckpoint();
+
+                              setState(() {
+                                _isChangingCheckpoint = false;
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showSamplerSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return FractionallySizedBox(
+          heightFactor: 0.6,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade900,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24.0),
+                topRight: Radius.circular(24.0),
+              ),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 20,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // --- Header ---
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.waves,
+                            color: Colors.cyan.shade300,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Sampling Method',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white70),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // --- List ---
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    itemCount: samplerNames.length,
+                    itemBuilder: (context, index) {
+                      final option = samplerNames[index];
+                      final isSelected = option == globalCurrentSamplingMethod;
+
+                      return _AnimatedSamplerTile(
+                        text: option,
+                        isSelected: isSelected,
+                        onTap: () {
+                          setState(() {
+                            globalCurrentSamplingMethod = option;
+                            globalCheckpointDataMap[globalCurrentCheckpointName]!
+                                    .samplingMethod =
+                                option;
+                            saveCheckpointDataMap();
+                          });
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -87,662 +341,290 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-      },
+      onTap: () => FocusScope.of(context).unfocus(),
       child: Container(
         // Theme
         decoration: BoxDecoration(
-          color: Colors.grey.shade800.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(12.0),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          color: Colors.grey.shade900.withValues(
+            alpha: 0.6,
+          ), // Slightly darker base
+          borderRadius: BorderRadius.circular(16.0),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
 
         // Padding
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
 
         // Content
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Title with Icon
+            // --- Title ---
             Row(
               children: [
-                Icon(
-                  Icons.tune_rounded,
-                  color: Colors.white.withValues(alpha: 0.8),
-                  size: 20,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.cyan.shade900.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.tune_rounded,
+                    color: Colors.cyan.shade300,
+                    size: 20,
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 const Text(
                   'Checkpoint Settings',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 24),
 
-            // Spacer
-            const SizedBox(height: 16),
-
-            // Checkpoint Selection - Title
-            const Text(
-              'Model Checkpoint',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
+            // --- Checkpoint Preview Box ---
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8.0),
+              child: Text(
+                'Model Checkpoint',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
             ),
 
-            // Spacer
-            const SizedBox(height: 8),
-
-            // Checkpoint Selection - Advanced Selector
             InkWell(
-              // Bottom Sheet
-              onTap: () {
-                double turns = 0.0; // Rotation state for the refresh icon
-                showModalBottomSheet(
-                  context: context,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) {
-                    // StatefulBuilder provides a local setState for the modal's content
-                    return StatefulBuilder(
-                      builder: (BuildContext context, StateSetter modalSetState) {
-                        return Container(
-                          // Theme
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade800.withValues(alpha: 0.9),
-                            borderRadius: BorderRadius.circular(12.0),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.2),
+              onTap: () => _showModelSelector(context),
+              borderRadius: BorderRadius.circular(16),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                height: 220,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _isChangingCheckpoint
+                        ? Colors.cyan.shade300
+                        : Colors.white.withValues(alpha: 0.1),
+                    width: _isChangingCheckpoint ? 2 : 1,
+                  ),
+                  boxShadow: _isChangingCheckpoint
+                      ? [
+                          BoxShadow(
+                            color: Colors.cyan.shade900.withValues(alpha: 0.4),
+                            blurRadius: 15,
+                          ),
+                        ]
+                      : [],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Image
+                      if (globalCurrentCheckpointName.isNotEmpty)
+                        CachedNetworkImage(
+                          imageUrl:
+                              _checkpointImages[_checkpointOptions.indexOf(
+                                globalCurrentCheckpointName,
+                              )],
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey.shade800,
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.cyan,
+                              ),
                             ),
                           ),
-
-                          // Content
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey.shade800,
+                            child: Icon(
+                              Icons.broken_image,
+                              color: Colors.white24,
+                              size: 48,
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
+                          color: Colors.grey.shade800,
                           child: Column(
-                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              // Menu Header
-                              Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      'Select a Model',
-                                      style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.8,
-                                        ),
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const Spacer(),
-
-                                    // FIX: Refresh button with continuous animation
-                                    IconButton(
-                                      icon: AnimatedRotation(
-                                        turns: turns,
-                                        duration: const Duration(
-                                          milliseconds: 800,
-                                        ),
-                                        onEnd: () {
-                                          // If still loading, continue the animation loop
-                                          if (isLoading) {
-                                            modalSetState(() {
-                                              turns += 1.0;
-                                            });
-                                          }
-                                        },
-                                        child: const Icon(
-                                          Icons.refresh_rounded,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      onPressed: () async {
-                                        if (isLoading)
-                                          return; // Prevent multiple presses
-
-                                        // Start loading and trigger animation
-                                        modalSetState(() {
-                                          isLoading = true;
-                                          turns += 1.0;
-                                        });
-
-                                        await syncCheckpointDataFromServer(
-                                          force: true,
-                                        );
-
-                                        // Resync lists with new data
-                                        _checkpointOptions =
-                                            globalCheckpointDataMap.keys
-                                                .toList();
-                                        _checkpointImages =
-                                            globalCheckpointDataMap.values
-                                                .map((e) => e.imageURL)
-                                                .toList();
-
-                                        // FIX: Stop animation and refresh modal content
-                                        modalSetState(() {
-                                          isLoading = false;
-                                        });
-                                        // Refresh the parent widget state as well
-                                        setState(() {});
-                                      },
-                                    ),
-                                  ],
-                                ),
+                              Icon(
+                                Icons.add_photo_alternate_outlined,
+                                color: Colors.white24,
+                                size: 48,
                               ),
-
-                              // Scrollable Grid of Options
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0,
-                                  ),
-                                  child: GridView.builder(
-                                    gridDelegate:
-                                        const SliverGridDelegateWithFixedCrossAxisCount(
-                                          crossAxisCount: 2,
-                                          crossAxisSpacing: 12,
-                                          mainAxisSpacing: 12,
-                                          childAspectRatio: 0.8,
-                                        ),
-                                    itemCount: _checkpointOptions.length,
-                                    itemBuilder: (context, index) {
-                                      final option = _checkpointOptions[index];
-                                      final imageUrl = _checkpointImages[index];
-                                      final isSelected =
-                                          option == globalCurrentCheckpointName;
-
-                                      return GestureDetector(
-                                        onTap: () async {
-                                          // Start flashing animation
-                                          setState(() {
-                                            globalCurrentCheckpointName =
-                                                option;
-                                            final data =
-                                                globalCheckpointDataMap[globalCurrentCheckpointName];
-                                            if (data != null) {
-                                              globalCurrentSamplingSteps =
-                                                  data.samplingSteps;
-                                              globalCurrentSamplingMethod =
-                                                  data.samplingMethod;
-                                              globalCurrentCfgScale =
-                                                  data.cfgScale;
-                                                  
-                                              globalCurrentResolutionWidth =
-                                                  data.resolutionWidth;
-                                              globalCurrentResolutionHeight =
-                                                  data.resolutionHeight;
-                                            }
-                                            _isChangingCheckpoint = true;
-                                            saveCheckpointDataMap();
-                                          });
-                                          Navigator.pop(context);
-
-                                          // Wait for checkpoint change to complete
-                                          await setCheckpoint();
-
-                                          // Stop flashing animation
-                                          setState(() {
-                                            _isChangingCheckpoint = false;
-                                          });
-                                        },
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                            border: Border.all(
-                                              color: isSelected
-                                                  ? Colors.cyan.shade300
-                                                  : Colors.white.withValues(
-                                                      alpha: 0.3,
-                                                    ),
-                                              width: isSelected ? 2 : 1,
-                                            ),
-                                            color: Colors.white.withValues(
-                                              alpha: 0.1,
-                                            ),
-                                          ),
-                                          child: Column(
-                                            children: [
-                                              // Image Section
-                                              Expanded(
-                                                flex: 3,
-                                                child: Container(
-                                                  width: double.infinity,
-                                                  decoration: const BoxDecoration(
-                                                    borderRadius:
-                                                        BorderRadius.only(
-                                                          topLeft:
-                                                              Radius.circular(
-                                                                12,
-                                                              ),
-                                                          topRight:
-                                                              Radius.circular(
-                                                                12,
-                                                              ),
-                                                        ),
-                                                  ),
-                                                  child: ClipRRect(
-                                                    borderRadius:
-                                                        const BorderRadius.only(
-                                                          topLeft:
-                                                              Radius.circular(
-                                                                12,
-                                                              ),
-                                                          topRight:
-                                                              Radius.circular(
-                                                                12,
-                                                              ),
-                                                        ),
-                                                    child: CachedNetworkImage(
-                                                      imageUrl: imageUrl,
-                                                      fit: BoxFit.cover,
-                                                      placeholder:
-                                                          (
-                                                            context,
-                                                            url,
-                                                          ) => Container(
-                                                            color: Colors
-                                                                .grey
-                                                                .shade700,
-                                                            child: const Center(
-                                                              child:
-                                                                  CircularProgressIndicator(
-                                                                    color: Colors
-                                                                        .cyan,
-                                                                    strokeWidth:
-                                                                        2,
-                                                                  ),
-                                                            ),
-                                                          ),
-                                                      errorWidget:
-                                                          (
-                                                            context,
-                                                            url,
-                                                            error,
-                                                          ) => Container(
-                                                            color: Colors
-                                                                .grey
-                                                                .shade700,
-                                                            child: Icon(
-                                                              Icons
-                                                                  .error_outline,
-                                                              color: Colors
-                                                                  .white
-                                                                  .withValues(
-                                                                    alpha: 0.6,
-                                                                  ),
-                                                              size: 24,
-                                                            ),
-                                                          ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              // Text Section
-                                              Expanded(
-                                                flex: 1,
-                                                child: Container(
-                                                  width: double.infinity,
-                                                  padding: const EdgeInsets.all(
-                                                    8,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: isSelected
-                                                        ? Colors.cyan.shade300
-                                                              .withValues(
-                                                                alpha: 0.2,
-                                                              )
-                                                        : Colors.transparent,
-                                                    borderRadius:
-                                                        const BorderRadius.only(
-                                                          bottomLeft:
-                                                              Radius.circular(
-                                                                12,
-                                                              ),
-                                                          bottomRight:
-                                                              Radius.circular(
-                                                                12,
-                                                              ),
-                                                        ),
-                                                  ),
-                                                  child: Column(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .center,
-                                                    children: [
-                                                      Text(
-                                                        option,
-                                                        style: TextStyle(
-                                                          color: isSelected
-                                                              ? Colors
-                                                                    .cyan
-                                                                    .shade300
-                                                              : Colors.white,
-                                                          fontWeight: isSelected
-                                                              ? FontWeight.bold
-                                                              : FontWeight
-                                                                    .normal,
-                                                          fontSize: 12,
-                                                        ),
-                                                        textAlign:
-                                                            TextAlign.center,
-                                                        maxLines: 2,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Select a Model",
+                                style: TextStyle(color: Colors.white38),
                               ),
-
-                              // Bottom padding
-                              const SizedBox(height: 16),
                             ],
                           ),
-                        );
-                      },
-                    );
-                  },
-                );
-              },
+                        ),
 
-              // Selector
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 500),
-                height: 200,
-                decoration: BoxDecoration(
-                  color: _isChangingCheckpoint
-                      ? Colors.white.withValues(alpha: 0.3)
-                      : Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: _isChangingCheckpoint
-                      ? Border.all(color: Colors.cyan.shade300, width: 2)
-                      : null,
-                ),
-                child: Column(
-                  children: [
-                    // Image Section
-                    Expanded(
-                      flex: 5,
-                      child: Stack(
-                        children: [
-                          Container(
-                            width: double.infinity,
-                            decoration: const BoxDecoration(
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(16),
-                                topRight: Radius.circular(16),
-                              ),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(16),
-                                topRight: Radius.circular(16),
-                              ),
-                              child: globalCurrentCheckpointName.isNotEmpty
-                                  ? CachedNetworkImage(
-                                      imageUrl:
-                                          _checkpointImages[_checkpointOptions
-                                              .indexOf(
-                                                globalCurrentCheckpointName,
-                                              )],
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) => Container(
-                                        color: Colors.grey.shade700,
-                                        child: const Center(
-                                          child: CircularProgressIndicator(
-                                            color: Colors.cyan,
-                                            strokeWidth: 2,
-                                          ),
-                                        ),
-                                      ),
-                                      errorWidget: (context, url, error) =>
-                                          Container(
-                                            color: Colors.grey.shade700,
-                                            child: Icon(
-                                              Icons.image_not_supported,
-                                              color: Colors.white.withValues(
-                                                alpha: 0.6,
-                                              ),
-                                              size: 24,
-                                            ),
-                                          ),
-                                    )
-                                  : Container(
-                                      color: Colors.grey.shade700,
-                                      child: Icon(
-                                        Icons.add_photo_alternate,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.6,
-                                        ),
-                                        size: 24,
-                                      ),
-                                    ),
+                      // Gradient Overlay for Text
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.9),
+                                Colors.transparent,
+                              ],
                             ),
                           ),
-                          // Loading overlay
-                          if (_isChangingCheckpoint)
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(16),
-                                  topRight: Radius.circular(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                globalCurrentCheckpointName.isEmpty
+                                    ? 'Tap to select...'
+                                    : globalCurrentCheckpointName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  shadows: [
+                                    Shadow(color: Colors.black, blurRadius: 4),
+                                  ],
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  color: Colors.cyan,
-                                  strokeWidth: 3,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    // Text Section
-                    Expanded(
-                      flex: 1,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: Center(
-                          child: Text(
-                            globalCurrentCheckpointName.isEmpty
-                                ? 'Select a model...'
-                                : globalCurrentCheckpointName,
-                            style: TextStyle(
-                              color: globalCurrentCheckpointName.isEmpty
-                                  ? Colors.white.withValues(alpha: 0.6)
-                                  : Colors.white,
-                              fontSize: 14,
-                              fontWeight: globalCurrentCheckpointName.isEmpty
-                                  ? FontWeight.normal
-                                  : FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Spacer
-            const SizedBox(height: 16),
-
-            // Sampling Method - Title
-            const Text(
-              'Sampling Method',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-
-            // Spacer
-            const SizedBox(height: 16),
-
-            // Sampling Method - Dropdown
-            InkWell(
-              // Bottom Sheet
-              onTap: () {
-                showModalBottomSheet(
-                  context: context,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) {
-                    return Container(
-                      // Theme
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade800.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(12.0),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2),
-                        ),
-                      ),
-
-                      // Content
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Menu Header
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Text(
-                              'Select a Method',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.8),
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-
-                          // Scrollable List of Options
-                          Flexible(
-                            child: ListView.builder(
-                              shrinkWrap: true,
-                              itemCount: samplerNames.length,
-                              itemBuilder: (context, index) {
-                                final option = samplerNames[index];
-                                final isSelected =
-                                    option == globalCurrentSamplingMethod;
-                                return ListTile(
-                                  title: Text(
-                                    option,
-                                    style: TextStyle(
-                                      color: isSelected
-                                          ? Colors.cyan.shade300
-                                          : Colors.white,
-                                      fontWeight: isSelected
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                    ),
+                              if (globalCurrentCheckpointName.isNotEmpty)
+                                Text(
+                                  'Active Checkpoint',
+                                  style: TextStyle(
+                                    color: Colors.cyan.shade300,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                  trailing: isSelected
-                                      ? Icon(
-                                          Icons.check_circle,
-                                          color: Colors.cyan.shade300,
-                                        )
-                                      : null,
-                                  onTap: () {
-                                    setState(() {
-                                      globalCurrentSamplingMethod = option;
-                                      globalCheckpointDataMap[globalCurrentCheckpointName]!
-                                              .samplingMethod =
-                                          option;
-                                      saveCheckpointDataMap();
-                                    });
-                                    Navigator.pop(
-                                      context,
-                                    ); // Close the bottom sheet
-                                  },
-                                );
-                              },
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Loading Overlay
+                      if (_isChangingCheckpoint)
+                        Container(
+                          color: Colors.black54,
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const CircularProgressIndicator(
+                                  color: Colors.cyan,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  "Loading Model...",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
 
-              // Selector
+            const SizedBox(height: 24),
+
+            // --- Sampling Method ---
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8.0),
+              child: Text(
+                'Sampling Method',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+
+            InkWell(
+              onTap: () => _showSamplerSelector(context),
+              borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
-                  vertical: 14,
+                  vertical: 16,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       globalCurrentSamplingMethod,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                    Icon(
-                      Icons.arrow_drop_down_rounded,
-                      color: Colors.white.withValues(alpha: 0.7),
-                    ),
+                    Icon(Icons.unfold_more, color: Colors.white38),
                   ],
                 ),
               ),
             ),
 
-            // Spacer
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // Sampling Steps
+            // --- Sliders ---
+            // Assuming ModernSlider has its own internal styling.
+            // If not, wrap them in Containers similar to above.
             ModernSlider(
               label: 'Sampling Steps',
-              value: globalCurrentSamplingSteps,
+              value: globalCurrentSamplingSteps.toDouble(),
               min: 8,
               max: 50,
               onChanged: (value) {
                 setState(() {
-                  globalCurrentSamplingSteps = value;
+                  globalCurrentSamplingSteps = value.toInt();
                   globalCheckpointDataMap[globalCurrentCheckpointName]!
-                          .samplingSteps =
-                      value;
+                      .samplingSteps = value
+                      .toInt();
                   saveCheckpointDataMap();
                 });
               },
+              valueFormatter: (val) => val.toInt().toString(),
             ),
 
-            // Spacer
             const SizedBox(height: 20),
 
-            // CFG Scale
             ModernSlider(
               label: 'CFG Scale',
               value: globalCurrentCfgScale,
@@ -761,19 +643,18 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
               valueFormatter: (val) => val.toStringAsFixed(1),
             ),
 
-            // Spacer
             const SizedBox(height: 20),
 
-            // Resolution - Width
             ModernSlider(
               label: 'Width',
-              value: globalCurrentResolutionWidth,
+              value: globalCurrentResolutionWidth.toDouble(),
               min: 256,
               max: 2048,
-              divisions: 56, // Steps of 32
+              divisions: 56,
               onChanged: (value) {
                 setState(() {
-                  globalCurrentResolutionWidth = (value / 32).round() * 32.0;
+                  globalCurrentResolutionWidth = ((value / 32).round() * 32.0)
+                      .toInt();
                   globalCheckpointDataMap[globalCurrentCheckpointName]!
                           .resolutionWidth =
                       globalCurrentResolutionWidth;
@@ -783,19 +664,18 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
               valueFormatter: (val) => '${val.toInt()}px',
             ),
 
-            // Spacer
             const SizedBox(height: 20),
 
-            // Resolution - Height
             ModernSlider(
               label: 'Height',
-              value: globalCurrentResolutionHeight,
+              value: globalCurrentResolutionHeight.toDouble(),
               min: 256,
               max: 2048,
-              divisions: 56, // Steps of 32
+              divisions: 56,
               onChanged: (value) {
                 setState(() {
-                  globalCurrentResolutionHeight = (value / 32).round() * 32.0;
+                  globalCurrentResolutionHeight = ((value / 32).round() * 32.0)
+                      .toInt();
                   globalCheckpointDataMap[globalCurrentCheckpointName]!
                           .resolutionHeight =
                       globalCurrentResolutionHeight;
@@ -805,6 +685,238 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
               valueFormatter: (val) => '${val.toInt()}px',
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// ANIMATED WIDGETS
+// ==========================================
+
+class _AnimatedModelCard extends StatefulWidget {
+  final String name;
+  final String imageUrl;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _AnimatedModelCard({
+    Key? key,
+    required this.name,
+    required this.imageUrl,
+    required this.isSelected,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  State<_AnimatedModelCard> createState() => _AnimatedModelCardState();
+}
+
+class _AnimatedModelCardState extends State<_AnimatedModelCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) => _controller.reverse(),
+      onTapCancel: () => _controller.reverse(),
+      onTap: widget.onTap,
+      child: ScaleTransition(
+        scale: _scale,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: widget.isSelected
+                  ? Colors.cyan.shade300
+                  : Colors.white.withValues(alpha: 0.1),
+              width: widget.isSelected ? 2 : 1,
+            ),
+            boxShadow: widget.isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.cyan.shade500.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : [],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CachedNetworkImage(
+                  imageUrl: widget.imageUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) =>
+                      Container(color: Colors.grey.shade800),
+                  errorWidget: (_, __, ___) => Container(
+                    color: Colors.grey.shade800,
+                    child: Icon(Icons.broken_image, color: Colors.white24),
+                  ),
+                ),
+                // Gradient & Text
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.9),
+                      ],
+                      stops: const [0.5, 1.0],
+                    ),
+                  ),
+                  alignment: Alignment.bottomLeft,
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      if (widget.isSelected)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: Icon(
+                            Icons.check_circle,
+                            color: Colors.cyan.shade300,
+                            size: 16,
+                          ),
+                        ),
+                      Expanded(
+                        child: Text(
+                          widget.name,
+                          style: TextStyle(
+                            color: widget.isSelected
+                                ? Colors.cyan.shade100
+                                : Colors.white,
+                            fontSize: 12,
+                            fontWeight: widget.isSelected
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedSamplerTile extends StatefulWidget {
+  final String text;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _AnimatedSamplerTile({
+    Key? key,
+    required this.text,
+    required this.isSelected,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  State<_AnimatedSamplerTile> createState() => _AnimatedSamplerTileState();
+}
+
+class _AnimatedSamplerTileState extends State<_AnimatedSamplerTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 0.98,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) => _controller.reverse(),
+      onTapCancel: () => _controller.reverse(),
+      onTap: widget.onTap,
+      child: ScaleTransition(
+        scale: _scale,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? Colors.cyan.shade900.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: widget.isSelected
+                  ? Colors.cyan.shade400.withValues(alpha: 0.5)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.text,
+                  style: TextStyle(
+                    color: widget.isSelected ? Colors.white : Colors.white70,
+                    fontWeight: widget.isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              if (widget.isSelected)
+                Icon(Icons.check_circle, color: Colors.cyan.shade300, size: 20),
+            ],
+          ),
         ),
       ),
     );

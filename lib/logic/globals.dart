@@ -41,11 +41,11 @@ Future<void> loadServerSettings() async {
 class CheckpointData {
   String title;
   String imageURL;
-  double samplingSteps;
+  int samplingSteps;
   String samplingMethod;
   double cfgScale;
-  double resolutionHeight;
-  double resolutionWidth;
+  int resolutionHeight;
+  int resolutionWidth;
 
   CheckpointData({
     required this.title,
@@ -70,11 +70,11 @@ class CheckpointData {
   factory CheckpointData.fromJson(Map<String, dynamic> json) => CheckpointData(
     title: json['Title'] ?? '',
     imageURL: json['imageURL'] ?? '',
-    samplingSteps: (json['samplingSteps'] as num).toDouble(),
+    samplingSteps: (json['samplingSteps'] as num).toInt(),
     samplingMethod: json['samplingMethod'],
     cfgScale: (json['cfgScale'] as num).toDouble(),
-    resolutionHeight: (json['resolutionHeight'] ?? 512 as num).toDouble(),
-    resolutionWidth: (json['resolutionWidth'] ?? 512 as num).toDouble(),
+    resolutionHeight: (json['resolutionHeight'] ?? 512 as num).toInt(),
+    resolutionWidth: (json['resolutionWidth'] ?? 512 as num).toInt(),
   );
 }
 
@@ -138,11 +138,11 @@ Future<void> loadCheckpointDataMap() async {
 late String globalCurrentCheckpointName;
 
 // Selected resolution
-late double globalCurrentResolutionHeight;
-late double globalCurrentResolutionWidth;
+late int globalCurrentResolutionHeight;
+late int globalCurrentResolutionWidth;
 
 // Selected checkpoint sampling steps
-late double globalCurrentSamplingSteps;
+late int globalCurrentSamplingSteps;
 
 // Selected checkpoint sampling method
 late String globalCurrentSamplingMethod;
@@ -248,3 +248,51 @@ final ValueNotifier<bool> globalShowDetailedProgress = ValueNotifier<bool>(
 
 // Whether to automatically hide progress overlay when complete
 final ValueNotifier<bool> globalAutoHideProgress = ValueNotifier<bool>(true);
+
+// ===== Lora Variables ===== //
+
+// Lora data
+class LoraData {
+  String title;
+  String alias;
+  Set<String> tags;
+
+  LoraData({
+    required this.title,
+    required this.alias,
+    required this.tags,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'alias': alias,
+    'tags': tags.toList(),
+  };
+
+  factory LoraData.fromJson(Map<String, dynamic> json) => LoraData(
+    title: json['title'],
+    alias: json['alias'],
+    tags: Set<String>.from(json['tags']),
+  );
+}
+
+// Lora data map
+Map<String, LoraData> globalLoraDataMap = {};
+
+// Save values
+Future<void> saveLoraDataMap() async {
+  final prefs = await SharedPreferences.getInstance();
+  final mapJson = jsonEncode(
+    globalLoraDataMap.map((key, value) => MapEntry(key, value.toJson())),
+  );
+  await prefs.setString('loraDataMap', mapJson);
+}
+
+// Load values
+Future<void> loadLoraDataMap() async {
+  final prefs = await SharedPreferences.getInstance();
+  final mapJson = prefs.getString('loraDataMap');
+  if (mapJson != null) {
+    globalLoraDataMap = Map<String, LoraData>.from(jsonDecode(mapJson));
+  }
+}

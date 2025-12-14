@@ -32,7 +32,6 @@ class CustomNavigationBar extends StatefulWidget {
 }
 
 class CustomNavigationBarState extends State<CustomNavigationBar> {
-
   // ===== Class Widgets ===== //
 
   Widget buildTabItem(int index) {
@@ -63,7 +62,8 @@ class CustomNavigationBarState extends State<CustomNavigationBar> {
               },
               child: Icon(
                 widget.items[index].icon,
-                color: Colors.white,
+                // UPDATED: Dimmed white for inactive state
+                color: Colors.white.withValues(alpha: 0.5),
                 size: widget.iconSize,
               ),
             ),
@@ -89,9 +89,16 @@ class CustomNavigationBarState extends State<CustomNavigationBar> {
               },
               child: Text(
                 widget.items[index].title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  // UPDATED: Cyan accent for active text
+                  color: Colors.cyan.shade300,
                   fontWeight: FontWeight.bold,
+                  shadows: [
+                    BoxShadow(
+                      color: Colors.cyan.shade900.withValues(alpha: 0.5),
+                      blurRadius: 8,
+                    ),
+                  ],
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -107,17 +114,27 @@ class CustomNavigationBarState extends State<CustomNavigationBar> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(50),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
           child: Container(
-            // Theme
+            // UPDATED: Darker, glassier background with shadow
             decoration: BoxDecoration(
-              color: Colors.grey.shade800.withValues(alpha: 0.4),
+              color: Colors.black.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(50),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.1),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
 
             // Padding
@@ -136,14 +153,29 @@ class CustomNavigationBarState extends State<CustomNavigationBar> {
                     AnimatedPositioned(
                       duration: widget.animationDuration,
                       curve: widget.animationCurve,
-                      bottom: 0,
+                      bottom: 4, // Raised slightly
                       left: indicatorPosition,
                       child: Container(
                         width: 40,
-                        height: 3,
+                        height: 4, // Slightly thicker
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(1.5),
+                          // UPDATED: Gradient Cyan Glow
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.cyan.shade400,
+                              Colors.teal.shade400,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.cyan.shade400.withValues(
+                                alpha: 0.6,
+                              ),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -160,7 +192,7 @@ class CustomNavigationBarState extends State<CustomNavigationBar> {
                               });
                               widget.onTabSelected(index);
                             },
-                            borderRadius: BorderRadius.circular(12.0),
+                            borderRadius: BorderRadius.circular(50.0),
                             child: buildTabItem(index),
                           ),
                         );

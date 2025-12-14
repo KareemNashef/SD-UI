@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:sd_companion/logic/drawing_models.dart';
 
 // ========== On-Screen Painter for Live Drawing ========== //
+// (Logic remains unchanged, purely functional painter)
 class MaskPainter extends CustomPainter {
   final List<DrawingPath> paths;
   final Size imageSize;

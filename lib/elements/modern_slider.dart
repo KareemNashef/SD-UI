@@ -26,66 +26,83 @@ class ModernSlider extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayValue =
         valueFormatter?.call(value) ??
-        value.toStringAsFixed(divisions != null ? 2 : 0);
+        value.toStringAsFixed(divisions != null ? 0 : 2);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Label with integrated value chip
+        // Label Row
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            // Label
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
                 fontWeight: FontWeight.w600,
-                fontSize: 15,
-                letterSpacing: 0.3,
+                fontSize: 14,
+                letterSpacing: 0.5,
               ),
             ),
-            Spacer(),
+            
+            // Value Chip (Digital/Tech look)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.cyan.shade400.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.black.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: Colors.cyan.shade400.withValues(alpha: 0.5),
-                  width: 1.5,
+                  color: Colors.cyan.shade700.withValues(alpha: 0.5),
+                  width: 1,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.cyan.shade900.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                  )
+                ],
               ),
               child: Text(
                 displayValue,
                 style: TextStyle(
-                  color: Colors.cyan.shade100,
+                  color: Colors.cyan.shade300,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
+                  fontFamily: 'monospace', // Prevents jitter when numbers change
                 ),
               ),
             ),
           ],
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
-        // Modern rail-style slider
-        SliderTheme(
-          data: SliderThemeData(
-            trackHeight: 6,
-            thumbShape: _ModernThumbShape(),
-            overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
-            activeTrackColor: Colors.cyan.shade400,
-            inactiveTrackColor: Colors.white.withValues(alpha: 0.15),
-            thumbColor: Colors.white,
-            overlayColor: Colors.cyan.shade400.withValues(alpha: 0.2),
-            trackShape: const RoundedRectSliderTrackShape(),
-          ),
-          child: Slider(
-            value: value,
-            min: min,
-            max: max,
-            divisions: divisions,
-            onChanged: onChanged,
+        // Slider
+        SizedBox(
+          height: 30, // constrain height to keep it tight
+          child: SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 6,
+              trackShape: const RoundedRectSliderTrackShape(),
+              
+              // Colors
+              activeTrackColor: Colors.cyan.shade400,
+              inactiveTrackColor: Colors.black.withValues(alpha: 0.4),
+              thumbColor: Colors.white,
+              overlayColor: Colors.cyan.shade400.withValues(alpha: 0.1),
+              
+              // Shapes
+              thumbShape: _ModernThumbShape(),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
+            ),
+            child: Slider(
+              value: value,
+              min: min,
+              max: max,
+              divisions: divisions,
+              onChanged: onChanged,
+            ),
           ),
         ),
       ],
@@ -93,11 +110,11 @@ class ModernSlider extends StatelessWidget {
   }
 }
 
-// Modern thumb with glow effect
+// Custom Painter for the "Glowing LED" Thumb
 class _ModernThumbShape extends SliderComponentShape {
   @override
   Size getPreferredSize(bool isEnabled, bool isDiscrete) {
-    return const Size(22, 22);
+    return const Size(24, 24);
   }
 
   @override
@@ -117,33 +134,34 @@ class _ModernThumbShape extends SliderComponentShape {
   }) {
     final Canvas canvas = context.canvas;
 
-    // Outer glow
+    // 1. Ambient Glow (Wide and soft)
     final outerGlow = Paint()
-      ..color = Colors.cyan.shade400.withValues(alpha: 0.5)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
-    canvas.drawCircle(center, 16, outerGlow);
+      ..color = Colors.cyan.shade400.withValues(alpha: 0.3)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawCircle(center, 14, outerGlow);
 
-    // Inner glow
+    // 2. Intense Core Glow (Tight)
     final innerGlow = Paint()
-      ..color = Colors.cyan.shade300.withValues(alpha: 0.7)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
-    canvas.drawCircle(center, 12, innerGlow);
+      ..color = Colors.cyan.shade300.withValues(alpha: 0.6)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    canvas.drawCircle(center, 10, innerGlow);
 
-    // White outer ring
+    // 3. The Metal Ring (White border)
     final ringPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(center, 11, ringPaint);
+    canvas.drawCircle(center, 9, ringPaint);
 
-    // Cyan gradient center
+    // 4. The Gradient Core (Cyan -> Teal)
     final gradientPaint = Paint()
       ..shader = RadialGradient(
-        colors: [Colors.cyan.shade200, Colors.cyan.shade500],
-      ).createShader(Rect.fromCircle(center: center, radius: 8));
-    canvas.drawCircle(center, 8, gradientPaint);
+        colors: [Colors.cyan.shade200, Colors.teal.shade500],
+        stops: const [0.2, 1.0],
+      ).createShader(Rect.fromCircle(center: center, radius: 7));
+    canvas.drawCircle(center, 7, gradientPaint);
 
-    // Highlight spot
-    final highlight = Paint()..color = Colors.white.withValues(alpha: 0.8);
-    canvas.drawCircle(center.translate(-2, -2), 2.5, highlight);
+    // 5. Specular Highlight (The shiny dot)
+    final highlight = Paint()..color = Colors.white.withValues(alpha: 0.9);
+    canvas.drawCircle(center.translate(-2.5, -2.5), 2.0, highlight);
   }
 }
