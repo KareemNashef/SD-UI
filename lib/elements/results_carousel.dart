@@ -1,11 +1,9 @@
-// results_carousel.dart:
 // ==================== Enhanced Results Carousel ==================== //
 
 // Flutter imports
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data'; // Required for Uint8List
-import 'dart:ui'; // Required for ImageFilter
+import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -68,7 +66,8 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
     String? newSelectedImage = _selectedImageUrl;
     if (isInitialSetup) {
       newSelectedImage = imageList.isNotEmpty ? imageList.first : null;
-    } else if (_selectedImageUrl != null && !imageSet.contains(_selectedImageUrl)) {
+    } else if (_selectedImageUrl != null &&
+        !imageSet.contains(_selectedImageUrl)) {
       final oldList = _lastKnownImageList;
       final deletedIndex = oldList.indexOf(_selectedImageUrl!);
 
@@ -127,11 +126,14 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
       }
 
       final downloadsPath = '/storage/emulated/0/Download';
-      final fileName = 'generated_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final fileName =
+          'generated_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final savePath = '$downloadsPath/$fileName';
 
       if (_isBase64DataUrl(_selectedImageUrl!)) {
-        final bytes = _imageCache[_selectedImageUrl!] ?? base64Decode(_extractBase64Data(_selectedImageUrl!));
+        final bytes =
+            _imageCache[_selectedImageUrl!] ??
+            base64Decode(_extractBase64Data(_selectedImageUrl!));
         final file = File(savePath);
         await file.writeAsBytes(bytes);
       } else {
@@ -149,7 +151,9 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
           ),
           backgroundColor: Colors.green.shade600,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } catch (e) {
@@ -270,10 +274,17 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20.0,
+                    vertical: 12.0,
+                  ),
                   child: Row(
                     children: [
-                      Icon(Icons.data_object, color: Colors.cyan.shade300, size: 22),
+                      Icon(
+                        Icons.data_object,
+                        color: Colors.cyan.shade300,
+                        size: 22,
+                      ),
                       const SizedBox(width: 12),
                       const Text(
                         'Metadata',
@@ -294,16 +305,31 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (infoMap['prompt'] != null) ...[
-                          _buildModernInfoSection('Positive Prompt', infoMap['prompt']!, Icons.add_circle_outline, Colors.green.shade300),
+                          _buildModernInfoSection(
+                            'Positive Prompt',
+                            infoMap['prompt']!,
+                            Icons.add_circle_outline,
+                            Colors.green.shade300,
+                          ),
                           const SizedBox(height: 16),
                         ],
                         if (infoMap['negativePrompt'] != null) ...[
-                          _buildModernInfoSection('Negative Prompt', infoMap['negativePrompt']!, Icons.remove_circle_outline, Colors.red.shade300),
+                          _buildModernInfoSection(
+                            'Negative Prompt',
+                            infoMap['negativePrompt']!,
+                            Icons.remove_circle_outline,
+                            Colors.red.shade300,
+                          ),
                           const SizedBox(height: 16),
                         ],
                         Text(
                           'PARAMETERS',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.4),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         _buildInfoGrid(infoMap),
@@ -331,7 +357,9 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
       if (line.isEmpty) continue;
 
       if (line.startsWith('Negative prompt:')) {
-        currentNegativePrompt = line.substring('Negative prompt:'.length).trim();
+        currentNegativePrompt = line
+            .substring('Negative prompt:'.length)
+            .trim();
         continue;
       }
 
@@ -346,17 +374,24 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
       } else if (currentNegativePrompt != null) {
         currentNegativePrompt += ' $line';
       } else {
-        currentPrompt = (currentPrompt ?? '') + (currentPrompt != null ? ' ' : '') + line;
+        currentPrompt =
+            (currentPrompt ?? '') + (currentPrompt != null ? ' ' : '') + line;
       }
     }
 
     if (currentPrompt != null) map['prompt'] = currentPrompt;
-    if (currentNegativePrompt != null) map['negativePrompt'] = currentNegativePrompt;
+    if (currentNegativePrompt != null)
+      map['negativePrompt'] = currentNegativePrompt;
 
     return map;
   }
 
-  Widget _buildModernInfoSection(String label, String value, IconData icon, Color accentColor) {
+  Widget _buildModernInfoSection(
+    String label,
+    String value,
+    IconData icon,
+    Color accentColor,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -374,14 +409,22 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
               const SizedBox(width: 8),
               Text(
                 label,
-                style: TextStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: accentColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           SelectableText(
             value,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14, height: 1.4),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 14,
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -407,7 +450,9 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
     }
 
     for (final entry in infoMap.entries) {
-      if (!paramOrder.containsKey(entry.key) && entry.key != 'prompt' && entry.key != 'negativePrompt') {
+      if (!paramOrder.containsKey(entry.key) &&
+          entry.key != 'prompt' &&
+          entry.key != 'negativePrompt') {
         items.add(_buildInfoItem(entry.key, entry.value));
       }
     }
@@ -429,12 +474,20 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
         children: [
           Text(
             label.toUpperCase(),
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 9, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.4),
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
             value,
-            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -461,12 +514,19 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                 SizedBox(
                   height: 60,
                   width: 60,
-                  child: CircularProgressIndicator(strokeWidth: 3, color: Colors.cyan.shade300),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    color: Colors.cyan.shade300,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Text(
                   'Generating...',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 18, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -476,11 +536,18 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.photo_library_outlined, size: 64, color: Colors.white.withValues(alpha: 0.1)),
+              Icon(
+                Icons.photo_library_outlined,
+                size: 64,
+                color: Colors.white.withValues(alpha: 0.1),
+              ),
               const SizedBox(height: 16),
               Text(
                 'Gallery is empty',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 16),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  fontSize: 16,
+                ),
               ),
             ],
           ),
@@ -501,13 +568,20 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
           borderRadius: BorderRadius.circular(16),
           child: _isBase64DataUrl(_selectedImageUrl!)
               ? (_imageCache[_selectedImageUrl!] != null
-                  ? Image.memory(_imageCache[_selectedImageUrl!]!, fit: BoxFit.contain, gaplessPlayback: true)
-                  : const Icon(Icons.broken_image, color: Colors.white24))
+                    ? Image.memory(
+                        _imageCache[_selectedImageUrl!]!,
+                        fit: BoxFit.contain,
+                        gaplessPlayback: true,
+                      )
+                    : const Icon(Icons.broken_image, color: Colors.white24))
               : CachedNetworkImage(
                   imageUrl: _selectedImageUrl!,
                   fit: BoxFit.contain,
-                  placeholder: (_, __) => const Center(child: CircularProgressIndicator(color: Colors.cyan)),
-                  errorWidget: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white24),
+                  placeholder: (_, __) => const Center(
+                    child: CircularProgressIndicator(color: Colors.cyan),
+                  ),
+                  errorWidget: (_, __, ___) =>
+                      const Icon(Icons.broken_image, color: Colors.white24),
                 ),
         ),
       ),
@@ -538,19 +612,30 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isSelected ? Colors.cyan.shade400 : Colors.white.withValues(alpha: 0.1),
+                  color: isSelected
+                      ? Colors.cyan.shade400
+                      : Colors.white.withValues(alpha: 0.1),
                   width: isSelected ? 2 : 1,
                 ),
                 boxShadow: isSelected
-                    ? [BoxShadow(color: Colors.cyan.shade500.withValues(alpha: 0.3), blurRadius: 8)]
+                    ? [
+                        BoxShadow(
+                          color: Colors.cyan.shade500.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                        ),
+                      ]
                     : null,
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: _isBase64DataUrl(imageUrl)
                     ? (_imageCache[imageUrl] != null
-                        ? Image.memory(_imageCache[imageUrl]!, fit: BoxFit.cover, gaplessPlayback: true)
-                        : Container(color: Colors.grey.shade900))
+                          ? Image.memory(
+                              _imageCache[imageUrl]!,
+                              fit: BoxFit.cover,
+                              gaplessPlayback: true,
+                            )
+                          : Container(color: Colors.grey.shade900))
                     : CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover),
               ),
             ),
@@ -575,7 +660,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             color: Colors.black.withValues(alpha: 0.4),
             blurRadius: 16,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Row(
@@ -588,11 +673,21 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
               height: 50,
               decoration: BoxDecoration(
                 gradient: hasImage
-                    ? LinearGradient(colors: [Colors.cyan.shade600, Colors.teal.shade500])
-                    : LinearGradient(colors: [Colors.grey.shade800, Colors.grey.shade700]),
+                    ? LinearGradient(
+                        colors: [Colors.cyan.shade600, Colors.teal.shade500],
+                      )
+                    : LinearGradient(
+                        colors: [Colors.grey.shade800, Colors.grey.shade700],
+                      ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: hasImage
-                    ? [BoxShadow(color: Colors.cyan.shade500.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 2))]
+                    ? [
+                        BoxShadow(
+                          color: Colors.cyan.shade500.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
                     : [],
               ),
               child: Material(
@@ -604,13 +699,28 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (_isSaving)
-                        const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
                       else
-                        const Icon(Icons.download_rounded, color: Colors.white, size: 22),
+                        const Icon(
+                          Icons.download_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
                       const SizedBox(width: 8),
                       Text(
                         _isSaving ? 'Saving' : 'Save',
-                        style: TextStyle(color: hasImage ? Colors.white : Colors.white38, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                          color: hasImage ? Colors.white : Colors.white38,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
@@ -618,25 +728,50 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
               ),
             ),
           ),
-          
+
           const SizedBox(width: 8),
 
           // Icons Group
-          _buildIconAction(Icons.auto_fix_high, 'Edit', hasImage ? _editSelectedImage : null),
-          _buildIconAction(Icons.info_outline, 'Info', (hasImage && !_isFetchingInfo) ? _showImageInfo : null, isLoading: _isFetchingInfo),
-          
-          Container(width: 1, height: 24, color: Colors.white10, margin: const EdgeInsets.symmetric(horizontal: 4)),
-          
-          _buildIconAction(Icons.delete_outline, 'Delete', hasImage ? _deleteSelectedImage : null, isDestructive: true),
+          _buildIconAction(
+            Icons.auto_fix_high,
+            'Edit',
+            hasImage ? _editSelectedImage : null,
+          ),
+          _buildIconAction(
+            Icons.info_outline,
+            'Info',
+            (hasImage && !_isFetchingInfo) ? _showImageInfo : null,
+            isLoading: _isFetchingInfo,
+          ),
+
+          Container(
+            width: 1,
+            height: 24,
+            color: Colors.white10,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+          ),
+
+          _buildIconAction(
+            Icons.delete_outline,
+            'Delete',
+            hasImage ? _deleteSelectedImage : null,
+            isDestructive: true,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildIconAction(IconData icon, String tooltip, VoidCallback? onTap, {bool isLoading = false, bool isDestructive = false}) {
+  Widget _buildIconAction(
+    IconData icon,
+    String tooltip,
+    VoidCallback? onTap, {
+    bool isLoading = false,
+    bool isDestructive = false,
+  }) {
     final isEnabled = onTap != null;
     final color = isDestructive ? Colors.red.shade400 : Colors.white;
-    
+
     return Expanded(
       child: Tooltip(
         message: tooltip,
@@ -649,8 +784,19 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
               height: 50,
               child: Center(
                 child: isLoading
-                    ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: color))
-                    : Icon(icon, color: isEnabled ? color : Colors.white12, size: 24),
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: color,
+                        ),
+                      )
+                    : Icon(
+                        icon,
+                        color: isEnabled ? color : Colors.white12,
+                        size: 24,
+                      ),
               ),
             ),
           ),
@@ -677,12 +823,19 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                 color: Colors.grey.shade900,
                 borderRadius: BorderRadius.circular(24.0),
                 border: Border.all(
-                  color: imageList.isNotEmpty ? Colors.cyan.shade900 : Colors.white.withValues(alpha: 0.1),
+                  color: imageList.isNotEmpty
+                      ? Colors.cyan.shade900
+                      : Colors.white.withValues(alpha: 0.1),
                   width: 1.5,
                 ),
-                boxShadow: imageList.isNotEmpty ? [
-                  BoxShadow(color: Colors.cyan.shade900.withValues(alpha: 0.15), blurRadius: 20)
-                ] : [],
+                boxShadow: imageList.isNotEmpty
+                    ? [
+                        BoxShadow(
+                          color: Colors.cyan.shade900.withValues(alpha: 0.15),
+                          blurRadius: 20,
+                        ),
+                      ]
+                    : [],
               ),
               child: imageList.isEmpty
                   ? _buildEmptyState()
@@ -693,10 +846,10 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                       ],
                     ),
             ),
-            
+
             // Action Dock
             if (imageList.isNotEmpty) _buildActionButtons(),
-            
+
             // Bottom Padding for scrolling
             const SizedBox(height: 24),
           ],

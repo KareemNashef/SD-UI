@@ -50,11 +50,12 @@ Future<void> syncCheckpointDataFromServer({bool force = false}) async {
 
     for (final model in models) {
       final modelName = model['model_name'];
+
+      // Only proceed if it's a new model OR we are forcing a refresh
       if (force || !globalCheckpointDataMap.containsKey(modelName)) {
         final hash = model['hash'];
 
-        // Get preview image from Civitai
-
+        // --- Get preview image from Civitai Logic ---
         bool isImage(Map img) {
           final type = img['type']?.toString().toLowerCase();
           if (type != null) return type == 'image';
@@ -71,7 +72,7 @@ Future<void> syncCheckpointDataFromServer({bool force = false}) async {
 
         String imageUrl = '';
         const placeholder =
-            'https://cdn-media.sforum.vn/storage/app/media/Van%20Pham/civitai-ai-thumbnail.jpg'; // replace
+            'https://cdn-media.sforum.vn/storage/app/media/Van%20Pham/civitai-ai-thumbnail.jpg';
 
         try {
           final civitaiRes = await http.get(
@@ -96,15 +97,20 @@ Future<void> syncCheckpointDataFromServer({bool force = false}) async {
         } catch (_) {}
 
         if (imageUrl.isEmpty) imageUrl = placeholder;
+        // ---------------------------------------------
+
+        // Capture existing data if available to preserve settings
+        final existingData = globalCheckpointDataMap[modelName];
 
         globalCheckpointDataMap[modelName] = CheckpointData(
           title: model['title'],
-          imageURL: imageUrl,
-          samplingSteps: 20,
-          samplingMethod: 'DPM++ 2M',
-          cfgScale: 3.5,
-          resolutionHeight: 512,
-          resolutionWidth: 512,
+          imageURL: imageUrl, // Always update the image
+          // If existing data is found, keep the old values, otherwise use defaults
+          samplingSteps: existingData?.samplingSteps ?? 20,
+          samplingMethod: existingData?.samplingMethod ?? 'DPM++ 2M',
+          cfgScale: existingData?.cfgScale ?? 3.5,
+          resolutionHeight: existingData?.resolutionHeight ?? 512,
+          resolutionWidth: existingData?.resolutionWidth ?? 512,
         );
       }
     }
@@ -157,8 +163,7 @@ Future<void> setCheckpoint() async {
 
 // Load lora data from the server
 Future<void> loadLoraDataFromServer() async {
-  final baseUrl =
-      'http://${globalServerIP.value}:${globalServerPort.value}';
+  final baseUrl = 'http://${globalServerIP.value}:${globalServerPort.value}';
 
   try {
     // 1. Refresh loras
@@ -172,9 +177,7 @@ Future<void> loadLoraDataFromServer() async {
     }
 
     // 2. Load loras
-    final loraResponse = await http.get(
-      Uri.parse('$baseUrl/sdapi/v1/loras'),
-    );
+    final loraResponse = await http.get(Uri.parse('$baseUrl/sdapi/v1/loras'));
 
     if (loraResponse.statusCode != 200) return;
 
@@ -195,14 +198,9 @@ Future<void> loadLoraDataFromServer() async {
         }
       }
 
-      globalLoraDataMap[name] = LoraData(
-        title: name,
-        alias: alias,
-        tags: tags,
-      );
+      globalLoraDataMap[name] = LoraData(title: name, alias: alias, tags: tags);
     }
   } catch (e) {
     debugPrint('Failed to load lora data from server: $e');
   }
 }
-

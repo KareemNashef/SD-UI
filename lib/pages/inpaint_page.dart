@@ -44,10 +44,10 @@ class InpaintPageState extends State<InpaintPage> {
                   const Text(
                     'INPAINT CANVAS',
                     style: TextStyle(
-                      fontSize: 16, 
-                      fontWeight: FontWeight.bold, 
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                       letterSpacing: 2.0,
-                      color: Colors.white
+                      color: Colors.white,
                     ),
                   ),
 
@@ -57,24 +57,21 @@ class InpaintPageState extends State<InpaintPage> {
                   ValueListenableBuilder(
                     valueListenable: globalServerStatus,
                     builder: (context, value, child) {
-                      bool isOnline = false;
-                      if (value is bool) isOnline = value;
-
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 500),
                         width: 80,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: isOnline ? Colors.greenAccent : Colors.redAccent,
+                          color: value ? Colors.greenAccent : Colors.redAccent,
                           borderRadius: BorderRadius.circular(2),
                           boxShadow: [
                             BoxShadow(
-                              color: isOnline 
-                                ? Colors.green.withValues(alpha: 0.8) 
-                                : Colors.red.withValues(alpha: 0.8),
+                              color: value
+                                  ? Colors.green.withValues(alpha: 0.8)
+                                  : Colors.red.withValues(alpha: 0.8),
                               blurRadius: 10,
                               spreadRadius: 2,
-                            )
+                            ),
                           ],
                         ),
                       );
@@ -105,7 +102,7 @@ class InpaintPageState extends State<InpaintPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Your drawing/upload container
-                ImageContainer(), 
+                ImageContainer(),
               ],
             ),
           ),

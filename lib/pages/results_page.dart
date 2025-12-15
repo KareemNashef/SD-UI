@@ -58,19 +58,17 @@ class ResultsPageState extends State<ResultsPage> {
                   ValueListenableBuilder(
                     valueListenable: globalServerStatus,
                     builder: (context, value, child) {
-                      bool isOnline = false;
-                      if (value is bool) isOnline = value;
 
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 500),
                         width: 80,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: isOnline ? Colors.greenAccent : Colors.redAccent,
+                          color: value ? Colors.greenAccent : Colors.redAccent,
                           borderRadius: BorderRadius.circular(2),
                           boxShadow: [
                             BoxShadow(
-                              color: isOnline 
+                              color: value 
                                 ? Colors.green.withValues(alpha: 0.8) 
                                 : Colors.red.withValues(alpha: 0.8),
                               blurRadius: 10,

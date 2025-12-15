@@ -205,9 +205,6 @@ class ServerSettingsState extends State<ServerSettings>
             ValueListenableBuilder(
               valueListenable: globalServerStatus,
               builder: (context, status, child) {
-                bool isOnline = false;
-                if (status is bool) isOnline = status;
-
                 return GestureDetector(
                   onTapDown: (_) => _btnController.forward(),
                   onTapUp: (_) => _btnController.reverse(),
@@ -247,7 +244,7 @@ class ServerSettingsState extends State<ServerSettings>
                       height: 50,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: isOnline
+                          colors: status
                               ? [Colors.green.shade600, Colors.teal.shade500]
                               : [Colors.cyan.shade600, Colors.blue.shade600],
                           begin: Alignment.topLeft,
@@ -256,7 +253,7 @@ class ServerSettingsState extends State<ServerSettings>
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color: isOnline
+                            color: status
                                 ? Colors.green.shade500.withValues(alpha: 0.3)
                                 : Colors.cyan.shade500.withValues(alpha: 0.3),
                             blurRadius: 12,
@@ -266,7 +263,7 @@ class ServerSettingsState extends State<ServerSettings>
                       ),
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
-                        child: _buildButtonContent(isOnline),
+                        child: _buildButtonContent(status),
                       ),
                     ),
                   ),
