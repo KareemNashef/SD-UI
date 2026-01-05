@@ -126,6 +126,8 @@ class _ImageContainerState extends State<ImageContainer> {
         _paths.clear();
         _undoHistory.clear();
       });
+
+      globalInputImage.value = file;
     } catch (e) {
       if (mounted) _showError('Error loading image: $e');
     }
@@ -146,6 +148,8 @@ class _ImageContainerState extends State<ImageContainer> {
         _paths.clear();
         _undoHistory.clear();
       });
+
+      globalInputImage.value = file;
     }
   }
 
@@ -156,6 +160,7 @@ class _ImageContainerState extends State<ImageContainer> {
       _paths.clear();
       _undoHistory.clear();
     });
+    globalInputImage.value = null;
   }
 
   // --- Drawing Logic ---
@@ -501,6 +506,100 @@ class _ImageContainerState extends State<ImageContainer> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
+  }
+
+  Future<void> _startSamplerTesting(
+    List<String> samplers,
+    String targetCheckpoint,
+  ) async {
+    if (_imageFile == null) {
+      _showError('Please select an image first');
+      return;
+    }
+    if (userPrompt.text.isEmpty) {
+      _showError('Please enter a prompt first');
+      return;
+    }
+    await checkServerStatus();
+    if (!globalServerStatus.value) {
+      _showError('Server not connected');
+      return;
+    }
+
+    // 1. Save Original Config
+    _originalConfig = CheckpointData(
+      title: globalCurrentCheckpointName,
+      imageURL: '',
+      samplingSteps: globalCurrentSamplingSteps,
+      samplingMethod: globalCurrentSamplingMethod,
+      cfgScale: globalCurrentCfgScale,
+      resolutionHeight: globalCurrentResolutionHeight,
+      resolutionWidth: globalCurrentResolutionWidth,
+    );
+
+    setState(
+      () => _isCheckpointTesting = true,
+    ); // Reuse the existing bool or create a new one
+
+    // 2. Set UI State
+    globalIsCheckpointTesting.value = true;
+    globalTotalCheckpointsToTest.value = samplers.length;
+    globalPageIndex.value = 1;
+
+    try {
+      // 3. Switch to the target checkpoint ONCE
+      globalIsChangingCheckpoint.value = true;
+      globalCurrentCheckpointName = targetCheckpoint;
+      // Load standard settings for this checkpoint if available, or keep current
+      final data = globalCheckpointDataMap[targetCheckpoint];
+      if (data != null) {
+        globalCurrentResolutionWidth = data.resolutionWidth;
+        globalCurrentResolutionHeight = data.resolutionHeight;
+        globalCurrentCfgScale = data.cfgScale;
+        globalCurrentSamplingSteps = data.samplingSteps;
+      }
+
+      await setCheckpoint();
+      await Future.delayed(const Duration(milliseconds: 500));
+      globalIsChangingCheckpoint.value = false;
+
+      // 4. Iterate Samplers
+      for (int i = 0; i < samplers.length; i++) {
+        if (!_isCheckpointTesting) break; // Check for cancellation
+
+        globalCurrentCheckpointTestIndex.value = i;
+        globalCurrentTestingCheckpoint.value =
+            "${samplers[i]}"; // Update label to show sampler name
+
+        // Change only the sampler
+        globalCurrentSamplingMethod = samplers[i];
+        // Note: You might need to call a function here to update the server's payload
+        // if your generateImage() reads directly from globals, you are good.
+
+        await generateImage();
+
+        if (i < samplers.length - 1)
+          await Future.delayed(const Duration(seconds: 1));
+      }
+    } catch (e) {
+      _showError("Error in sampler test: $e");
+    } finally {
+      // 5. Restore Config
+      if (_originalConfig != null) {
+        globalCurrentCheckpointName = _originalConfig!.title;
+        globalCurrentSamplingSteps = _originalConfig!.samplingSteps;
+        globalCurrentSamplingMethod = _originalConfig!.samplingMethod;
+        globalCurrentCfgScale = _originalConfig!.cfgScale;
+        globalCurrentResolutionWidth = _originalConfig!.resolutionWidth;
+        globalCurrentResolutionHeight = _originalConfig!.resolutionHeight;
+        await setCheckpoint();
+      }
+
+      setState(() => _isCheckpointTesting = false);
+      globalIsCheckpointTesting.value = false;
+      globalIsChangingCheckpoint.value = false;
+      globalCurrentTestingCheckpoint.value = null;
+    }
   }
 
   // ===== Class Widgets ===== //
@@ -991,28 +1090,21 @@ class _ImageContainerState extends State<ImageContainer> {
                   // --- Action Buttons Row ---
                   Row(
                     children: [
-                      Expanded(
-                        child: AnimatedGenButton(
-                          onTap: () {
-                            FocusScope.of(context).requestFocus(FocusNode());
-                            if (userPrompt.text.isNotEmpty) {
-                              setState(() {
-                                globalInpaintHistory.add(userPrompt.text);
-                                saveInpaintHistory();
-                              });
-                              generateImage();
-                            }
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
                       AnimatedOptionButton(
                         icon: Icons.science,
-                        tooltip: 'Checkpoint Tester',
+                        tooltip: 'Test Lab',
                         onTap: () {
                           FocusScope.of(context).requestFocus(FocusNode());
-                          showCheckpointTesterModal(context, (checkpoints) {
-                            _startCheckpointTesting(checkpoints);
+                          showCheckpointTesterModal(context, (mode, items) {
+                            if (mode == TestMode.checkpoints) {
+                              _startCheckpointTesting(items);
+                            } else {
+                              // Pass the currently active checkpoint name
+                              _startSamplerTesting(
+                                items,
+                                globalCurrentCheckpointName,
+                              );
+                            }
                           });
                         },
                       ),
@@ -1038,15 +1130,40 @@ class _ImageContainerState extends State<ImageContainer> {
                       const SizedBox(width: 8),
                       AnimatedOptionButton(
                         icon: Icons.history,
-                        tooltip: 'History',
+                        tooltip: 'Prompt Vault',
                         onTap: () {
-                          FocusScope.of(context).requestFocus(FocusNode());
+                          FocusScope.of(
+                            context,
+                          ).requestFocus(FocusNode()); // Unfocus keyboard
+
+                          // Call the new modal wrapper
                           showInpaintHistory(context, (selectedItem) {
                             setState(() {
+                              // Just replace the text
                               userPrompt.text = selectedItem;
+                              // Optional: Move cursor to end
+                              userPrompt.selection = TextSelection.fromPosition(
+                                TextPosition(offset: userPrompt.text.length),
+                              );
                             });
                           });
                         },
+                      ),
+
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AnimatedGenButton(
+                          onTap: () {
+                            FocusScope.of(context).requestFocus(FocusNode());
+                            if (userPrompt.text.isNotEmpty) {
+                              setState(() {
+                                globalInpaintHistory.add(userPrompt.text);
+                                saveInpaintHistory();
+                              });
+                              generateImage();
+                            }
+                          },
+                        ),
                       ),
                     ],
                   ),

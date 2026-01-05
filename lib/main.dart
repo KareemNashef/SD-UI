@@ -77,15 +77,13 @@ class _LoadingScreenState extends State<LoadingScreen>
     );
   }
 
-
-
   Future<void> _initialize() async {
     // Load previously saved server settings
     await loadServerSettings();
 
-  // Controllers
-  final serverIP = TextEditingController(text: globalServerIP.value);
-  final serverPort = TextEditingController(text: globalServerPort.value);
+    // Controllers
+    final serverIP = TextEditingController(text: globalServerIP.value);
+    final serverPort = TextEditingController(text: globalServerPort.value);
 
     // Check if the server is online
     await checkServerStatus();

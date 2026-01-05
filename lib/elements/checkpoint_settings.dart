@@ -24,6 +24,7 @@ class CheckpointSettingsState extends State<CheckpointSettings>
     with SingleTickerProviderStateMixin {
   // ===== Class Variables ===== //
 
+  // We keep these for the refresh logic
   List<String> _checkpointOptions = globalCheckpointDataMap.keys.toList();
   List<String> _checkpointImages = globalCheckpointDataMap.values
       .map((e) => e.imageURL)
@@ -73,7 +74,40 @@ class CheckpointSettingsState extends State<CheckpointSettings>
     super.dispose();
   }
 
-  // ===== Modal Logic ===== //
+  // ===== Edit Modal Logic (Long Press) ===== //
+
+  void _showEditModelDetails(BuildContext context, String modelName) {
+    // Get existing data
+    final data = globalCheckpointDataMap[modelName];
+    if (data == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _CheckpointEditorSheet(
+        modelName: modelName,
+        data: data,
+        samplerNames: samplerNames,
+        onSave: () {
+          saveCheckpointDataMap();
+          // Force UI update
+          setState(() {
+            _checkpointOptions = globalCheckpointDataMap.keys.toList();
+            _checkpointImages = globalCheckpointDataMap.values
+                .map((e) => e.imageURL)
+                .toList();
+          });
+          Navigator.pop(context); // Close editor
+          // Optionally close the selector modal too if you want,
+          // or keep it open to see changes. keeping it open:
+          // Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
+  // ===== Model Selector Modal Logic ===== //
 
   void _showModelSelector(BuildContext context) {
     showModalBottomSheet(
@@ -83,6 +117,24 @@ class CheckpointSettingsState extends State<CheckpointSettings>
       builder: (ctx) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter modalSetState) {
+            // Group the data by baseModel
+            final Map<String, List<String>> groupedModels = {};
+            final sortedKeys = globalCheckpointDataMap.keys.toList()..sort();
+
+            for (var key in sortedKeys) {
+              final data = globalCheckpointDataMap[key];
+              final base =
+                  (data?.baseModel != null && data!.baseModel.isNotEmpty)
+                  ? data.baseModel
+                  : 'Other';
+
+              if (!groupedModels.containsKey(base)) {
+                groupedModels[base] = [];
+              }
+              groupedModels[base]!.add(key);
+            }
+            final sortedGroupKeys = groupedModels.keys.toList()..sort();
+
             return FractionallySizedBox(
               heightFactor: 0.85,
               child: Container(
@@ -126,7 +178,6 @@ class CheckpointSettingsState extends State<CheckpointSettings>
                             ),
                           ),
                           const Spacer(),
-                          // Refresh Button
                           RotationTransition(
                             turns: _refreshController,
                             child: IconButton(
@@ -136,26 +187,21 @@ class CheckpointSettingsState extends State<CheckpointSettings>
                               ),
                               onPressed: () async {
                                 if (_refreshController.isAnimating) return;
-
-                                _refreshController.repeat(); // Start spinning
-
+                                _refreshController.repeat();
                                 await syncCheckpointDataFromServer(force: true);
-
-                                // Update lists
-                                modalSetState(() {
-                                  _checkpointOptions = globalCheckpointDataMap
-                                      .keys
-                                      .toList();
-                                  _checkpointImages = globalCheckpointDataMap
-                                      .values
-                                      .map((e) => e.imageURL)
-                                      .toList();
-                                });
-
-                                // Update parent as well
-                                setState(() {});
-
-                                _refreshController.stop(); // Stop spinning
+                                if (mounted) {
+                                  setState(() {
+                                    _checkpointOptions = globalCheckpointDataMap
+                                        .keys
+                                        .toList();
+                                    _checkpointImages = globalCheckpointDataMap
+                                        .values
+                                        .map((e) => e.imageURL)
+                                        .toList();
+                                  });
+                                }
+                                modalSetState(() {});
+                                _refreshController.stop();
                                 _refreshController.reset();
                               },
                             ),
@@ -172,60 +218,121 @@ class CheckpointSettingsState extends State<CheckpointSettings>
                       ),
                     ),
 
-                    // --- Grid ---
+                    // --- List of Groups ---
                     Expanded(
-                      child: GridView.builder(
-                        padding: const EdgeInsets.all(16),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: 0.8,
-                            ),
-                        itemCount: _checkpointOptions.length,
-                        itemBuilder: (context, index) {
-                          final option = _checkpointOptions[index];
-                          final imageUrl = _checkpointImages[index];
-                          final isSelected =
-                              option == globalCurrentCheckpointName;
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                        itemCount: sortedGroupKeys.length,
+                        itemBuilder: (context, groupIndex) {
+                          final baseModelName = sortedGroupKeys[groupIndex];
+                          final modelsInGroup = groupedModels[baseModelName]!;
 
-                          return _AnimatedModelCard(
-                            name: option,
-                            imageUrl: imageUrl,
-                            isSelected: isSelected,
-                            onTap: () async {
-                              Navigator.pop(context);
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Section Divider
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16.0,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.cyan.shade900.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: Colors.cyan.shade800,
+                                          width: 0.5,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        baseModelName,
+                                        style: TextStyle(
+                                          color: Colors.cyan.shade100,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Divider(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        thickness: 1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
 
-                              // Trigger main loading state
-                              setState(() {
-                                _isChangingCheckpoint = true;
-                                globalCurrentCheckpointName = option;
+                              // Grid
+                              GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 2,
+                                      crossAxisSpacing: 12,
+                                      mainAxisSpacing: 12,
+                                      childAspectRatio: 0.8,
+                                    ),
+                                itemCount: modelsInGroup.length,
+                                itemBuilder: (context, index) {
+                                  final option = modelsInGroup[index];
+                                  final data = globalCheckpointDataMap[option];
+                                  final imageUrl = data?.imageURL ?? '';
+                                  final isSelected =
+                                      option == globalCurrentCheckpointName;
 
-                                // Update settings based on new checkpoint
-                                final data =
-                                    globalCheckpointDataMap[globalCurrentCheckpointName];
-                                if (data != null) {
-                                  globalCurrentSamplingSteps =
-                                      data.samplingSteps;
-                                  globalCurrentSamplingMethod =
-                                      data.samplingMethod;
-                                  globalCurrentCfgScale = data.cfgScale;
-                                  globalCurrentResolutionWidth =
-                                      data.resolutionWidth;
-                                  globalCurrentResolutionHeight =
-                                      data.resolutionHeight;
-                                }
-                                saveCheckpointDataMap();
-                              });
-
-                              // Wait for backend
-                              await setCheckpoint();
-
-                              setState(() {
-                                _isChangingCheckpoint = false;
-                              });
-                            },
+                                  return _AnimatedModelCard(
+                                    name: option,
+                                    imageUrl: imageUrl,
+                                    isSelected: isSelected,
+                                    onTap: () async {
+                                      Navigator.pop(context);
+                                      setState(() {
+                                        _isChangingCheckpoint = true;
+                                        globalCurrentCheckpointName = option;
+                                        if (data != null) {
+                                          globalCurrentSamplingSteps =
+                                              data.samplingSteps;
+                                          globalCurrentSamplingMethod =
+                                              data.samplingMethod;
+                                          globalCurrentCfgScale = data.cfgScale;
+                                          globalCurrentResolutionWidth =
+                                              data.resolutionWidth;
+                                          globalCurrentResolutionHeight =
+                                              data.resolutionHeight;
+                                        }
+                                        saveCheckpointDataMap();
+                                      });
+                                      await setCheckpoint();
+                                      setState(() {
+                                        _isChangingCheckpoint = false;
+                                      });
+                                    },
+                                    onLongPress: () {
+                                      // Trigger Edit Modal inside the sheet
+                                      _showEditModelDetails(context, option);
+                                      // We need to refresh the list after closing edit
+                                      // but we can rely on modalSetState wrapping the
+                                      // builder if we pass a callback.
+                                      // For now, the user can pull-to-refresh or close/reopen.
+                                    },
+                                  );
+                                },
+                              ),
+                            ],
                           );
                         },
                       ),
@@ -266,7 +373,6 @@ class CheckpointSettingsState extends State<CheckpointSettings>
             ),
             child: Column(
               children: [
-                // --- Header ---
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
                   child: Row(
@@ -298,8 +404,6 @@ class CheckpointSettingsState extends State<CheckpointSettings>
                     ],
                   ),
                 ),
-
-                // --- List ---
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(
@@ -310,7 +414,6 @@ class CheckpointSettingsState extends State<CheckpointSettings>
                     itemBuilder: (context, index) {
                       final option = samplerNames[index];
                       final isSelected = option == globalCurrentSamplingMethod;
-
                       return _AnimatedSamplerTile(
                         text: option,
                         isSelected: isSelected,
@@ -340,27 +443,23 @@ class CheckpointSettingsState extends State<CheckpointSettings>
 
   @override
   Widget build(BuildContext context) {
+    final currentData = globalCheckpointDataMap[globalCurrentCheckpointName];
+    final currentBaseModel = currentData?.baseModel ?? "";
+    final currentImageUrl = currentData?.imageURL ?? "";
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Container(
-        // Theme
         decoration: BoxDecoration(
-          color: Colors.grey.shade900.withValues(
-            alpha: 0.6,
-          ), // Slightly darker base
+          color: Colors.grey.shade900.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(16.0),
           border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
-
-        // Padding
         padding: const EdgeInsets.all(20.0),
-
-        // Content
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // --- Title ---
             Row(
               children: [
                 Container(
@@ -388,8 +487,6 @@ class CheckpointSettingsState extends State<CheckpointSettings>
               ],
             ),
             const SizedBox(height: 24),
-
-            // --- Checkpoint Preview Box ---
             const Padding(
               padding: EdgeInsets.only(bottom: 8.0),
               child: Text(
@@ -401,7 +498,6 @@ class CheckpointSettingsState extends State<CheckpointSettings>
                 ),
               ),
             ),
-
             InkWell(
               onTap: () => _showModelSelector(context),
               borderRadius: BorderRadius.circular(16),
@@ -431,13 +527,9 @@ class CheckpointSettingsState extends State<CheckpointSettings>
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      // Image
                       if (globalCurrentCheckpointName.isNotEmpty)
                         CachedNetworkImage(
-                          imageUrl:
-                              _checkpointImages[_checkpointOptions.indexOf(
-                                globalCurrentCheckpointName,
-                              )],
+                          imageUrl: currentImageUrl,
                           fit: BoxFit.cover,
                           placeholder: (context, url) => Container(
                             color: Colors.grey.shade800,
@@ -475,8 +567,6 @@ class CheckpointSettingsState extends State<CheckpointSettings>
                             ],
                           ),
                         ),
-
-                      // Gradient Overlay for Text
                       Positioned(
                         bottom: 0,
                         left: 0,
@@ -512,20 +602,81 @@ class CheckpointSettingsState extends State<CheckpointSettings>
                                 overflow: TextOverflow.ellipsis,
                               ),
                               if (globalCurrentCheckpointName.isNotEmpty)
-                                Text(
-                                  'Active Checkpoint',
-                                  style: TextStyle(
-                                    color: Colors.cyan.shade300,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.greenAccent,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.green,
+                                            blurRadius: 5,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Active Checkpoint',
+                                      style: TextStyle(
+                                        color: Colors.cyan.shade100,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                             ],
                           ),
                         ),
                       ),
-
-                      // Loading Overlay
+                      if (currentBaseModel.isNotEmpty)
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.15),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.hub_rounded,
+                                  color: Colors.cyan.shade300,
+                                  size: 12,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  currentBaseModel,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       if (_isChangingCheckpoint)
                         Container(
                           color: Colors.black54,
@@ -553,10 +704,7 @@ class CheckpointSettingsState extends State<CheckpointSettings>
                 ),
               ),
             ),
-
             const SizedBox(height: 24),
-
-            // --- Sampling Method ---
             const Padding(
               padding: EdgeInsets.only(bottom: 8.0),
               child: Text(
@@ -568,7 +716,6 @@ class CheckpointSettingsState extends State<CheckpointSettings>
                 ),
               ),
             ),
-
             InkWell(
               onTap: () => _showSamplerSelector(context),
               borderRadius: BorderRadius.circular(12),
@@ -600,12 +747,7 @@ class CheckpointSettingsState extends State<CheckpointSettings>
                 ),
               ),
             ),
-
             const SizedBox(height: 24),
-
-            // --- Sliders ---
-            // Assuming ModernSlider has its own internal styling.
-            // If not, wrap them in Containers similar to above.
             ModernSlider(
               label: 'Sampling Steps',
               value: globalCurrentSamplingSteps.toDouble(),
@@ -622,9 +764,7 @@ class CheckpointSettingsState extends State<CheckpointSettings>
               },
               valueFormatter: (val) => val.toInt().toString(),
             ),
-
             const SizedBox(height: 20),
-
             ModernSlider(
               label: 'CFG Scale',
               value: globalCurrentCfgScale,
@@ -642,9 +782,7 @@ class CheckpointSettingsState extends State<CheckpointSettings>
               },
               valueFormatter: (val) => val.toStringAsFixed(1),
             ),
-
             const SizedBox(height: 20),
-
             ModernSlider(
               label: 'Width',
               value: globalCurrentResolutionWidth.toDouble(),
@@ -663,9 +801,7 @@ class CheckpointSettingsState extends State<CheckpointSettings>
               },
               valueFormatter: (val) => '${val.toInt()}px',
             ),
-
             const SizedBox(height: 20),
-
             ModernSlider(
               label: 'Height',
               value: globalCurrentResolutionHeight.toDouble(),
@@ -692,6 +828,353 @@ class CheckpointSettingsState extends State<CheckpointSettings>
 }
 
 // ==========================================
+// EDITOR SHEET (NEW)
+// ==========================================
+
+class _CheckpointEditorSheet extends StatefulWidget {
+  final String modelName;
+  final dynamic data; // CheckpointData
+  final List<String> samplerNames;
+  final VoidCallback onSave;
+
+  const _CheckpointEditorSheet({
+    Key? key,
+    required this.modelName,
+    required this.data,
+    required this.samplerNames,
+    required this.onSave,
+  }) : super(key: key);
+
+  @override
+  State<_CheckpointEditorSheet> createState() => _CheckpointEditorSheetState();
+}
+
+class _CheckpointEditorSheetState extends State<_CheckpointEditorSheet> {
+  late TextEditingController _urlController;
+  late String _baseModel;
+  late String _sampler;
+  late double _steps;
+  late double _cfg;
+  late double _width;
+  late double _height;
+
+  final List<String> _baseModelOptions = [
+    'SD 1.5',
+    'SDXL 1.0',
+    'Pony',
+    'Other',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _urlController = TextEditingController(text: widget.data.imageURL);
+    _baseModel =
+        (widget.data.baseModel != null && widget.data.baseModel.isNotEmpty)
+        ? widget.data.baseModel
+        : 'Other';
+    // Ensure base model is in options, otherwise add it or set to Other
+    if (!_baseModelOptions.contains(_baseModel)) {
+      _baseModelOptions.add(_baseModel);
+    }
+
+    _sampler = widget.data.samplingMethod;
+    _steps = widget.data.samplingSteps.toDouble();
+    _cfg = widget.data.cfgScale;
+    _width = widget.data.resolutionWidth.toDouble();
+    _height = widget.data.resolutionHeight.toDouble();
+  }
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    // Update the object
+    widget.data.imageURL = _urlController.text;
+    widget.data.baseModel = _baseModel;
+    widget.data.samplingMethod = _sampler;
+    widget.data.samplingSteps = _steps.toInt();
+    widget.data.cfgScale = _cfg;
+    widget.data.resolutionWidth = _width.toInt();
+    widget.data.resolutionHeight = _height.toInt();
+
+    // Callback to parent to save to disk and refresh
+    widget.onSave();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      heightFactor: 0.9,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey.shade900,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24.0)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 20,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // --- Header ---
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.edit_note_rounded,
+                    color: Colors.cyan.shade300,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Edit Details',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          widget.modelName,
+                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white70),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            Divider(color: Colors.white10, height: 1),
+
+            // --- Form ---
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  // Base Model Dropdown
+                  Text(
+                    "Base Model Type",
+                    style: TextStyle(
+                      color: Colors.cyan.shade100,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _baseModel,
+                        dropdownColor: Colors.grey.shade800,
+                        isExpanded: true,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                        ),
+                        items: _baseModelOptions.map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (newValue) =>
+                            setState(() => _baseModel = newValue!),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Image URL Field
+                  Text(
+                    "Preview Image URL",
+                    style: TextStyle(
+                      color: Colors.cyan.shade100,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _urlController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.black26,
+                      hintText: "http://...",
+                      hintStyle: TextStyle(color: Colors.white24),
+                      contentPadding: const EdgeInsets.all(16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.white10),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.cyan.shade300),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Sampler Dropdown
+                  Text(
+                    "Default Sampler",
+                    style: TextStyle(
+                      color: Colors.cyan.shade100,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: widget.samplerNames.contains(_sampler)
+                            ? _sampler
+                            : null,
+                        hint: Text(
+                          _sampler,
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        dropdownColor: Colors.grey.shade800,
+                        isExpanded: true,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                        ),
+                        items: widget.samplerNames.map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (newValue) =>
+                            setState(() => _sampler = newValue!),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Sliders
+                  ModernSlider(
+                    label: "Default Steps",
+                    value: _steps,
+                    min: 1,
+                    max: 60,
+                    onChanged: (v) => setState(() => _steps = v),
+                    valueFormatter: (v) => v.toInt().toString(),
+                  ),
+                  const SizedBox(height: 16),
+                  ModernSlider(
+                    label: "Default CFG",
+                    value: _cfg,
+                    min: 1,
+                    max: 15,
+                    divisions: 28,
+                    onChanged: (v) => setState(() => _cfg = v),
+                    valueFormatter: (v) => v.toStringAsFixed(1),
+                  ),
+                  const SizedBox(height: 16),
+                  ModernSlider(
+                    label: "Default Width",
+                    value: _width,
+                    min: 256,
+                    max: 2048,
+                    divisions: 56,
+                    onChanged: (v) => setState(
+                      () => _width = ((v / 32).round() * 32.0).toDouble(),
+                    ),
+                    valueFormatter: (v) => '${v.toInt()}px',
+                  ),
+                  const SizedBox(height: 16),
+                  ModernSlider(
+                    label: "Default Height",
+                    value: _height,
+                    min: 256,
+                    max: 2048,
+                    divisions: 56,
+                    onChanged: (v) => setState(
+                      () => _height = ((v / 32).round() * 32.0).toDouble(),
+                    ),
+                    valueFormatter: (v) => '${v.toInt()}px',
+                  ),
+
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+
+            // --- Save Button ---
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: SafeArea(
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _save,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.cyan.shade700,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 4,
+                      shadowColor: Colors.cyan.withValues(alpha: 0.4),
+                    ),
+                    child: const Text(
+                      'Save Changes',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
 // ANIMATED WIDGETS
 // ==========================================
 
@@ -700,6 +1183,7 @@ class _AnimatedModelCard extends StatefulWidget {
   final String imageUrl;
   final bool isSelected;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress; // Added
 
   const _AnimatedModelCard({
     Key? key,
@@ -707,6 +1191,7 @@ class _AnimatedModelCard extends StatefulWidget {
     required this.imageUrl,
     required this.isSelected,
     required this.onTap,
+    this.onLongPress,
   }) : super(key: key);
 
   @override
@@ -744,6 +1229,7 @@ class _AnimatedModelCardState extends State<_AnimatedModelCard>
       onTapUp: (_) => _controller.reverse(),
       onTapCancel: () => _controller.reverse(),
       onTap: widget.onTap,
+      onLongPress: widget.onLongPress, // Added
       child: ScaleTransition(
         scale: _scale,
         child: AnimatedContainer(

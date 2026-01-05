@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 // Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
 
+// ==========================================
+// ANIMATED LORA TILE
+// ==========================================
+
 class AnimatedLoraTile extends StatefulWidget {
   final String loraName;
   final LoraData loraData;
@@ -40,31 +44,28 @@ class AnimatedLoraTile extends StatefulWidget {
 
 class _AnimatedLoraTileState extends State<AnimatedLoraTile>
     with TickerProviderStateMixin {
-  late AnimationController _bounceController; // For the selection icon
+  late AnimationController _bounceController;
   late Animation<double> _scaleAnimation;
-
-  late AnimationController _expandController; // For the accordion effect
+  late AnimationController _expandController;
   late Animation<double> _expandAnimation;
 
   @override
   void initState() {
     super.initState();
-
     // 1. Setup Bounce Animation (Selection)
     _bounceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.0,
-    ).animate(_bounceController);
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.0).animate(
+      CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut),
+    );
 
-    // 2. Setup Expand Animation (Dropdown & Arrow)
+    // 2. Setup Expand Animation
     _expandController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
-      value: widget.isExpanded ? 1.0 : 0.0, // Set initial state
+      value: widget.isExpanded ? 1.0 : 0.0,
     );
     _expandAnimation = CurvedAnimation(
       parent: _expandController,
@@ -76,17 +77,12 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
   void didUpdateWidget(AnimatedLoraTile oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Handle Selection Pop
     if (widget.isSelected && !oldWidget.isSelected) {
       _bounceController
           .forward(from: 0.0)
           .then((_) => _bounceController.reverse());
-      _scaleAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
-        CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut),
-      );
     }
 
-    // Handle Expansion Slide
     if (widget.isExpanded != oldWidget.isExpanded) {
       if (widget.isExpanded) {
         _expandController.forward();
@@ -111,6 +107,11 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
         : allTags;
     final hiddenTagCount = allTags.length - 10;
 
+    // Ensure maxStrength is at least 1.0 to prevent division by zero errors
+    double currentMaxStrength = widget.loraData.maxStrength < 1.0
+        ? 1.0
+        : widget.loraData.maxStrength;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
@@ -126,15 +127,6 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
               : Colors.white.withValues(alpha: 0.08),
           width: widget.isSelected ? 1.5 : 1,
         ),
-        boxShadow: widget.isSelected
-            ? [
-                BoxShadow(
-                  color: Colors.cyan.shade500.withValues(alpha: 0.1),
-                  blurRadius: 12,
-                  spreadRadius: 1,
-                ),
-              ]
-            : [],
       ),
       child: Column(
         children: [
@@ -143,7 +135,7 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
             padding: const EdgeInsets.all(12.0),
             child: Row(
               children: [
-                // 1. Toggle Icon (Bouncy)
+                // Toggle Icon
                 GestureDetector(
                   onTap: widget.onToggleSelection,
                   child: ScaleTransition(
@@ -160,7 +152,7 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
                                   Colors.teal.shade400,
                                 ],
                               )
-                            : LinearGradient(
+                            : const LinearGradient(
                                 colors: [Colors.white10, Colors.white10],
                               ),
                         borderRadius: BorderRadius.circular(12),
@@ -176,8 +168,7 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
                   ),
                 ),
                 const SizedBox(width: 12),
-
-                // 2. Text Info
+                // Text Info
                 Expanded(
                   child: GestureDetector(
                     onTap: widget.onToggleExpand,
@@ -207,7 +198,6 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
                                 ),
                               ),
                             ),
-
                             if (allTags.isNotEmpty) ...[
                               const SizedBox(width: 6),
                               const Icon(
@@ -216,37 +206,23 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
                                 color: Colors.white24,
                               ),
                               const SizedBox(width: 6),
-                              const Icon(
-                                Icons.label_outline,
-                                size: 12,
-                                color: Colors.white38,
-                              ),
-                              const SizedBox(width: 4),
-
                               Text(
                                 '${allTags.length} tags',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Colors.white38,
                                   fontSize: 12,
                                 ),
                               ),
-
                               if (widget.selectedTags.isNotEmpty)
                                 Flexible(
-                                  child: AnimatedOpacity(
-                                    duration: const Duration(milliseconds: 300),
-                                    opacity: 1.0,
-                                    child: Text(
-                                      ' • ${widget.selectedTags.length} active',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: Colors.cyan.shade300,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                  child: Text(
+                                    ' • ${widget.selectedTags.length} active',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.cyan.shade300,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
@@ -257,8 +233,6 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
                     ),
                   ),
                 ),
-
-                // 3. Expand Arrow (Synced Rotation)
                 if (allTags.isNotEmpty)
                   IconButton(
                     icon: RotationTransition(
@@ -277,13 +251,11 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
             ),
           ),
 
-          // --- Strength Slider (SizeTransition) ---
+          // --- Strength Slider Section ---
           SizeTransition(
             sizeFactor: widget.isSelected
                 ? const AlwaysStoppedAnimation(1.0)
-                : const AlwaysStoppedAnimation(
-                    0.0,
-                  ), // Or animate this if desired
+                : const AlwaysStoppedAnimation(0.0),
             axisAlignment: -1.0,
             child: widget.isSelected
                 ? Padding(
@@ -313,6 +285,72 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
                               ),
                             ),
                             const Spacer(),
+
+                            // --- NEW: Range Toggle Button ---
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  // Toggle logic: If 1.0 -> 5.0, else -> 1.0
+                                  double newMax = currentMaxStrength > 1.0
+                                      ? 1.0
+                                      : 5.0;
+                                  widget.loraData.maxStrength = newMax;
+
+                                  // Clamp logic: If current strength > newMax, reduce it
+                                  if (widget.strength > newMax) {
+                                    widget.onStrengthChanged(newMax);
+                                  }
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(6),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: currentMaxStrength > 1.0
+                                      ? Colors.cyan.shade900.withValues(
+                                          alpha: 0.4,
+                                        )
+                                      : Colors.white10,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: currentMaxStrength > 1.0
+                                        ? Colors.cyan.shade400.withValues(
+                                            alpha: 0.5,
+                                          )
+                                        : Colors.white12,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.speed,
+                                      size: 12,
+                                      color: currentMaxStrength > 1.0
+                                          ? Colors.cyan.shade200
+                                          : Colors.white54,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Max: ${currentMaxStrength.toStringAsFixed(0)}',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: currentMaxStrength > 1.0
+                                            ? Colors.cyan.shade200
+                                            : Colors.white54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            // --- Value Display ---
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
@@ -333,6 +371,8 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
                             ),
                           ],
                         ),
+
+                        // --- Slider ---
                         SliderTheme(
                           data: SliderThemeData(
                             activeTrackColor: Colors.cyan.shade400,
@@ -349,8 +389,10 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
                           child: Slider(
                             value: widget.strength,
                             min: 0.0,
-                            max: 1.0,
-                            divisions: 20,
+                            // Use the dynamic max
+                            max: currentMaxStrength,
+                            // Calculate divisions to keep steps roughly 0.05
+                            divisions: (currentMaxStrength * 20).toInt(),
                             onChanged: widget.onStrengthChanged,
                           ),
                         ),
@@ -360,16 +402,14 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
                 : const SizedBox.shrink(),
           ),
 
-          // --- Tags Section (SizeTransition for Vertical Reveal) ---
-          // Use SizeTransition to ensure width is locked to parent, preventing side-spread
+          // --- Tags Section (Collapsible) ---
           if (allTags.isNotEmpty)
             SizeTransition(
               sizeFactor: _expandAnimation,
               axis: Axis.vertical,
-              axisAlignment: -1.0, // Anchor to top, reveal downwards
+              axisAlignment: -1.0,
               child: Container(
-                width:
-                    double.infinity, // Ensure full width inside the transition
+                width: double.infinity,
                 padding: const EdgeInsets.all(12.0),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.3),
@@ -381,7 +421,7 @@ class _AnimatedLoraTileState extends State<AnimatedLoraTile>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'AVAILABLE TAGS',
                       style: TextStyle(
                         color: Colors.white30,
@@ -637,6 +677,7 @@ class _AnimatedHistoryTileState extends State<AnimatedHistoryTile>
 // ==========================================
 // ANIMATED CHECKPOINT TILE
 // ==========================================
+
 class AnimatedCheckpointTile extends StatefulWidget {
   final String name;
   final dynamic data; // Replace with your CheckpointData type
@@ -790,6 +831,136 @@ class _AnimatedCheckpointTileState extends State<AnimatedCheckpointTile>
                         ),
                       ],
                     ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// ANIMATED SAMPLER TILE
+// ==========================================
+
+class AnimatedSamplerTile extends StatefulWidget {
+  final String name;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const AnimatedSamplerTile({
+    Key? key,
+    required this.name,
+    required this.isSelected,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  State<AnimatedSamplerTile> createState() => _AnimatedSamplerTileState();
+}
+
+class _AnimatedSamplerTileState extends State<AnimatedSamplerTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _bounceController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _bounceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.0,
+    ).animate(_bounceController);
+  }
+
+  @override
+  void didUpdateWidget(AnimatedSamplerTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isSelected && !oldWidget.isSelected) {
+      _bounceController
+          .forward(from: 0.0)
+          .then((_) => _bounceController.reverse());
+      _scaleAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
+        CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _bounceController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: widget.isSelected
+            ? Colors.purple.shade900.withValues(
+                alpha: 0.3,
+              ) // Different tint for Samplers
+            : Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: widget.isSelected
+              ? Colors.purple.shade400.withValues(alpha: 0.5)
+              : Colors.white.withValues(alpha: 0.08),
+          width: widget.isSelected ? 2 : 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              children: [
+                ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: widget.isSelected
+                          ? LinearGradient(
+                              colors: [
+                                Colors.purple.shade400,
+                                Colors.pink.shade400,
+                              ],
+                            )
+                          : LinearGradient(
+                              colors: [Colors.white10, Colors.white10],
+                            ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      widget.isSelected ? Icons.waves : Icons.circle_outlined,
+                      color: widget.isSelected ? Colors.white : Colors.white24,
+                      size: 20,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    widget.name,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.95),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ],

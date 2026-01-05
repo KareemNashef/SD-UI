@@ -28,6 +28,8 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   bool _isSaving = false;
   bool _isFetchingInfo = false;
 
+  bool _isComparing = false;
+
   final Map<String, Uint8List> _imageCache = {};
   List<String> _lastKnownImageList = [];
 
@@ -37,15 +39,20 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   void initState() {
     super.initState();
     globalResultImages.addListener(_onImagesChanged);
+    globalInputImage.addListener(_onInputChanged);
     _onImagesChanged(isInitialSetup: true);
   }
 
   @override
   void dispose() {
     globalResultImages.removeListener(_onImagesChanged);
+    globalInputImage.removeListener(_onInputChanged);
     super.dispose();
   }
 
+  void _onInputChanged() {
+    if (mounted) setState(() {});
+  }
   // ===== Class Methods ===== //
 
   void _onImagesChanged({bool isInitialSetup = false}) {
@@ -349,39 +356,55 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   Map<String, String> _parseImageInfo(String info) {
     final map = <String, String>{};
     final lines = info.split('\n');
-    String? currentPrompt;
-    String? currentNegativePrompt;
 
-    for (var i = 0; i < lines.length; i++) {
-      final line = lines[i].trim();
+    final promptBuffer = <String>[];
+    final negativeBuffer = <String>[];
+
+    bool inNegative = false;
+    bool inMeta = false;
+
+    for (final raw in lines) {
+      final line = raw.trim();
       if (line.isEmpty) continue;
 
+      // Detect start of metadata reliably
+      if (line.startsWith('Steps:')) {
+        inMeta = true;
+      }
+
       if (line.startsWith('Negative prompt:')) {
-        currentNegativePrompt = line
-            .substring('Negative prompt:'.length)
-            .trim();
+        inNegative = true;
+        inMeta = false;
+        negativeBuffer.add(line.substring('Negative prompt:'.length).trim());
         continue;
       }
 
-      if (line.contains(':') && (line.contains(',') || i == lines.length - 1)) {
-        final parts = line.split(',');
+      if (inMeta) {
+        // Split on commas not inside quotes
+        final parts = line.split(RegExp(r',(?=(?:[^"]*"[^"]*")*[^"]*$)'));
         for (final part in parts) {
-          final keyValue = part.trim().split(':');
-          if (keyValue.length == 2) {
-            map[keyValue[0].trim()] = keyValue[1].trim();
-          }
+          final idx = part.indexOf(':');
+          if (idx == -1) continue;
+          final key = part.substring(0, idx).trim();
+          final value = part.substring(idx + 1).trim();
+          map[key] = value;
         }
-      } else if (currentNegativePrompt != null) {
-        currentNegativePrompt += ' $line';
+        continue;
+      }
+
+      if (inNegative) {
+        negativeBuffer.add(line);
       } else {
-        currentPrompt =
-            (currentPrompt ?? '') + (currentPrompt != null ? ' ' : '') + line;
+        promptBuffer.add(line);
       }
     }
 
-    if (currentPrompt != null) map['prompt'] = currentPrompt;
-    if (currentNegativePrompt != null)
-      map['negativePrompt'] = currentNegativePrompt;
+    if (promptBuffer.isNotEmpty) {
+      map['prompt'] = promptBuffer.join(' ');
+    }
+    if (negativeBuffer.isNotEmpty) {
+      map['negativePrompt'] = negativeBuffer.join(' ');
+    }
 
     return map;
   }
@@ -559,33 +582,115 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   Widget _buildMainImage() {
     if (_selectedImageUrl == null) return const Expanded(child: Center());
 
+    // LOGIC: Check if we are comparing and have a valid input file
+    final File? inputFile = globalInputImage.value;
+    final bool showInput =
+        _isComparing && inputFile != null && inputFile.existsSync();
+
+    // The key ensures the widget rebuilds with animation when switching sources
+    final imageKey = showInput ? 'input_image' : _selectedImageUrl!;
+
     return Expanded(
       child: Container(
-        key: ValueKey<String>(_selectedImageUrl!),
+        key: ValueKey<String>(imageKey),
         width: double.infinity,
         margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: _isBase64DataUrl(_selectedImageUrl!)
-              ? (_imageCache[_selectedImageUrl!] != null
-                    ? Image.memory(
-                        _imageCache[_selectedImageUrl!]!,
-                        fit: BoxFit.contain,
-                        gaplessPlayback: true,
-                      )
-                    : const Icon(Icons.broken_image, color: Colors.white24))
-              : CachedNetworkImage(
-                  imageUrl: _selectedImageUrl!,
-                  fit: BoxFit.contain,
-                  placeholder: (_, __) => const Center(
-                    child: CircularProgressIndicator(color: Colors.cyan),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. The Image Layer
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: showInput
+                  ? Image.file(
+                      inputFile!,
+                      fit: BoxFit.contain,
+                      gaplessPlayback: true,
+                    )
+                  : _buildResultImageWidget(_selectedImageUrl!),
+            ),
+
+            // 2. The Status Badge (Visual Feedback)
+            Positioned(
+              top: 12,
+              left: 12,
+              child: AnimatedOpacity(
+                opacity: _isComparing ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
                   ),
-                  errorWidget: (_, __, ___) =>
-                      const Icon(Icons.broken_image, color: Colors.white24),
+                  decoration: BoxDecoration(
+                    color: showInput
+                        ? Colors.amber.shade800
+                        : Colors.cyan.shade800,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        showInput ? Icons.input : Icons.image,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        showInput ? 'INPUT SOURCE' : 'GENERATED RESULT',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildResultImageWidget(String url) {
+    if (_isBase64DataUrl(url)) {
+      if (_imageCache[url] != null) {
+        return Image.memory(
+          _imageCache[url]!,
+          fit: BoxFit.contain,
+          gaplessPlayback: true,
+        );
+      }
+      // Attempt decode on fly if not cached
+      try {
+        return Image.memory(
+          base64Decode(_extractBase64Data(url)),
+          fit: BoxFit.contain,
+          gaplessPlayback: true,
+        );
+      } catch (e) {
+        return const Icon(Icons.broken_image, color: Colors.white24);
+      }
+    } else {
+      return CachedNetworkImage(
+        imageUrl: url,
+        fit: BoxFit.contain,
+        placeholder: (_, __) =>
+            const Center(child: CircularProgressIndicator(color: Colors.cyan)),
+        errorWidget: (_, __, ___) =>
+            const Icon(Icons.broken_image, color: Colors.white24),
+      );
+    }
   }
 
   Widget _buildImageThumbnails(List<String> imageList) {
@@ -648,6 +753,8 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   // === UPDATED DOCK ===
   Widget _buildActionButtons() {
     final hasImage = _selectedImageUrl != null;
+    final hasInput = globalInputImage.value != null; // Check global variable
+
     return Container(
       margin: const EdgeInsets.only(top: 16, bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -731,17 +838,47 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
 
           const SizedBox(width: 8),
 
-          // Icons Group
-          _buildIconAction(
-            Icons.auto_fix_high,
-            'Edit',
-            hasImage ? _editSelectedImage : null,
-          ),
-          _buildIconAction(
-            Icons.info_outline,
-            'Info',
-            (hasImage && !_isFetchingInfo) ? _showImageInfo : null,
-            isLoading: _isFetchingInfo,
+          // [NEW] Compare Button with Hold Interaction
+          Expanded(
+            child: Listener(
+              // Trigger compare state on press down
+              onPointerDown: (hasImage && hasInput)
+                  ? (_) => setState(() => _isComparing = true)
+                  : null,
+              // Reset on release or cancel
+              onPointerUp: (_) => setState(() => _isComparing = false),
+              onPointerCancel: (_) => setState(() => _isComparing = false),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: (hasImage && hasInput)
+                      ? () {}
+                      : null, // Needed for ripple
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 100),
+                    height: 50,
+                    decoration: _isComparing
+                        ? BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.amber.withValues(alpha: 0.5),
+                            ),
+                          )
+                        : null,
+                    child: Icon(
+                      Icons.compare,
+                      // If holding, turn Amber. If disabled, turn gray.
+                      color: (hasImage && hasInput)
+                          ? (_isComparing ? Colors.amber : Colors.white)
+                          : Colors.white12,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
 
           Container(
@@ -751,6 +888,22 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             margin: const EdgeInsets.symmetric(horizontal: 4),
           ),
 
+          // Edit Button
+          _buildIconAction(
+            Icons.auto_fix_high,
+            'Edit',
+            hasImage ? _editSelectedImage : null,
+          ),
+
+          // Info Button
+          _buildIconAction(
+            Icons.info_outline,
+            'Info',
+            (hasImage && !_isFetchingInfo) ? _showImageInfo : null,
+            isLoading: _isFetchingInfo,
+          ),
+
+          // Delete Button
           _buildIconAction(
             Icons.delete_outline,
             'Delete',

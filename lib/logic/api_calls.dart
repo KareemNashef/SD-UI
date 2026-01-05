@@ -71,6 +71,8 @@ Future<void> syncCheckpointDataFromServer({bool force = false}) async {
         }
 
         String imageUrl = '';
+        String baseModel = '';
+
         const placeholder =
             'https://cdn-media.sforum.vn/storage/app/media/Van%20Pham/civitai-ai-thumbnail.jpg';
 
@@ -82,7 +84,9 @@ Future<void> syncCheckpointDataFromServer({bool force = false}) async {
           );
           if (civitaiRes.statusCode == 200) {
             final data = jsonDecode(civitaiRes.body);
+            
             final images = data['images'];
+            baseModel = data['baseModel'];
             if (images is List) {
               for (final img in images) {
                 if (img is Map &&
@@ -97,6 +101,8 @@ Future<void> syncCheckpointDataFromServer({bool force = false}) async {
         } catch (_) {}
 
         if (imageUrl.isEmpty) imageUrl = placeholder;
+        if (baseModel.isEmpty) baseModel = 'SD 1.5';
+
         // ---------------------------------------------
 
         // Capture existing data if available to preserve settings
@@ -111,9 +117,13 @@ Future<void> syncCheckpointDataFromServer({bool force = false}) async {
           cfgScale: existingData?.cfgScale ?? 3.5,
           resolutionHeight: existingData?.resolutionHeight ?? 512,
           resolutionWidth: existingData?.resolutionWidth ?? 512,
+          baseModel: baseModel,
         );
       }
     }
+
+    
+
 
     await saveCheckpointDataMap();
   } catch (e) {

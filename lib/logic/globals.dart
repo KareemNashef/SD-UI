@@ -1,6 +1,7 @@
 // ==================== Global Variables ==================== //
 
 // Flutter imports
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -46,6 +47,7 @@ class CheckpointData {
   double cfgScale;
   int resolutionHeight;
   int resolutionWidth;
+  String baseModel = "SD 1.5";
 
   CheckpointData({
     required this.title,
@@ -55,6 +57,7 @@ class CheckpointData {
     required this.cfgScale,
     required this.resolutionHeight,
     required this.resolutionWidth,
+    this.baseModel = "SD 1.5",
   });
 
   Map<String, dynamic> toJson() => {
@@ -65,6 +68,7 @@ class CheckpointData {
     'cfgScale': cfgScale,
     'resolutionHeight': resolutionHeight,
     'resolutionWidth': resolutionWidth,
+    'baseModel': baseModel
   };
 
   factory CheckpointData.fromJson(Map<String, dynamic> json) => CheckpointData(
@@ -75,6 +79,7 @@ class CheckpointData {
     cfgScale: (json['cfgScale'] as num).toDouble(),
     resolutionHeight: (json['resolutionHeight'] ?? 512 as num).toInt(),
     resolutionWidth: (json['resolutionWidth'] ?? 512 as num).toInt(),
+    baseModel: json['baseModel'] ?? "SD 1.5",
   );
 }
 
@@ -204,16 +209,19 @@ ValueNotifier<bool> globalIsChangingCheckpoint = ValueNotifier<bool>(false);
 
 // Current inpaint image
 final ValueNotifier<String?> globalImageToEdit = ValueNotifier(null);
+final ValueNotifier<File?> globalInputImage = ValueNotifier(null);
 
 // Current inpaint prompt
 String globalInpaintPrompt = '';
 
 // Inpaint prompt history
 Set<String> globalInpaintHistory = {};
+Set<String> globalFavoritePrompts = {};
 
 Future<void> saveInpaintHistory() async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setStringList('inpaintHistory', globalInpaintHistory.toList());
+  await prefs.setStringList('favoritePrompts', globalFavoritePrompts.toList());
 }
 
 Future<void> loadInpaintHistory() async {
@@ -221,6 +229,9 @@ Future<void> loadInpaintHistory() async {
   globalInpaintHistory = Set<String>.from(
     prefs.getStringList('inpaintHistory') ?? [].toSet(),
   );
+  globalFavoritePrompts = Set<String>.from(
+    prefs.getStringList('favoritePrompts') ?? [].toSet(),
+  ); // NEW
 }
 
 // ===== Results Variables ===== //
@@ -256,6 +267,7 @@ class LoraData {
   String title;
   String alias;
   Set<String> tags;
+  double maxStrength = 1;
 
   LoraData({
     required this.title,
@@ -278,21 +290,3 @@ class LoraData {
 
 // Lora data map
 Map<String, LoraData> globalLoraDataMap = {};
-
-// Save values
-Future<void> saveLoraDataMap() async {
-  final prefs = await SharedPreferences.getInstance();
-  final mapJson = jsonEncode(
-    globalLoraDataMap.map((key, value) => MapEntry(key, value.toJson())),
-  );
-  await prefs.setString('loraDataMap', mapJson);
-}
-
-// Load values
-Future<void> loadLoraDataMap() async {
-  final prefs = await SharedPreferences.getInstance();
-  final mapJson = prefs.getString('loraDataMap');
-  if (mapJson != null) {
-    globalLoraDataMap = Map<String, LoraData>.from(jsonDecode(mapJson));
-  }
-}

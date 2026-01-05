@@ -95,7 +95,12 @@ void showLorasModal(
                                 modalSetState(() {
                                   isRefreshing = true;
                                   refreshTurns += 1.0;
+
+                                  // Clear data and refresh
+                                  tempSelectedLoras.clear();
+                                  tempSelectedLoraTags.clear();
                                 });
+
                                 await loadLoraDataFromServer();
                                 if (context.mounted) {
                                   modalSetState(() {
