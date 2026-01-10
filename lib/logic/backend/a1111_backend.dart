@@ -1,15 +1,26 @@
+// ==================== A1111 Backend ==================== //
+
+// Flutter imports
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+
+// Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/backend/checkpoint_utils.dart';
 import 'package:sd_companion/logic/models/lora_data.dart';
 
+// A1111 Backend Implementation
+
 class A1111Backend {
+  // ===== Class Variables ===== //
+
   // Helper to construct base URL
   String get _baseUrl =>
       'http://${globalServerIP.value}:${globalServerPort.value}';
+
+  // ===== Class Methods ===== //
 
   Future<bool> checkStatus() async {
     final url = Uri.parse('$_baseUrl/sdapi/v1/sd-models');
@@ -134,8 +145,9 @@ class A1111Backend {
             baseModel = metadata['baseModel'] ?? 'Unknown';
 
             if (metadata['trainedWords'] is List) {
-              trainedWords =
-                  Set<String>.from(metadata['trainedWords'].cast<String>());
+              trainedWords = Set<String>.from(
+                metadata['trainedWords'].cast<String>(),
+              );
             }
           }
         } catch (e) {
@@ -143,7 +155,9 @@ class A1111Backend {
         }
 
         // 4. Construct thumbnail URL
-        final String thumbnailUrl = '$_baseUrl/file=models/Lora/$name.preview.png';
+        final String thumbnailUrl =
+            '$_baseUrl/file=models/Lora/$name.preview.png';
+        debugPrint('Thumbnail URL: $thumbnailUrl');
 
         globalLoraDataMap[name] = LoraData(
           name: name,

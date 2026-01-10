@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 // Local imports - Logic
 import 'package:sd_companion/logic/models/drawing_models.dart';
 
-// ========== On-Screen Painter for Live Drawing ========== //
-// (Logic remains unchanged, purely functional painter)
+// Mask Painter Implementation
+
 class MaskPainter extends CustomPainter {
   final List<DrawingPath> paths;
   final Size imageSize;
@@ -19,6 +19,8 @@ class MaskPainter extends CustomPainter {
     required this.containerSize,
   });
 
+  // ===== Class Methods ===== //
+
   @override
   void paint(Canvas canvas, Size size) {
     // Calculate how the image fits within the container (BoxFit.contain)
@@ -29,10 +31,19 @@ class MaskPainter extends CustomPainter {
     late final Offset displayOffset;
 
     if (imageAspectRatio > containerAspectRatio) {
-      displaySize = Size(containerSize.width, containerSize.width / imageAspectRatio);
-      displayOffset = Offset(0, (containerSize.height - displaySize.height) / 2);
+      displaySize = Size(
+        containerSize.width,
+        containerSize.width / imageAspectRatio,
+      );
+      displayOffset = Offset(
+        0,
+        (containerSize.height - displaySize.height) / 2,
+      );
     } else {
-      displaySize = Size(containerSize.height * imageAspectRatio, containerSize.height);
+      displaySize = Size(
+        containerSize.height * imageAspectRatio,
+        containerSize.height,
+      );
       displayOffset = Offset((containerSize.width - displaySize.width) / 2, 0);
     }
 
@@ -58,8 +69,11 @@ class MaskPainter extends CustomPainter {
       final drawPath = Path();
       for (int i = 0; i < path.points.length; i++) {
         final point = path.points[i].point;
-        final displayX = displayOffset.dx + (point.dx / imageSize.width) * displaySize.width;
-        final displayY = displayOffset.dy + (point.dy / imageSize.height) * displaySize.height;
+        final displayX =
+            displayOffset.dx + (point.dx / imageSize.width) * displaySize.width;
+        final displayY =
+            displayOffset.dy +
+            (point.dy / imageSize.height) * displaySize.height;
 
         if (i == 0) {
           drawPath.moveTo(displayX, displayY);

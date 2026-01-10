@@ -1,7 +1,16 @@
+// ==================== Generation Logic ==================== //
+
+// Flutter imports
 import 'dart:typed_data';
+
+// Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
 
+// Generation Logic Implementation
+
 class GenerationLogic {
+  // ===== Class Methods ===== //
+
   static String buildLoraPromptAddition(
     Map<String, double> selectedLoras,
     Map<String, Set<String>> selectedLoraTags,

@@ -1,9 +1,13 @@
 // ==================== Glass Badge ==================== //
 
+// Flutter imports
 import 'package:flutter/material.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
-/// Standard badge/counter with glassmorphism styling
+// Glass Badge Implementation
+
 class GlassBadge extends StatelessWidget {
   final String label;
   final IconData? icon;
@@ -17,6 +21,8 @@ class GlassBadge extends StatelessWidget {
     this.accentColor,
     this.padding,
   });
+
+  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {

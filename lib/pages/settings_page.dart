@@ -1,10 +1,15 @@
 // ==================== Settings Page ==================== //
 
+// Flutter imports
 import 'package:flutter/material.dart';
-import 'package:sd_companion/elements/settings/server_settings.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/settings/checkpoint_settings.dart';
 import 'package:sd_companion/elements/settings/generation_settings.dart';
+import 'package:sd_companion/elements/settings/server_settings.dart';
 import 'package:sd_companion/elements/widgets/glass_app_bar.dart';
+
+// Settings Page Implementation
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -15,6 +20,8 @@ class SettingsPage extends StatefulWidget {
 
 class SettingsPageState extends State<SettingsPage>
     with AutomaticKeepAliveClientMixin {
+  // ===== Build Methods ===== //
+
   @override
   bool get wantKeepAlive => true;
 

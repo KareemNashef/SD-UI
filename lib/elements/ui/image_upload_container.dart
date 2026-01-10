@@ -1,40 +1,39 @@
-// ==================== Image Container ==================== //
+// ==================== Image Upload Container ==================== //
 
 // Flutter imports
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter/services.dart';
-
-// Local imports - Logic
-import 'package:sd_companion/logic/models/drawing_models.dart';
-import 'package:sd_companion/logic/globals.dart';
-import 'package:sd_companion/logic/services/progress_service.dart';
-import 'package:sd_companion/logic/api_calls.dart';
-import 'package:sd_companion/logic/generation_logic.dart';
-import 'package:sd_companion/logic/drawing/mask_generator.dart';
-import 'package:sd_companion/logic/drawing/drawing_coordinates.dart';
-import 'package:sd_companion/logic/image/image_processor.dart';
-import 'package:sd_companion/logic/services/checkpoint_testing_service.dart';
-import 'package:sd_companion/logic/utils/test_mode.dart';
-import 'package:sd_companion/logic/storage/storage_service.dart';
 
 // Local imports - Elements
+import 'package:sd_companion/elements/canvas/canvas_gesture.dart';
 import 'package:sd_companion/elements/canvas/mask_painter.dart';
 import 'package:sd_companion/elements/canvas/zoom_preview_widget.dart';
-import 'package:sd_companion/elements/canvas/canvas_gesture.dart';
+import 'package:sd_companion/elements/modals/checkpoint_test_modal.dart';
+import 'package:sd_companion/elements/modals/history_modal.dart';
+import 'package:sd_companion/elements/modals/lora_modal.dart';
 import 'package:sd_companion/elements/widgets/glass_action_buttons.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
-import 'package:sd_companion/elements/modals/history_modal.dart';
-import 'package:sd_companion/elements/modals/checkpoint_test_modal.dart';
-import 'package:sd_companion/elements/modals/lora_modal.dart';
 
-// ========== Image Container Class ========== //
+// Local imports - Logic
+import 'package:sd_companion/logic/api_calls.dart';
+import 'package:sd_companion/logic/drawing/drawing_coordinates.dart';
+import 'package:sd_companion/logic/drawing/mask_generator.dart';
+import 'package:sd_companion/logic/generation_logic.dart';
+import 'package:sd_companion/logic/globals.dart';
+import 'package:sd_companion/logic/image/image_processor.dart';
+import 'package:sd_companion/logic/models/drawing_models.dart';
+import 'package:sd_companion/logic/services/checkpoint_testing_service.dart';
+import 'package:sd_companion/logic/services/progress_service.dart';
+import 'package:sd_companion/logic/storage/storage_service.dart';
+import 'package:sd_companion/logic/utils/test_mode.dart';
+
+// Image Upload Container Implementation
 
 class ImageContainer extends StatefulWidget {
   final Function(Uint8List?)? onMaskGenerated;
@@ -1047,68 +1046,65 @@ class _ImageContainerState extends State<ImageContainer> {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(30),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          // Calculate total width based on items + padding
-          width: (itemWidth * 2) + (padding * 2) + 2,
-          height: itemHeight + (padding * 2),
-          padding: const EdgeInsets.all(padding),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-          ),
-          child: Stack(
-            children: [
-              // 1. The Sliding Pill Indicator
-              AnimatedAlign(
-                alignment: _isOutpaintingMode
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutQuart,
-                child: Container(
-                  width: itemWidth,
-                  height: itemHeight,
-                  decoration: BoxDecoration(
-                    color: AppTheme.accentPrimary,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.accentPrimary.withValues(alpha: 0.4),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
+      child: Container(
+        // Calculate total width based on items + padding
+        width: (itemWidth * 2) + (padding * 2) + 2,
+        height: itemHeight + (padding * 2),
+        padding: const EdgeInsets.all(padding),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: Stack(
+          children: [
+            // 1. The Sliding Pill Indicator
+            AnimatedAlign(
+              alignment: _isOutpaintingMode
+                  ? Alignment.centerRight
+                  : Alignment.centerLeft,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutQuart,
+              child: Container(
+                width: itemWidth,
+                height: itemHeight,
+                decoration: BoxDecoration(
+                  color: AppTheme.accentPrimary,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.accentPrimary.withValues(alpha: 0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
               ),
+            ),
 
-              // 2. The Icons (Foreground)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildToggleItem(
-                    icon: Icons.brush_rounded,
-                    isActive: !_isOutpaintingMode,
-                    onTap: () => setState(() => _isOutpaintingMode = false),
-                    tooltip: "Inpaint (Brush)",
-                    width: itemWidth,
-                    height: itemHeight,
-                  ),
-                  _buildToggleItem(
-                    icon: Icons.aspect_ratio_rounded,
-                    isActive: _isOutpaintingMode,
-                    onTap: () => setState(() => _isOutpaintingMode = true),
-                    tooltip: "Outpaint (Resize)",
-                    width: itemWidth,
-                    height: itemHeight,
-                  ),
-                ],
-              ),
-            ],
-          ),
+            // 2. The Icons (Foreground)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildToggleItem(
+                  icon: Icons.brush_rounded,
+                  isActive: !_isOutpaintingMode,
+                  onTap: () => setState(() => _isOutpaintingMode = false),
+                  tooltip: "Inpaint (Brush)",
+                  width: itemWidth,
+                  height: itemHeight,
+                ),
+                _buildToggleItem(
+                  icon: Icons.aspect_ratio_rounded,
+                  isActive: _isOutpaintingMode,
+                  onTap: () => setState(() => _isOutpaintingMode = true),
+                  tooltip: "Outpaint (Resize)",
+                  width: itemWidth,
+                  height: itemHeight,
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -1210,48 +1206,45 @@ class _ImageContainerState extends State<ImageContainer> {
         // Text Field Container
         ClipRRect(
           borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppTheme.glassBackground,
-                borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                border: Border.all(color: AppTheme.glassBorder),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppTheme.glassBackground,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+              border: Border.all(color: AppTheme.glassBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: TextField(
+              focusNode: _promptFocusNode,
+              controller: userPrompt,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                height: 1.5,
+                fontWeight: FontWeight.w500,
               ),
-              child: TextField(
-                focusNode: _promptFocusNode,
-                controller: userPrompt,
-                style: const TextStyle(
-                  color: Colors.white,
+              minLines: 4,
+              maxLines: 8,
+              keyboardAppearance: Brightness.dark,
+              cursorColor: AppTheme.accentPrimary,
+              decoration: InputDecoration(
+                hintText:
+                    'Imagine a futuristic city with glowing neon lights...',
+                hintStyle: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.2),
                   fontSize: 15,
-                  height: 1.5,
-                  fontWeight: FontWeight.w500,
                 ),
-                minLines: 4,
-                maxLines: 8,
-                keyboardAppearance: Brightness.dark,
-                cursorColor: AppTheme.accentPrimary,
-                decoration: InputDecoration(
-                  hintText:
-                      'Imagine a futuristic city with glowing neon lights...',
-                  hintStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    fontSize: 15,
-                  ),
-                  filled: true,
-                  fillColor: Colors.transparent,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.all(20),
-                ),
-                onChanged: (_) => setState(() {}),
+                filled: true,
+                fillColor: Colors.transparent,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.all(20),
               ),
+              onChanged: (_) => setState(() {}),
             ),
           ),
         ),

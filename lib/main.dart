@@ -1,22 +1,23 @@
-// ==================== Main Page ==================== //
+// ==================== Main ==================== //
 
+// Flutter imports
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+// Local imports - Elements
+import 'package:sd_companion/elements/widgets/theme_constants.dart';
+
 // Local imports - Logic
-import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/api_calls.dart';
+import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/storage/storage_service.dart';
 
 // Local imports - Pages
 import 'package:sd_companion/main_page.dart';
 
-// Local imports - Widgets
-import 'package:sd_companion/elements/widgets/theme_constants.dart';
-
-// ========== Main App ========== //
+// Main App Implementation
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +56,8 @@ class LoadingScreen extends StatefulWidget {
 
 class _LoadingScreenState extends State<LoadingScreen>
     with TickerProviderStateMixin {
+  // ===== Class Variables ===== //
+
   // Animations
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -66,6 +69,8 @@ class _LoadingScreenState extends State<LoadingScreen>
   bool _isConnecting = false;
   final TextEditingController _ipController = TextEditingController();
   final TextEditingController _portController = TextEditingController();
+
+  // ===== Lifecycle Methods ===== //
 
   @override
   void initState() {
@@ -103,6 +108,8 @@ class _LoadingScreenState extends State<LoadingScreen>
     _portController.dispose();
     super.dispose();
   }
+
+  // ===== Class Methods ===== //
 
   Future<void> _initialize() async {
     await StorageService.loadServerSettings();
@@ -211,6 +218,8 @@ class _LoadingScreenState extends State<LoadingScreen>
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
     );
   }
+
+  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {

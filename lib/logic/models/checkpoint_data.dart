@@ -1,6 +1,9 @@
-// ==================== Checkpoint Data Model ==================== //
+// ==================== Checkpoint Data ==================== //
+
+// Checkpoint Data Model Implementation
 
 class CheckpointData {
+  // ===== Class Variables ===== //
   String title;
   String imageURL;
   int samplingSteps;
@@ -11,6 +14,7 @@ class CheckpointData {
   int resolutionWidth;
   String baseModel = "SD 1.5";
 
+  // ===== Constructor ===== //
   CheckpointData({
     required this.title,
     required this.imageURL,
@@ -22,6 +26,8 @@ class CheckpointData {
     required this.resolutionWidth,
     this.baseModel = "SD 1.5",
   });
+
+  // ===== Class Methods ===== //
 
   Map<String, dynamic> toJson() => {
     'Title': title,

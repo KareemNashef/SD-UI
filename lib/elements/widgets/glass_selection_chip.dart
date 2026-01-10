@@ -1,9 +1,13 @@
 // ==================== Glass Selection Chip ==================== //
 
+// Flutter imports
 import 'package:flutter/material.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
-/// A reusable selection chip widget with glassmorphism styling
+// Glass Selection Chip Implementation
+
 class GlassSelectionChip extends StatelessWidget {
   final String label;
   final bool isSelected;
@@ -20,6 +24,8 @@ class GlassSelectionChip extends StatelessWidget {
     this.padding,
   });
 
+  // ===== Build Methods ===== //
+
   @override
   Widget build(BuildContext context) {
     final effectiveAccent = accentColor ?? AppTheme.accentPrimary;
@@ -27,20 +33,15 @@ class GlassSelectionChip extends StatelessWidget {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
+        child: Container(
           padding: padding ?? const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected
-                ? effectiveAccent
-                : Colors.white.withValues(alpha: 0.05),
+            color: isSelected ? effectiveAccent : const Color(0x0DFFFFFF),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected
-                  ? effectiveAccent
-                  : Colors.white.withValues(alpha: 0.1),
+              color: isSelected ? effectiveAccent : const Color(0x1AFFFFFF),
             ),
+            // Simplified shadow
             boxShadow: isSelected
                 ? [
                     BoxShadow(
@@ -49,7 +50,7 @@ class GlassSelectionChip extends StatelessWidget {
                       spreadRadius: 0,
                     ),
                   ]
-                : [],
+                : null,
           ),
           alignment: Alignment.center,
           child: Text(

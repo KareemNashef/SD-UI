@@ -1,8 +1,13 @@
 // ==================== Glass Card ==================== //
 
+// Flutter imports
 import 'package:flutter/material.dart';
+
+// Local imports - Elements
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
+
+// Glass Card Implementation
 
 /// A reusable image card widget with selection state
 class GlassCard extends StatefulWidget {
@@ -31,8 +36,11 @@ class GlassCard extends StatefulWidget {
 
 class _GlassCardState extends State<GlassCard>
     with SingleTickerProviderStateMixin {
+  // ===== Class Variables ===== //
   late AnimationController _controller;
   late Animation<double> _scale;
+
+  // ===== Lifecycle Methods ===== //
 
   @override
   void initState() {
@@ -52,6 +60,8 @@ class _GlassCardState extends State<GlassCard>
     _controller.dispose();
     super.dispose();
   }
+
+  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {
@@ -98,6 +108,7 @@ class _GlassCardState extends State<GlassCard>
                             ? CachedNetworkImage(
                                 imageUrl: widget.imageUrl!,
                                 fit: BoxFit.cover,
+                                memCacheWidth: 500, // Optimize memory
                                 placeholder: (_, __) =>
                                     Container(color: Colors.grey.shade900),
                                 errorWidget: (_, __, ___) => Container(

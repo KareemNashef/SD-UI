@@ -1,9 +1,12 @@
 // ==================== Image Processor ==================== //
 
+// Flutter imports
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+
+// Image Processor Implementation
 
 /// Creates a mosaic (pixelated) version of an image by downscaling and upscaling
 Future<ui.Image> createMosaic(
@@ -128,7 +131,13 @@ Future<List<Uint8List>> generateOutpaintData({
 
   // Process each padded region with stretched edges
   if (padTop > 0 && padLeft > 0) {
-    final stretched = await stretchEdge(decodedImage, padLeft, padTop, 'left', stretchPercent);
+    final stretched = await stretchEdge(
+      decodedImage,
+      padLeft,
+      padTop,
+      'left',
+      stretchPercent,
+    );
     final mosaic = await createMosaic(stretched, tilesAverage, tilesAverage);
     canvasImg.drawImage(mosaic, const Offset(0, 0), Paint());
     stretched.dispose();
@@ -136,7 +145,13 @@ Future<List<Uint8List>> generateOutpaintData({
   }
 
   if (padTop > 0) {
-    final stretched = await stretchEdge(decodedImage, imgW, padTop, 'top', stretchPercent);
+    final stretched = await stretchEdge(
+      decodedImage,
+      imgW,
+      padTop,
+      'top',
+      stretchPercent,
+    );
     final mosaic = await createMosaic(stretched, tilesLong, tilesShort);
     canvasImg.drawImage(mosaic, Offset(padLeft, 0), Paint());
     stretched.dispose();
@@ -144,7 +159,13 @@ Future<List<Uint8List>> generateOutpaintData({
   }
 
   if (padTop > 0 && padRight > 0) {
-    final stretched = await stretchEdge(decodedImage, padRight, padTop, 'right', stretchPercent);
+    final stretched = await stretchEdge(
+      decodedImage,
+      padRight,
+      padTop,
+      'right',
+      stretchPercent,
+    );
     final mosaic = await createMosaic(stretched, tilesAverage, tilesAverage);
     canvasImg.drawImage(mosaic, Offset(padLeft + imgW, 0), Paint());
     stretched.dispose();
@@ -152,7 +173,13 @@ Future<List<Uint8List>> generateOutpaintData({
   }
 
   if (padLeft > 0) {
-    final stretched = await stretchEdge(decodedImage, padLeft, imgH, 'left', stretchPercent);
+    final stretched = await stretchEdge(
+      decodedImage,
+      padLeft,
+      imgH,
+      'left',
+      stretchPercent,
+    );
     final mosaic = await createMosaic(stretched, tilesShort, tilesLong);
     canvasImg.drawImage(mosaic, Offset(0, padTop), Paint());
     stretched.dispose();
@@ -160,7 +187,13 @@ Future<List<Uint8List>> generateOutpaintData({
   }
 
   if (padRight > 0) {
-    final stretched = await stretchEdge(decodedImage, padRight, imgH, 'right', stretchPercent);
+    final stretched = await stretchEdge(
+      decodedImage,
+      padRight,
+      imgH,
+      'right',
+      stretchPercent,
+    );
     final mosaic = await createMosaic(stretched, tilesShort, tilesLong);
     canvasImg.drawImage(mosaic, Offset(padLeft + imgW, padTop), Paint());
     stretched.dispose();
@@ -168,7 +201,13 @@ Future<List<Uint8List>> generateOutpaintData({
   }
 
   if (padBottom > 0 && padLeft > 0) {
-    final stretched = await stretchEdge(decodedImage, padLeft, padBottom, 'left', stretchPercent);
+    final stretched = await stretchEdge(
+      decodedImage,
+      padLeft,
+      padBottom,
+      'left',
+      stretchPercent,
+    );
     final mosaic = await createMosaic(stretched, tilesAverage, tilesAverage);
     canvasImg.drawImage(mosaic, Offset(0, padTop + imgH), Paint());
     stretched.dispose();
@@ -176,7 +215,13 @@ Future<List<Uint8List>> generateOutpaintData({
   }
 
   if (padBottom > 0) {
-    final stretched = await stretchEdge(decodedImage, imgW, padBottom, 'bottom', stretchPercent);
+    final stretched = await stretchEdge(
+      decodedImage,
+      imgW,
+      padBottom,
+      'bottom',
+      stretchPercent,
+    );
     final mosaic = await createMosaic(stretched, tilesLong, tilesShort);
     canvasImg.drawImage(mosaic, Offset(padLeft, padTop + imgH), Paint());
     stretched.dispose();
@@ -184,7 +229,13 @@ Future<List<Uint8List>> generateOutpaintData({
   }
 
   if (padBottom > 0 && padRight > 0) {
-    final stretched = await stretchEdge(decodedImage, padRight, padBottom, 'right', stretchPercent);
+    final stretched = await stretchEdge(
+      decodedImage,
+      padRight,
+      padBottom,
+      'right',
+      stretchPercent,
+    );
     final mosaic = await createMosaic(stretched, tilesAverage, tilesAverage);
     canvasImg.drawImage(mosaic, Offset(padLeft + imgW, padTop + imgH), Paint());
     stretched.dispose();
@@ -196,7 +247,9 @@ Future<List<Uint8List>> generateOutpaintData({
 
   final pictureImg = recorderImg.endRecording();
   final outImg = await pictureImg.toImage(totalW.toInt(), totalH.toInt());
-  final outImgBytes = (await outImg.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
+  final outImgBytes = (await outImg.toByteData(
+    format: ui.ImageByteFormat.png,
+  ))!.buffer.asUint8List();
 
   outImg.dispose();
 
@@ -226,7 +279,9 @@ Future<List<Uint8List>> generateOutpaintData({
 
   final pictureMask = recorderMask.endRecording();
   final outMask = await pictureMask.toImage(totalW.toInt(), totalH.toInt());
-  final outMaskBytes = (await outMask.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
+  final outMaskBytes = (await outMask.toByteData(
+    format: ui.ImageByteFormat.png,
+  ))!.buffer.asUint8List();
 
   outMask.dispose();
 

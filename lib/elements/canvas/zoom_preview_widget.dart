@@ -1,13 +1,15 @@
-// lib/zoom_preview_widget.dart
+// ==================== Zoom Preview Widget ==================== //
 
-import 'dart:ui' as ui;
+// Flutter imports
 import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
-// Assuming these are the correct paths to your other files
+// Local imports - Logic
 import 'package:sd_companion/logic/models/drawing_models.dart';
 
-// THIS IS THE WIDGET TO REPLACE
+// Zoom Preview Widget Implementation
+
 class ZoomPreviewWidget extends StatelessWidget {
   final ui.Image decodedImage;
   final List<DrawingPath> allPaths;
@@ -35,6 +37,8 @@ class ZoomPreviewWidget extends StatelessWidget {
     required this.zoomFactor,
     required this.displayRect,
   });
+
+  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {
@@ -114,6 +118,8 @@ class ZoomPreviewWidget extends StatelessWidget {
     );
   }
 }
+
+// ==================== Custom Painters ==================== //
 
 class _ZoomViewPainter extends CustomPainter {
   final ui.Image image;

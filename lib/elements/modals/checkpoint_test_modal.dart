@@ -1,8 +1,9 @@
+// ==================== Checkpoint Test Modal ==================== //
+
+// Flutter imports
 import 'package:flutter/material.dart';
-import 'package:sd_companion/logic/globals.dart';
-import 'package:sd_companion/logic/utils/sampler_names.dart';
-import 'package:sd_companion/logic/utils/test_mode.dart';
-import 'package:sd_companion/logic/utils/checkpoint_organizer.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/glass_modal.dart';
 import 'package:sd_companion/elements/widgets/glass_header.dart';
 import 'package:sd_companion/elements/widgets/glass_tab_bar.dart';
@@ -10,6 +11,14 @@ import 'package:sd_companion/elements/widgets/glass_bottom_bar.dart';
 import 'package:sd_companion/elements/widgets/glass_card.dart';
 import 'package:sd_companion/elements/widgets/glass_tile.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
+
+// Local imports - Logic
+import 'package:sd_companion/logic/globals.dart';
+import 'package:sd_companion/logic/utils/sampler_names.dart';
+import 'package:sd_companion/logic/utils/test_mode.dart';
+import 'package:sd_companion/logic/utils/checkpoint_organizer.dart';
+
+// Checkpoint Test Modal Implementation
 
 void showCheckpointTesterModal(
   BuildContext context,
@@ -53,7 +62,7 @@ class _CheckpointTesterModalContent extends StatefulWidget {
 class _CheckpointTesterModalContentState
     extends State<_CheckpointTesterModalContent>
     with SingleTickerProviderStateMixin {
-  // State
+  // ===== Class Variables ===== //
   late TabController _tabController;
   TestMode _currentMode = TestMode.checkpoints;
 
@@ -65,9 +74,7 @@ class _CheckpointTesterModalContentState
   Map<String, List<String>> _groupedCheckpoints = {};
   List<String> _sortedGroupKeys = [];
 
-  Color get _activeAccent => _currentMode == TestMode.checkpoints
-      ? AppTheme.accentPrimary
-      : AppTheme.accentTertiary;
+  // ===== Lifecycle Methods ===== //
 
   @override
   void initState() {
@@ -85,15 +92,17 @@ class _CheckpointTesterModalContentState
     _organizeCheckpoints();
   }
 
-  void _organizeCheckpoints() {
-    _groupedCheckpoints = groupCheckpointsByBaseModel();
-    _sortedGroupKeys = getSortedBaseModelKeys();
-  }
-
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  // ===== Class Methods ===== //
+
+  void _organizeCheckpoints() {
+    _groupedCheckpoints = groupCheckpointsByBaseModel();
+    _sortedGroupKeys = getSortedBaseModelKeys();
   }
 
   int get _selectionCount => _currentMode == TestMode.checkpoints
@@ -122,35 +131,7 @@ class _CheckpointTesterModalContentState
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        GlassHeader(
-          title: 'Test Lab',
-          icon: Icons.science_outlined,
-          iconColor: _activeAccent,
-          trailing: IconButton(
-            icon: const Icon(Icons.close, color: Colors.white70),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        GlassTabBar(
-          controller: _tabController,
-          tabs: const ['Checkpoints', 'Samplers'],
-        ),
-        _buildSelectionHeader(),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            physics: const BouncingScrollPhysics(),
-            children: [_buildCheckpointsList(), _buildSamplersList()],
-          ),
-        ),
-        _buildBottomBar(),
-      ],
-    );
-  }
+  // ===== Class Widgets ===== //
 
   Widget _buildSelectionHeader() {
     return Padding(
@@ -181,16 +162,16 @@ class _CheckpointTesterModalContentState
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: _activeAccent.withValues(alpha: 0.1),
+                  color: AppTheme.accentPrimary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _activeAccent.withValues(alpha: 0.3),
+                    color: AppTheme.accentPrimary.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Text(
                   _selectionCount == _totalCount ? 'None' : 'All',
-                  style: TextStyle(
-                    color: _activeAccent,
+                  style: const TextStyle(
+                    color: AppTheme.accentPrimary,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),
@@ -203,22 +184,19 @@ class _CheckpointTesterModalContentState
     );
   }
 
-  // --- Content Lists ---
-
   Widget _buildCheckpointsList() {
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+    return CustomScrollView(
       physics: const BouncingScrollPhysics(),
-      itemCount: _sortedGroupKeys.length,
-      itemBuilder: (context, groupIndex) {
-        final baseModel = _sortedGroupKeys[groupIndex];
-        final models = _groupedCheckpoints[baseModel]!;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 20.0, bottom: 12.0, left: 8),
+      slivers: [
+        for (final baseModel in _sortedGroupKeys) ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(
+                top: 20.0,
+                bottom: 12.0,
+                left: 24,
+                right: 16,
+              ),
               child: Row(
                 children: [
                   Text(
@@ -240,37 +218,41 @@ class _CheckpointTesterModalContentState
                 ],
               ),
             ),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                childAspectRatio: 0.75, // Taller aspect ratio for images
+                childAspectRatio: 0.75,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
               ),
-              itemCount: models.length,
-              itemBuilder: (context, index) {
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final models = _groupedCheckpoints[baseModel]!;
                 final name = models[index];
                 final data = globalCheckpointDataMap[name];
                 final isSelected = _selectedCheckpoints.contains(name);
 
-                return GlassCard(
-                  name: name,
-                  imageUrl: data?.imageURL,
-                  isSelected: isSelected,
-                  accentColor: AppTheme.accentPrimary,
-                  onTap: () => setState(() {
-                    isSelected
-                        ? _selectedCheckpoints.remove(name)
-                        : _selectedCheckpoints.add(name);
-                  }),
+                return RepaintBoundary(
+                  child: GlassCard(
+                    name: name,
+                    imageUrl: data?.imageURL,
+                    isSelected: isSelected,
+                    accentColor: AppTheme.accentPrimary,
+                    onTap: () => setState(() {
+                      isSelected
+                          ? _selectedCheckpoints.remove(name)
+                          : _selectedCheckpoints.add(name);
+                    }),
+                  ),
                 );
-              },
+              }, childCount: _groupedCheckpoints[baseModel]!.length),
             ),
-          ],
-        );
-      },
+          ),
+        ],
+        const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
+      ],
     );
   }
 
@@ -315,7 +297,39 @@ class _CheckpointTesterModalContentState
               }
             },
       primaryEnabled: _selectionCount > 0,
-      primaryAccentColor: _activeAccent,
+      primaryAccentColor: AppTheme.accentPrimary,
+    );
+  }
+
+  // ===== Build Methods ===== //
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GlassHeader(
+          title: 'Test Lab',
+          icon: Icons.science_outlined,
+          iconColor: AppTheme.accentPrimary,
+          trailing: IconButton(
+            icon: const Icon(Icons.close, color: Colors.white70),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        GlassTabBar(
+          controller: _tabController,
+          tabs: const ['Checkpoints', 'Samplers'],
+        ),
+        _buildSelectionHeader(),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            physics: const BouncingScrollPhysics(),
+            children: [_buildCheckpointsList(), _buildSamplersList()],
+          ),
+        ),
+        _buildBottomBar(),
+      ],
     );
   }
 }

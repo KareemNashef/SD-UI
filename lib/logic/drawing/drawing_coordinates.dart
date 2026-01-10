@@ -1,7 +1,10 @@
 // ==================== Drawing Coordinates ==================== //
 
+// Flutter imports
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
+
+// Drawing Coordinates Implementation
 
 /// Converts screen coordinates to image coordinates
 Offset convertScreenToImageCoordinates({
@@ -24,10 +27,7 @@ Offset convertScreenToImageCoordinates({
       containerSize.width,
       containerSize.width / imageAspectRatio,
     );
-    displayOffset = Offset(
-      0,
-      (containerSize.height - displaySize.height) / 2,
-    );
+    displayOffset = Offset(0, (containerSize.height - displaySize.height) / 2);
   } else {
     displaySize = Size(
       containerSize.height * imageAspectRatio,
@@ -53,8 +53,14 @@ Offset convertScreenToImageCoordinates({
   }
 
   // Convert to image coordinates
-  final imageX = (clampedPosition.dx - displayOffset.dx) / displaySize.width * imageSize.width;
-  final imageY = (clampedPosition.dy - displayOffset.dy) / displaySize.height * imageSize.height;
+  final imageX =
+      (clampedPosition.dx - displayOffset.dx) /
+      displaySize.width *
+      imageSize.width;
+  final imageY =
+      (clampedPosition.dy - displayOffset.dy) /
+      displaySize.height *
+      imageSize.height;
 
   return Offset(imageX, imageY);
 }

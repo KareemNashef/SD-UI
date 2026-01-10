@@ -1,10 +1,15 @@
 // ==================== Glass Container ==================== //
 
-import 'dart:ui';
+// Flutter imports
 import 'package:flutter/material.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
-/// A reusable glassmorphism container with backdrop blur
+// Glass Container Implementation
+
+/// A reusable glassmorphism container
+/// OPTIMIZED: Blur removed by default, simplified decoration
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final Color? backgroundColor;
@@ -12,8 +17,6 @@ class GlassContainer extends StatelessWidget {
   final double borderRadius;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
-  final bool applyBlur;
-  final double blurSigma;
   final List<BoxShadow>? boxShadow;
 
   const GlassContainer({
@@ -24,36 +27,28 @@ class GlassContainer extends StatelessWidget {
     this.borderRadius = AppTheme.radiusLarge,
     this.padding,
     this.margin,
-    this.applyBlur = false,
-    this.blurSigma = AppTheme.blurSigma,
     this.boxShadow,
   });
 
+  // ===== Build Methods ===== //
+
   @override
   Widget build(BuildContext context) {
+    final decoration = BoxDecoration(
+      color: backgroundColor ?? AppTheme.glassBackground,
+      borderRadius: BorderRadius.circular(borderRadius),
+      border: borderColor != null
+          ? Border.all(color: borderColor!, width: 1)
+          : null,
+      boxShadow: boxShadow,
+    );
+
     Widget content = Container(
-      decoration: BoxDecoration(
-        color: backgroundColor ?? AppTheme.glassBackground,
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: borderColor != null
-            ? Border.all(color: borderColor!, width: 1)
-            : null,
-        boxShadow: boxShadow,
-      ),
+      decoration: decoration,
       padding: padding,
       margin: margin,
       child: child,
     );
-
-    if (applyBlur) {
-      content = ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-          child: content,
-        ),
-      );
-    }
 
     return content;
   }

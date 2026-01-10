@@ -1,6 +1,10 @@
 // ==================== Prompt Intelligence ==================== //
 
+// Prompt Intelligence Implementation
+
 class PromptIntelligence {
+  // ===== Class Methods ===== //
+
   static Map<String, PromptElement> analyzeHistory(List<String> prompts) {
     Map<String, PromptElement> elements = {};
     for (String prompt in prompts) {
@@ -35,6 +39,8 @@ class PromptIntelligence {
     return sorted.map((e) => e.text).toList();
   }
 }
+
+// ===== Prompt Element Class ===== //
 
 class PromptElement {
   String text;

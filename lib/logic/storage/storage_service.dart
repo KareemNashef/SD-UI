@@ -1,11 +1,18 @@
 // ==================== Storage Service ==================== //
 
+// Flutter imports
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+
+// Local imports - Logic
 import 'package:sd_companion/logic/models/checkpoint_data.dart';
 import 'package:sd_companion/logic/globals.dart';
 
+// Storage Service Implementation
+
 class StorageService {
+  // ===== Class Methods ===== //
+
   // ===== Server Settings ===== //
 
   static Future<void> saveServerSettings(String ip, String port) async {

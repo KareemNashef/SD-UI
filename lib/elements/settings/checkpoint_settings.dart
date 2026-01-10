@@ -1,20 +1,22 @@
-// ==========================================
-// FILE: checkpoint_settings.dart
-// ==========================================
+// ==================== Checkpoint Settings ==================== //
 
+// Flutter imports
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/modals/checkpoint_select_modal.dart';
 import 'package:sd_companion/elements/modals/sampler_select_modal.dart';
-
-// Local Imports
 import 'package:sd_companion/elements/widgets/glass_container.dart';
 import 'package:sd_companion/elements/widgets/glass_slider.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
+// Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/api_calls.dart';
 import 'package:sd_companion/logic/storage/storage_service.dart';
+
+// Checkpoint Settings Implementation
 
 /// Main Widget for the Checkpoint Settings Section
 class CheckpointSettings extends StatefulWidget {
@@ -25,7 +27,10 @@ class CheckpointSettings extends StatefulWidget {
 }
 
 class CheckpointSettingsState extends State<CheckpointSettings> {
+  // ===== Class Variables ===== //
   bool _isChangingCheckpoint = false;
+
+  // ===== Lifecycle Methods ===== //
 
   @override
   void initState() {
@@ -33,7 +38,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
     syncActiveCheckpointSettings();
   }
 
-  // --- Actions --- //
+  // ===== Class Methods ===== //
 
   void _applyModelDefaults(String modelName) {
     final data = globalCheckpointDataMap[modelName];
@@ -50,59 +55,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final currentData = globalCheckpointDataMap[globalCurrentCheckpointName];
-
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: GlassContainer(
-        backgroundColor: AppTheme.surfaceCard,
-        borderColor: AppTheme.glassBorder,
-        borderRadius: AppTheme.radiusLarge,
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            _buildHeader(),
-            const SizedBox(height: 24),
-
-            // Main Card
-            CheckpointDisplayCard(
-              modelName: globalCurrentCheckpointName,
-              imageUrl: currentData?.imageURL,
-              baseModel: currentData?.baseModel,
-              isLoading: _isChangingCheckpoint,
-              onTap: () => showCheckpointSelectModal(
-                context: context,
-                onSelect: (modelName) async {
-                  Navigator.pop(context);
-                  setState(() => _isChangingCheckpoint = true);
-
-                  globalCurrentCheckpointName = modelName;
-                  _applyModelDefaults(modelName);
-
-                  await setCheckpoint();
-                  if (mounted) setState(() => _isChangingCheckpoint = false);
-                },
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Sampler Tile
-            _buildSamplerTile(context),
-
-            const SizedBox(height: 32),
-
-            // Configuration Sliders
-            _buildSliders(),
-          ],
-        ),
-      ),
-    );
-  }
+  // ===== Class Widgets ===== //
 
   Widget _buildHeader() {
     return Row(
@@ -233,9 +186,9 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
           onChanged: (val) {
             setState(() {
               globalDenoiseStrength = val;
-              save();
             });
           },
+          onChangeEnd: (_) => save(),
           valueFormatter: (val) => val.toStringAsFixed(2),
         ),
         const SizedBox(height: 24),
@@ -248,9 +201,9 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
           onChanged: (val) {
             setState(() {
               globalCurrentSamplingSteps = val.toInt();
-              save();
             });
           },
+          onChangeEnd: (_) => save(),
           valueFormatter: (val) => val.toInt().toString(),
         ),
         const SizedBox(height: 24),
@@ -264,9 +217,9 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
           onChanged: (val) {
             setState(() {
               globalCurrentCfgScale = val;
-              save();
             });
           },
+          onChangeEnd: (_) => save(),
           valueFormatter: (val) => val.toStringAsFixed(1),
         ),
         const SizedBox(height: 24),
@@ -284,9 +237,9 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                   setState(() {
                     globalCurrentResolutionWidth = ((val / 32).round() * 32.0)
                         .toInt();
-                    save();
                   });
                 },
+                onChangeEnd: (_) => save(),
                 valueFormatter: (val) => '${val.toInt()}',
               ),
             ),
@@ -303,9 +256,9 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                   setState(() {
                     globalCurrentResolutionHeight = ((val / 32).round() * 32.0)
                         .toInt();
-                    save();
                   });
                 },
+                onChangeEnd: (_) => save(),
                 valueFormatter: (val) => '${val.toInt()}',
               ),
             ),
@@ -314,11 +267,65 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
       ],
     );
   }
+
+  // ===== Build Methods ===== //
+
+  @override
+  Widget build(BuildContext context) {
+    final currentData = globalCheckpointDataMap[globalCurrentCheckpointName];
+
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: GlassContainer(
+        backgroundColor: AppTheme.surfaceCard,
+        borderColor: AppTheme.glassBorder,
+        borderRadius: AppTheme.radiusLarge,
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            _buildHeader(),
+            const SizedBox(height: 24),
+
+            // Main Card
+            CheckpointDisplayCard(
+              modelName: globalCurrentCheckpointName,
+              imageUrl: currentData?.imageURL,
+              baseModel: currentData?.baseModel,
+              isLoading: _isChangingCheckpoint,
+              onTap: () => showCheckpointSelectModal(
+                context: context,
+                onSelect: (modelName) async {
+                  Navigator.pop(context);
+                  setState(() => _isChangingCheckpoint = true);
+
+                  globalCurrentCheckpointName = modelName;
+                  _applyModelDefaults(modelName);
+
+                  await setCheckpoint();
+                  if (mounted) setState(() => _isChangingCheckpoint = false);
+                },
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Sampler Tile
+            _buildSamplerTile(context),
+
+            const SizedBox(height: 32),
+
+            // Configuration Sliders
+            _buildSliders(),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-// ==========================================
-// COMPONENT: Display Card
-// ==========================================
+// ==================== Checkpoint Display Card ==================== //
 
 class CheckpointDisplayCard extends StatelessWidget {
   final String modelName;
@@ -335,6 +342,19 @@ class CheckpointDisplayCard extends StatelessWidget {
     this.isLoading = false,
     required this.onTap,
   });
+
+  // ===== Class Widgets ===== //
+
+  Widget _placeholder() => Container(
+    color: AppTheme.surfaceCard,
+    child: Icon(
+      Icons.image_not_supported,
+      color: Colors.white.withValues(alpha: 0.1),
+      size: 40,
+    ),
+  );
+
+  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {
@@ -469,13 +489,4 @@ class CheckpointDisplayCard extends StatelessWidget {
       ),
     );
   }
-
-  Widget _placeholder() => Container(
-    color: AppTheme.surfaceCard,
-    child: Icon(
-      Icons.image_not_supported,
-      color: Colors.white.withValues(alpha: 0.1),
-      size: 40,
-    ),
-  );
 }

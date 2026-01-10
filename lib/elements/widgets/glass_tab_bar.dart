@@ -1,7 +1,12 @@
 // ==================== Glass Tab Bar ==================== //
 
+// Flutter imports
 import 'package:flutter/material.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
+
+// Glass Tab Bar Implementation
 
 /// Standard tab bar with glassmorphism styling
 class GlassTabBar extends StatelessWidget {
@@ -17,6 +22,8 @@ class GlassTabBar extends StatelessWidget {
     this.padding,
     this.margin,
   });
+
+  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {

@@ -1,5 +1,7 @@
 // ==================== Image Metadata Parser ==================== //
 
+// Image Metadata Parser Implementation
+
 /// Parses image info string from PNG metadata into a structured map
 Map<String, String> parseImageInfo(String info) {
   final map = <String, String>{};

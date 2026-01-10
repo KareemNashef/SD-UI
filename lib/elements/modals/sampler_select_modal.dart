@@ -1,14 +1,19 @@
+// ==================== Sampler Select Modal ==================== //
+
+// Flutter imports
 import 'package:flutter/material.dart';
 
-// UI Widgets
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/glass_modal.dart';
 import 'package:sd_companion/elements/widgets/glass_header.dart';
 import 'package:sd_companion/elements/widgets/glass_tile.dart';
 import 'package:sd_companion/elements/widgets/glass_input.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
-// Logic
+// Local imports - Logic
 import 'package:sd_companion/logic/utils/sampler_names.dart';
+
+// Sampler Select Modal Implementation
 
 void showSamplerSelectModal({
   required BuildContext context,
@@ -40,8 +45,11 @@ class SamplerSelectModal extends StatefulWidget {
 }
 
 class _SamplerSelectModalState extends State<SamplerSelectModal> {
+  // ===== Class Variables ===== //
   final TextEditingController _searchController = TextEditingController();
   List<String> _filteredSamplers = [];
+
+  // ===== Lifecycle Methods ===== //
 
   @override
   void initState() {
@@ -56,6 +64,8 @@ class _SamplerSelectModalState extends State<SamplerSelectModal> {
     super.dispose();
   }
 
+  // ===== Class Methods ===== //
+
   void _onSearchChanged() {
     final query = _searchController.text.toLowerCase();
     setState(() {
@@ -68,6 +78,8 @@ class _SamplerSelectModalState extends State<SamplerSelectModal> {
       }
     });
   }
+
+  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {

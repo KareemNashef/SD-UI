@@ -1,9 +1,13 @@
 // ==================== Glass Header ==================== //
 
+// Flutter imports
 import 'package:flutter/material.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
-/// Standard header for modals and sections
+// Glass Header Implementation
+
 class GlassHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -22,6 +26,8 @@ class GlassHeader extends StatelessWidget {
     this.padding,
   });
 
+  // ===== Build Methods ===== //
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -29,27 +35,40 @@ class GlassHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              if (icon != null) ...[
-                Icon(
-                  icon,
-                  color: iconColor ?? AppTheme.accentPrimary,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-              ],
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: AppTheme.titleLarge),
-                  if (subtitle != null)
-                    Text(subtitle!, style: AppTheme.subtitleMedium),
+          Expanded(
+            child: Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(
+                    icon,
+                    color: iconColor ?? AppTheme.accentPrimary,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
                 ],
-              ),
-            ],
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: AppTheme.titleLarge,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (subtitle != null)
+                        Text(
+                          subtitle!,
+                          style: AppTheme.subtitleMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          if (trailing != null) trailing!,
+          if (trailing != null) ...[const SizedBox(width: 12), trailing!],
         ],
       ),
     );

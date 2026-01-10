@@ -3,10 +3,16 @@
 // Flutter imports
 import 'dart:io';
 import 'package:flutter/material.dart';
+
+// Local imports - Logic
 import 'package:sd_companion/logic/backend/a1111_backend.dart';
 import 'package:sd_companion/logic/models/checkpoint_data.dart';
 import 'package:sd_companion/logic/models/lora_data.dart';
+
+// Local imports - Pages
 import 'package:sd_companion/main_page.dart';
+
+// Global Variables Implementation
 
 // ===== Backend Variables ===== //
 
@@ -22,7 +28,6 @@ final GlobalKey<MainPageState> mainPageKey = GlobalKey<MainPageState>();
 
 // 2. The External Function you requested
 void navigateToResultsPage() {
-  // Index 1 corresponds to ResultsPage() in your _pages list
   mainPageKey.currentState?.switchToPage(1);
 }
 

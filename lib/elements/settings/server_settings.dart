@@ -1,10 +1,19 @@
+// ==================== Server Settings ==================== //
+
+// Flutter imports
 import 'package:flutter/material.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/glass_container.dart';
 import 'package:sd_companion/elements/widgets/glass_input.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
+
+// Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/api_calls.dart';
 import 'package:sd_companion/logic/storage/storage_service.dart';
+
+// Server Settings Implementation
 
 class ServerSettings extends StatefulWidget {
   const ServerSettings({super.key});
@@ -14,12 +23,15 @@ class ServerSettings extends StatefulWidget {
 
 class ServerSettingsState extends State<ServerSettings>
     with SingleTickerProviderStateMixin {
+  // ===== Class Variables ===== //
   final serverIP = TextEditingController(text: globalServerIP.value);
   final serverPort = TextEditingController(text: globalServerPort.value);
 
   late AnimationController _btnController;
   late Animation<double> _btnScale;
   bool _isChecking = false;
+
+  // ===== Lifecycle Methods ===== //
 
   @override
   void initState() {
@@ -35,12 +47,6 @@ class ServerSettingsState extends State<ServerSettings>
     globalServerStatus.addListener(_onStatusChanged);
   }
 
-  void _onStatusChanged() {
-    if (mounted && _isChecking) {
-      setState(() => _isChecking = false);
-    }
-  }
-
   @override
   void dispose() {
     globalServerStatus.removeListener(_onStatusChanged);
@@ -49,6 +55,82 @@ class ServerSettingsState extends State<ServerSettings>
     _btnController.dispose();
     super.dispose();
   }
+
+  // ===== Class Methods ===== //
+
+  void _onStatusChanged() {
+    if (mounted && _isChecking) {
+      setState(() => _isChecking = false);
+    }
+  }
+
+  // ===== Class Widgets ===== //
+
+  Widget _buildButtonContent(bool isOnline) {
+    if (_isChecking) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        key: const ValueKey('checking'),
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'Ping...',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (isOnline) {
+      return const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        key: ValueKey('online'),
+        children: [
+          Icon(Icons.link, color: Colors.white, size: 22),
+          SizedBox(width: 10),
+          Text(
+            'Connected',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return const Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      key: ValueKey('offline'),
+      children: [
+        Icon(Icons.wifi_find, color: Colors.white, size: 22),
+        SizedBox(width: 10),
+        Text(
+          'Update Connection',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {
@@ -112,30 +194,6 @@ class ServerSettingsState extends State<ServerSettings>
             const SizedBox(height: 32),
 
             // ===== IP Configuration ===== //
-            Row(
-              children: [
-                const Icon(Icons.link, color: Colors.white24, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'NETWORK CONFIGURATION',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Container(
-                    height: 1,
-                    color: Colors.white.withValues(alpha: 0.05),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -258,70 +316,6 @@ class ServerSettingsState extends State<ServerSettings>
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildButtonContent(bool isOnline) {
-    if (_isChecking) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        key: const ValueKey('checking'),
-        children: [
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white.withValues(alpha: 0.9),
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Text(
-            'Ping...',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (isOnline) {
-      return const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        key: ValueKey('online'),
-        children: [
-          Icon(Icons.link, color: Colors.white, size: 22),
-          SizedBox(width: 10),
-          Text(
-            'Connected',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      );
-    }
-
-    return const Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      key: ValueKey('offline'),
-      children: [
-        Icon(Icons.wifi_find, color: Colors.white, size: 22),
-        SizedBox(width: 10),
-        Text(
-          'Update Connection',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
     );
   }
 }

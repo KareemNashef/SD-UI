@@ -1,8 +1,13 @@
 // ==================== Inpaint Page ==================== //
 
+// Flutter imports
 import 'package:flutter/material.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/ui/image_upload_container.dart';
 import 'package:sd_companion/elements/widgets/glass_app_bar.dart';
+
+// Inpaint Page Implementation
 
 class InpaintPage extends StatefulWidget {
   const InpaintPage({super.key});
@@ -13,6 +18,8 @@ class InpaintPage extends StatefulWidget {
 
 class InpaintPageState extends State<InpaintPage>
     with AutomaticKeepAliveClientMixin {
+  // ===== Build Methods ===== //
+
   @override
   bool get wantKeepAlive => true;
 

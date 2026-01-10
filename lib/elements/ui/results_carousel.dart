@@ -1,22 +1,23 @@
-// ==================== Enhanced Results Carousel ==================== //
+// ==================== Results Carousel ==================== //
 
 // Flutter imports
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/modals/metadata_modal.dart';
+import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/api_calls.dart';
 import 'package:sd_companion/logic/utils/image_metadata_parser.dart';
-// Local imports - Widgets
-import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
-// ========== Enhanced Results Carousel Class ========== //
+// Results Carousel Implementation
 
 class ResultsCarousel extends StatefulWidget {
   const ResultsCarousel({super.key});
@@ -464,9 +465,14 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                               _imageCache[imageUrl]!,
                               fit: BoxFit.cover,
                               gaplessPlayback: true,
+                              cacheWidth: 112, // 2x 56
                             )
                           : Container(color: Colors.grey.shade900))
-                    : CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover),
+                    : CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 112,
+                      ),
               ),
             ),
           );

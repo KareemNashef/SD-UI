@@ -1,8 +1,15 @@
+// ==================== Metadata Modal ==================== //
+
+// Flutter imports
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/glass_modal.dart';
 import 'package:sd_companion/elements/widgets/glass_header.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
+
+// Metadata Modal Implementation
 
 /// Shows a glassmorphic modal displaying generation metadata (prompts, parameters).
 void showMetadataModal(BuildContext context, Map<String, String> infoMap) {
@@ -13,6 +20,8 @@ class _MetadataContent extends StatelessWidget {
   final Map<String, String> infoMap;
 
   const _MetadataContent({required this.infoMap});
+
+  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +125,8 @@ class _GlassSection extends StatelessWidget {
     required this.accentColor,
   });
 
+  // ===== Build Methods ===== //
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -210,6 +221,8 @@ class _ParameterChip extends StatelessWidget {
   final String value;
 
   const _ParameterChip({required this.label, required this.value});
+
+  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {

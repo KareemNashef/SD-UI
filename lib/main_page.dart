@@ -1,15 +1,22 @@
 // ==================== Main Page ==================== //
 
+// Flutter imports
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/glass_navigation_bar.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
+
+// Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
 
-// Page Imports
+// Local imports - Pages
 import 'package:sd_companion/pages/inpaint_page.dart';
 import 'package:sd_companion/pages/results_page.dart';
 import 'package:sd_companion/pages/settings_page.dart';
+
+// Main Page Implementation
 
 // --- INSERT THE KEY AND FUNCTION HERE IF NOT IN GLOBALS.DART ---
 // final GlobalKey<MainPageState> mainPageKey = GlobalKey<MainPageState>();
@@ -34,6 +41,8 @@ class MainPageState extends State<MainPage> {
     SettingsPage(),
   ];
 
+  // ===== Lifecycle Methods ===== //
+
   @override
   void initState() {
     super.initState();
@@ -46,6 +55,8 @@ class MainPageState extends State<MainPage> {
     _pageController.dispose();
     super.dispose();
   }
+
+  // ===== Class Methods ===== //
 
   void _dismissKeyboard() {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -73,6 +84,8 @@ class MainPageState extends State<MainPage> {
       globalPageIndex.value = index;
     }
   }
+
+  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {

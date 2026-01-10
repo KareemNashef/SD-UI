@@ -1,17 +1,24 @@
 // ==================== Drawing Models ==================== //
 
+// Flutter imports
 import 'package:flutter/material.dart';
 
-// ========== Drawing Mode Enum ========== //
+// Drawing Models Implementation
+
+// ===== Drawing Mode Enum ===== //
+
 enum DrawingMode { draw, erase }
 
-// ========== Drawing Point Data ========== //
+// ===== Drawing Point Data ===== //
+
 class DrawingPoint {
-  final Offset point; // Coordinates are relative to the original image dimensions
+  final Offset
+  point; // Coordinates are relative to the original image dimensions
   DrawingPoint({required this.point});
 }
 
-// ========== Drawing Path Data ========== //
+// ===== Drawing Path Data ===== //
+
 class DrawingPath {
   final List<DrawingPoint> points;
   final DrawingMode mode;

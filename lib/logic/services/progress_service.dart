@@ -1,22 +1,24 @@
 // ==================== Progress Service ==================== //
 
-// Flutter/Dart imports
+// Flutter imports
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 // Local imports - Logic
-import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/api_calls.dart';
+import 'package:sd_companion/logic/globals.dart';
 
-// ========== Progress Service Class ========== //
+// Progress Service Implementation
 
 class ProgressService {
   // ===== Singleton Pattern ===== //
+
   static final ProgressService _instance = ProgressService._internal();
   factory ProgressService() => _instance;
   ProgressService._internal();
 
   // ===== Class Variables ===== //
+
   Timer? _progressTimer;
   bool _isPolling = false;
   bool _hasStartedGeneration =
@@ -27,7 +29,7 @@ class ProgressService {
   static const int _minPollingTimeMs =
       2000; // Minimum time before allowing completion check
 
-  // ===== Public Methods ===== //
+  // ===== Class Methods ===== //
 
   /// Starts polling the progress API
   void startProgressPolling() {
@@ -191,7 +193,7 @@ class ProgressService {
   }
 }
 
-// ========== Progress Service Extensions ========== //
+// ==================== Progress Service Extensions ==================== //
 
 /// Extension to easily access the progress service
 extension ProgressServiceExtension on ProgressService {

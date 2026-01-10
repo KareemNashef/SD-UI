@@ -1,6 +1,9 @@
 // ==================== Checkpoint Organizer ==================== //
 
+// Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
+
+// Checkpoint Organizer Implementation
 
 /// Groups checkpoints by their base model
 Map<String, List<String>> groupCheckpointsByBaseModel() {

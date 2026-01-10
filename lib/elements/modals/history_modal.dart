@@ -1,12 +1,21 @@
+// ==================== History Modal ==================== //
+
+// Flutter imports
 import 'package:flutter/material.dart';
-import 'package:sd_companion/logic/globals.dart';
-import 'package:sd_companion/logic/prompt/prompt_intelligence.dart';
-import 'package:sd_companion/logic/storage/storage_service.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/glass_modal.dart';
 import 'package:sd_companion/elements/widgets/glass_header.dart';
 import 'package:sd_companion/elements/widgets/glass_tab_bar.dart';
 import 'package:sd_companion/elements/widgets/glass_tile.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
+
+// Local imports - Logic
+import 'package:sd_companion/logic/globals.dart';
+import 'package:sd_companion/logic/prompt/prompt_intelligence.dart';
+import 'package:sd_companion/logic/storage/storage_service.dart';
+
+// History Modal Implementation
 
 // --- Entry Point ---
 void showInpaintHistory(BuildContext context, Function(String) onSelect) {
@@ -26,6 +35,7 @@ class _PromptIntelligenceSheet extends StatefulWidget {
 
 class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
     with SingleTickerProviderStateMixin {
+  // ===== Class Variables ===== //
   late List<String> historyList;
   late TabController _tabController;
 
@@ -34,10 +44,13 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
   String searchQuery = '';
   bool isMultiSelectMode = false;
   Set<String> selectedForDeletion = {};
+  List<String> _filteredElements = []; // Cached list
 
   // Logic helpers
   late Map<String, PromptElement> intelligence;
   late List<String> frequentElements;
+
+  // ===== Lifecycle Methods ===== //
 
   @override
   void initState() {
@@ -45,18 +58,45 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
     historyList = globalInpaintHistory.toList().reversed.toList();
     _tabController = TabController(length: 2, vsync: this);
 
-    // Initialize Intelligence
-    intelligence = PromptIntelligence.analyzeHistory(historyList);
-    frequentElements = PromptIntelligence.getFrequentElements(
-      intelligence,
-      minCount: 1,
-    );
+    // Initialize Intelligence - Defer to next frame to prevent open lag
+    Future.microtask(() {
+      intelligence = PromptIntelligence.analyzeHistory(historyList);
+      frequentElements = PromptIntelligence.getFrequentElements(
+        intelligence,
+        minCount: 1,
+      );
+      _updateFilteredList();
+      if (mounted) setState(() {});
+    });
+
+    // Initial empty state until async loads
+    intelligence = {};
+    frequentElements = [];
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  // ===== Class Methods ===== //
+
+  void _updateFilteredList() {
+    List<String> source = frequentElements;
+    if (searchQuery.isEmpty) {
+      _filteredElements = List.from(source);
+    } else {
+      _filteredElements = source
+          .where((e) => e.toLowerCase().contains(searchQuery.toLowerCase()))
+          .toList();
+    }
+
+    _filteredElements.sort((a, b) {
+      int countA = intelligence[a.toLowerCase()]?.count ?? 0;
+      int countB = intelligence[b.toLowerCase()]?.count ?? 0;
+      return countB.compareTo(countA);
+    });
   }
 
   void _toggleInBuild(String element) {
@@ -67,22 +107,6 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
         buildingPrompt.add(element);
       }
     });
-  }
-
-  List<String> _getFilteredElements() {
-    List<String> source = frequentElements;
-    List<String> filtered = searchQuery.isEmpty
-        ? source
-        : source
-              .where((e) => e.toLowerCase().contains(searchQuery.toLowerCase()))
-              .toList();
-
-    filtered.sort((a, b) {
-      int countA = intelligence[a.toLowerCase()]?.count ?? 0;
-      int countB = intelligence[b.toLowerCase()]?.count ?? 0;
-      return countB.compareTo(countA);
-    });
-    return filtered;
   }
 
   void _deleteSelectedPrompts() {
@@ -98,42 +122,11 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
         intelligence,
         minCount: 1,
       );
+      _updateFilteredList();
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        GlassHeader(
-          title: isMultiSelectMode ? 'Selection Mode' : 'Prompt Builder',
-          trailing: isMultiSelectMode
-              ? IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white70),
-                  onPressed: () {
-                    setState(() {
-                      isMultiSelectMode = false;
-                      selectedForDeletion.clear();
-                    });
-                  },
-                )
-              : null,
-        ),
-        const SizedBox(height: 8),
-        GlassTabBar(
-          controller: _tabController,
-          tabs: const ['Compose', 'History'],
-        ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [_buildComposeTab(), _buildHistoryTab()],
-          ),
-        ),
-        _buildBottomBar(),
-      ],
-    );
-  }
+  // ===== Class Widgets ===== //
 
   Widget _buildComposeTab() {
     return Column(
@@ -253,7 +246,10 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
           child: SizedBox(
             height: 40,
             child: TextField(
-              onChanged: (value) => setState(() => searchQuery = value),
+              onChanged: (value) => setState(() {
+                searchQuery = value;
+                _updateFilteredList();
+              }),
               style: const TextStyle(color: Colors.white, fontSize: 14),
               cursorColor: AppTheme.accentPrimary,
               textAlignVertical: TextAlignVertical.center,
@@ -281,7 +277,7 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
 
         // Elements List
         Expanded(
-          child: _getFilteredElements().isEmpty
+          child: _filteredElements.isEmpty
               ? Center(
                   child: Text(
                     'No elements found',
@@ -296,9 +292,9 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
                     vertical: 0,
                   ),
                   physics: const BouncingScrollPhysics(),
-                  itemCount: _getFilteredElements().length,
+                  itemCount: _filteredElements.length,
                   itemBuilder: (context, index) {
-                    final element = _getFilteredElements()[index];
+                    final element = _filteredElements[index];
                     final info = intelligence[element.toLowerCase()]!;
                     final isInBuild = buildingPrompt.contains(element);
 
@@ -487,6 +483,42 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
                 ],
               ),
       ),
+    );
+  }
+
+  // ===== Build Methods ===== //
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GlassHeader(
+          title: isMultiSelectMode ? 'Selection Mode' : 'Prompt Builder',
+          trailing: isMultiSelectMode
+              ? IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white70),
+                  onPressed: () {
+                    setState(() {
+                      isMultiSelectMode = false;
+                      selectedForDeletion.clear();
+                    });
+                  },
+                )
+              : null,
+        ),
+        const SizedBox(height: 8),
+        GlassTabBar(
+          controller: _tabController,
+          tabs: const ['Compose', 'History'],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [_buildComposeTab(), _buildHistoryTab()],
+          ),
+        ),
+        _buildBottomBar(),
+      ],
     );
   }
 }

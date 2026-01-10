@@ -1,15 +1,16 @@
 // ==================== Glass Drag Handle ==================== //
 
+// Flutter imports
 import 'package:flutter/material.dart';
 
-/// Standard drag handle for modals
+// Glass Drag Handle Implementation
+
 class GlassDragHandle extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
 
-  const GlassDragHandle({
-    super.key,
-    this.margin,
-  });
+  const GlassDragHandle({super.key, this.margin});
+
+  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {

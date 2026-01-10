@@ -1,6 +1,9 @@
-// ==================== Lora Data Model ==================== //
+// ==================== Lora Data ==================== //
+
+// Lora Data Model Implementation
 
 class LoraData {
+  // ===== Class Variables ===== //
   String name;
   String displayName;
   Set<String> trainedWords;
@@ -8,6 +11,7 @@ class LoraData {
   String baseModel;
   double maxStrength = 1.0;
 
+  // ===== Constructor ===== //
   LoraData({
     required this.name,
     required this.displayName,
@@ -16,6 +20,8 @@ class LoraData {
     required this.baseModel,
     this.maxStrength = 1.0,
   });
+
+  // ===== Class Methods ===== //
 
   Map<String, dynamic> toJson() => {
     'name': name,

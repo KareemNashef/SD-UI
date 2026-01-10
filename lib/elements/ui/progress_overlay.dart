@@ -1,13 +1,16 @@
 // ==================== Progress Overlay ==================== //
 
+// Flutter imports
 import 'dart:convert';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
-import 'package:sd_companion/logic/globals.dart';
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
-// ==================== Main Widget ==================== //
+// Local imports - Logic
+import 'package:sd_companion/logic/globals.dart';
+
+// Progress Overlay Implementation
 
 class ProgressOverlay extends StatelessWidget {
   const ProgressOverlay({super.key});
@@ -380,13 +383,7 @@ class _GlassHudCard extends StatelessWidget {
     return Stack(
       children: [
         Positioned.fill(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(
-              sigmaX: AppTheme.blurSigma / 2,
-              sigmaY: AppTheme.blurSigma / 2,
-            ),
-            child: Container(color: Colors.black.withValues(alpha: 0.7)),
-          ),
+          child: Container(color: Colors.black.withValues(alpha: 0.7)),
         ),
         Center(
           child: Container(

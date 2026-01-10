@@ -1,12 +1,14 @@
 // ==================== Glass Modal ==================== //
 
-import 'dart:ui';
+// Flutter imports
 import 'package:flutter/material.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
-import 'package:sd_companion/elements/widgets/glass_container.dart';
 import 'package:sd_companion/elements/widgets/glass_drag_handle.dart';
 
-/// A standard glassmorphism modal bottom sheet wrapper
+// Glass Modal Implementation
+
 class GlassModal extends StatelessWidget {
   final Widget child;
   final double heightFactor;
@@ -22,6 +24,8 @@ class GlassModal extends StatelessWidget {
     this.backgroundColor,
     this.borderColor,
   });
+
+  // ===== Class Methods ===== //
 
   static void show(
     BuildContext context, {
@@ -46,32 +50,32 @@ class GlassModal extends StatelessWidget {
     );
   }
 
+  // ===== Build Methods ===== //
+
   @override
   Widget build(BuildContext context) {
     return FractionallySizedBox(
       heightFactor: heightFactor,
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppTheme.modalBorderRadius),
-        ),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: AppTheme.blurSigma,
-            sigmaY: AppTheme.blurSigma,
+      child: Container(
+        decoration: BoxDecoration(
+          color: (backgroundColor ?? AppTheme.glassBackgroundLight).withValues(
+            alpha: 0.95,
           ),
-          child: GlassContainer(
-            backgroundColor: backgroundColor ?? AppTheme.glassBackgroundLight,
-            borderColor: borderColor ?? AppTheme.glassBorder,
-            borderRadius: AppTheme.modalBorderRadius,
-            padding: EdgeInsets.zero,
-            applyBlur: false, // Already applied by BackdropFilter
-            child: Column(
-              children: [
-                if (showDragHandle) const GlassDragHandle(),
-                Expanded(child: child),
-              ],
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppTheme.modalBorderRadius),
+          ),
+          border: Border(
+            top: BorderSide(
+              color: borderColor ?? AppTheme.glassBorder,
+              width: 1,
             ),
           ),
+        ),
+        child: Column(
+          children: [
+            if (showDragHandle) const GlassDragHandle(),
+            Expanded(child: child),
+          ],
         ),
       ),
     );

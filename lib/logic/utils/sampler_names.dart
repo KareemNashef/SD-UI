@@ -1,5 +1,7 @@
 // ==================== Sampler Names ==================== //
 
+// Sampler Names Implementation
+
 /// List of available sampler names
 const List<String> samplerNames = [
   "DPM++ 2M",

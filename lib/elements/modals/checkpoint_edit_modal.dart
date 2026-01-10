@@ -1,14 +1,19 @@
+// ==================== Checkpoint Edit Modal ==================== //
+
+// Flutter imports
 import 'package:flutter/material.dart';
 
-// UI Widgets
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/glass_modal.dart';
 import 'package:sd_companion/elements/widgets/glass_header.dart';
 import 'package:sd_companion/elements/widgets/glass_input.dart';
 import 'package:sd_companion/elements/widgets/glass_slider.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
-// Logic
+// Local imports - Logic
 import 'package:sd_companion/logic/utils/sampler_names.dart';
+
+// Checkpoint Edit Modal Implementation
 
 /// Helper function to show the editor modal
 void showCheckpointEditorModal({
@@ -45,6 +50,7 @@ class CheckpointEditorModal extends StatefulWidget {
 }
 
 class _CheckpointEditorModalState extends State<CheckpointEditorModal> {
+  // ===== Class Variables ===== //
   late TextEditingController _urlController;
   late String _baseModel;
   late String _sampler;
@@ -61,6 +67,8 @@ class _CheckpointEditorModalState extends State<CheckpointEditorModal> {
     'Flux',
     'Other',
   ];
+
+  // ===== Lifecycle Methods ===== //
 
   @override
   void initState() {
@@ -90,6 +98,8 @@ class _CheckpointEditorModalState extends State<CheckpointEditorModal> {
     super.dispose();
   }
 
+  // ===== Class Methods ===== //
+
   void _handleSave() {
     // Update the data object
     widget.data
@@ -104,6 +114,87 @@ class _CheckpointEditorModalState extends State<CheckpointEditorModal> {
     // Trigger the save callback (StorageService save)
     widget.onSave();
   }
+
+  // ===== Class Widgets ===== //
+
+  Widget _buildSectionLabel(String text) {
+    return Row(
+      children: [
+        Text(
+          text,
+          style: TextStyle(
+            color: AppTheme.accentPrimary.withValues(alpha: 0.8),
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: Colors.white.withValues(alpha: 0.1),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdown({
+    required String label,
+    required String value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.glassBorderLight),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: items.contains(value) ? value : null,
+              dropdownColor: AppTheme
+                  .surfaceCard, // Matches glass background color roughly
+              borderRadius: BorderRadius.circular(16),
+              isExpanded: true,
+              icon: const Icon(
+                Icons.keyboard_arrow_down,
+                color: Colors.white54,
+              ),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+              items: items.map((String val) {
+                return DropdownMenuItem<String>(value: val, child: Text(val));
+              }).toList(),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {
@@ -259,83 +350,6 @@ class _CheckpointEditorModalState extends State<CheckpointEditorModal> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSectionLabel(String text) {
-    return Row(
-      children: [
-        Text(
-          text,
-          style: TextStyle(
-            color: AppTheme.accentPrimary.withValues(alpha: 0.8),
-            fontSize: 11,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.2,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Container(
-            height: 1,
-            color: Colors.white.withValues(alpha: 0.1),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDropdown({
-    required String label,
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.glassBorderLight),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: items.contains(value) ? value : null,
-              dropdownColor: AppTheme
-                  .surfaceCard, // Matches glass background color roughly
-              borderRadius: BorderRadius.circular(16),
-              isExpanded: true,
-              icon: const Icon(
-                Icons.keyboard_arrow_down,
-                color: Colors.white54,
-              ),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-              items: items.map((String val) {
-                return DropdownMenuItem<String>(value: val, child: Text(val));
-              }).toList(),
-              onChanged: onChanged,
             ),
           ),
         ),

@@ -1,9 +1,14 @@
 // ==================== Mask Generator ==================== //
 
+// Flutter imports
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+
+// Local imports - Logic
 import 'package:sd_companion/logic/models/drawing_models.dart';
+
+// Mask Generator Implementation
 
 /// Generates a mask image from drawing paths
 Future<Uint8List?> generateDrawingMask({
@@ -30,7 +35,8 @@ Future<Uint8List?> generateDrawingMask({
 
   // Calculate Aspect Ratios for scaling
   final imageAspectRatio = imageSize.width / imageSize.height;
-  final containerAspectRatio = canvasRenderedSize.width / canvasRenderedSize.height;
+  final containerAspectRatio =
+      canvasRenderedSize.width / canvasRenderedSize.height;
   late final Size displaySize;
 
   if (imageAspectRatio > containerAspectRatio) {

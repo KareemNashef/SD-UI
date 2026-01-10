@@ -2,11 +2,12 @@
 
 // Flutter imports
 import 'dart:typed_data';
-
 import 'package:http/http.dart' as http;
 
 // Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
+
+// API Calls Implementation
 
 // Check if the server is online
 Future<void> checkServerStatus() async {

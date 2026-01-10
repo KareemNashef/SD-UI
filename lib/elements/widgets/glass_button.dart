@@ -1,9 +1,13 @@
 // ==================== Glass Button ==================== //
 
+// Flutter imports
 import 'package:flutter/material.dart';
+
+// Local imports - Elements
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
-/// Standard primary button with glassmorphism styling
+// Glass Button Implementation
+
 class GlassPrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -22,6 +26,8 @@ class GlassPrimaryButton extends StatelessWidget {
     this.padding,
   });
 
+  // ===== Build Methods ===== //
+
   @override
   Widget build(BuildContext context) {
     final effectiveAccent = accentColor ?? AppTheme.accentPrimary;
@@ -30,8 +36,8 @@ class GlassPrimaryButton extends StatelessWidget {
     return ElevatedButton(
       onPressed: enabled ? onPressed : null,
       style: ElevatedButton.styleFrom(
-        backgroundColor: enabled ? effectiveAccent : Colors.white10,
-        foregroundColor: enabled ? Colors.black : Colors.white38,
+        backgroundColor: enabled ? effectiveAccent : const Color(0x1AFFFFFF),
+        foregroundColor: enabled ? Colors.black : const Color(0x61FFFFFF),
         elevation: enabled ? 8 : 0,
         shadowColor: effectiveAccent.withValues(alpha: 0.4),
         shape: RoundedRectangleBorder(
@@ -44,14 +50,16 @@ class GlassPrimaryButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[Icon(icon, size: 20), const SizedBox(width: 8)],
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
         ],
       ),
     );
   }
 }
 
-/// Standard secondary button
 class GlassSecondaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -64,21 +72,27 @@ class GlassSecondaryButton extends StatelessWidget {
     this.textColor,
   });
 
+  // ===== Build Methods ===== //
+
   @override
   Widget build(BuildContext context) {
     return TextButton(
       onPressed: onPressed,
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
       child: Text(
         label,
         style: TextStyle(
-          color: textColor ?? Colors.white.withValues(alpha: 0.6),
+          color: textColor ?? const Color(0x99FFFFFF),
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
   }
 }
 
-/// Standard icon button with glass styling
 class GlassIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
@@ -95,6 +109,8 @@ class GlassIconButton extends StatelessWidget {
     this.size,
   });
 
+  // ===== Build Methods ===== //
+
   @override
   Widget build(BuildContext context) {
     Widget button = Material(
@@ -104,14 +120,14 @@ class GlassIconButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(50),
         child: Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white10),
-            color: Colors.white.withValues(alpha: 0.05),
+            border: Border.fromBorderSide(BorderSide(color: Color(0x1AFFFFFF))),
+            color: Color(0x0DFFFFFF),
           ),
           child: Icon(
             icon,
-            color: iconColor ?? Colors.white70,
+            color: iconColor ?? const Color(0xB3FFFFFF),
             size: size ?? 20,
           ),
         ),

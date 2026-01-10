@@ -1,15 +1,21 @@
 // ==================== Checkpoint Testing Service ==================== //
 
+// Local imports - Logic
+import 'package:sd_companion/logic/api_calls.dart';
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/models/checkpoint_data.dart';
-import 'package:sd_companion/logic/api_calls.dart';
+
+// Checkpoint Testing Service Implementation
 
 /// Service for managing checkpoint testing operations
 class CheckpointTestingService {
+  // ===== Class Variables ===== //
   CheckpointData? _originalConfig;
   bool _isTesting = false;
 
   bool get isTesting => _isTesting;
+
+  // ===== Class Methods ===== //
 
   /// Starts testing a list of checkpoints
   Future<void> startCheckpointTesting({
@@ -60,7 +66,10 @@ class CheckpointTestingService {
     _isTesting = false;
   }
 
-  Future<void> _testCheckpoint(String checkpointName, Function() onGenerate) async {
+  Future<void> _testCheckpoint(
+    String checkpointName,
+    Function() onGenerate,
+  ) async {
     try {
       globalIsChangingCheckpoint.value = true;
       final data = globalCheckpointDataMap[checkpointName];

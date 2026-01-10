@@ -1,8 +1,15 @@
+// ==================== Checkpoint Utils ==================== //
+
+// Flutter imports
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+
+// Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/models/checkpoint_data.dart';
 import 'package:sd_companion/logic/storage/storage_service.dart';
+
+// Checkpoint Utils Implementation
 
 /// Common logic to sync model metadata (like Civitai previews) and update global variables.
 /// This is intended to be shared across different backends.
@@ -33,6 +40,7 @@ Future<void> updateCheckpointMetadata({
       try {
         final imageUrlString =
             'http://${globalServerIP.value}:${globalServerPort.value}/file=models/Stable-diffusion/$modelName.preview.png';
+
         // check if image exists
         final imageRes = await http.head(Uri.parse(imageUrlString));
         if (imageRes.statusCode == 200) {
