@@ -3,13 +3,28 @@
 // Flutter imports
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:sd_companion/logic/backend/a1111_backend.dart';
+import 'package:sd_companion/logic/models/checkpoint_data.dart';
+import 'package:sd_companion/logic/models/lora_data.dart';
+import 'package:sd_companion/main_page.dart';
+
+// ===== Backend Variables ===== //
+
+final A1111Backend globalBackend = A1111Backend();
 
 // ===== App Variables ===== //
 
 // Page index
 ValueNotifier<int> globalPageIndex = ValueNotifier(0);
+
+// 1. Define a global key to track the MainPageState
+final GlobalKey<MainPageState> mainPageKey = GlobalKey<MainPageState>();
+
+// 2. The External Function you requested
+void navigateToResultsPage() {
+  // Index 1 corresponds to ResultsPage() in your _pages list
+  mainPageKey.currentState?.switchToPage(1);
+}
 
 // ===== Server Variables ===== //
 
@@ -17,130 +32,48 @@ ValueNotifier<int> globalPageIndex = ValueNotifier(0);
 ValueNotifier<bool> globalServerStatus = ValueNotifier(false);
 
 // Server IP
-ValueNotifier<String> globalServerIP = ValueNotifier('');
+ValueNotifier<String> globalServerIP = ValueNotifier('127.0.0.1');
 
 // Server port
-ValueNotifier<String> globalServerPort = ValueNotifier('');
-
-// Save values
-Future<void> saveServerSettings(String ip, String port) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('serverIP', ip);
-  await prefs.setString('serverPort', port);
-}
-
-// Load values
-Future<void> loadServerSettings() async {
-  final prefs = await SharedPreferences.getInstance();
-  globalServerIP.value = prefs.getString('serverIP') ?? '';
-  globalServerPort.value = prefs.getString('serverPort') ?? '';
-}
+ValueNotifier<String> globalServerPort = ValueNotifier('7860');
 
 // ===== Checkpoint Variables ===== //
 
-// Checkpoint data
-class CheckpointData {
-  String title;
-  String imageURL;
-  int samplingSteps;
-  String samplingMethod;
-  double cfgScale;
-  int resolutionHeight;
-  int resolutionWidth;
-  String baseModel = "SD 1.5";
-
-  CheckpointData({
-    required this.title,
-    required this.imageURL,
-    required this.samplingSteps,
-    required this.samplingMethod,
-    required this.cfgScale,
-    required this.resolutionHeight,
-    required this.resolutionWidth,
-    this.baseModel = "SD 1.5",
-  });
-
-  Map<String, dynamic> toJson() => {
-    'Title': title,
-    'imageURL': imageURL,
-    'samplingSteps': samplingSteps,
-    'samplingMethod': samplingMethod,
-    'cfgScale': cfgScale,
-    'resolutionHeight': resolutionHeight,
-    'resolutionWidth': resolutionWidth,
-    'baseModel': baseModel
-  };
-
-  factory CheckpointData.fromJson(Map<String, dynamic> json) => CheckpointData(
-    title: json['Title'] ?? '',
-    imageURL: json['imageURL'] ?? '',
-    samplingSteps: (json['samplingSteps'] as num).toInt(),
-    samplingMethod: json['samplingMethod'],
-    cfgScale: (json['cfgScale'] as num).toDouble(),
-    resolutionHeight: (json['resolutionHeight'] ?? 512 as num).toInt(),
-    resolutionWidth: (json['resolutionWidth'] ?? 512 as num).toInt(),
-    baseModel: json['baseModel'] ?? "SD 1.5",
-  );
-}
-
-// Checkpoint data
+// Checkpoint data map
 Map<String, CheckpointData> globalCheckpointDataMap = {};
 
-// Save values
-Future<void> saveCheckpointDataMap() async {
-  final prefs = await SharedPreferences.getInstance();
+// Internal function to sync local settings (resolution, steps, etc.) from the active backend's selected model
+void syncActiveCheckpointSettings() {
+  final name = globalCurrentCheckpointName;
+  final data = globalCheckpointDataMap[name];
 
-  // Save the map
-  final mapJson = jsonEncode(
-    globalCheckpointDataMap.map((key, value) => MapEntry(key, value.toJson())),
-  );
-  await prefs.setString('checkpointDataMap', mapJson);
-
-  // Save the last selected name
-  await prefs.setString('currentCheckpointName', globalCurrentCheckpointName);
-}
-
-// Load values
-Future<void> loadCheckpointDataMap() async {
-  final prefs = await SharedPreferences.getInstance();
-
-  // Load the map
-  final mapJson = prefs.getString('checkpointDataMap');
-  if (mapJson != null) {
-    final Map<String, dynamic> decoded = jsonDecode(mapJson);
-    globalCheckpointDataMap = decoded.map(
-      (key, value) =>
-          MapEntry(key, CheckpointData.fromJson(value as Map<String, dynamic>)),
-    );
-  }
-
-  // Load the name of the last selected checkpoint
-  globalCurrentCheckpointName = prefs.getString('currentCheckpointName') ?? '';
-
-  // Check if the last selected checkpoint exists
-  if (!globalCheckpointDataMap.containsKey(globalCurrentCheckpointName)) {
-    globalCurrentCheckpointName = globalCheckpointDataMap.keys.first;
-  }
-
-  // Sync all other plain globals after loading.
-  final data = globalCheckpointDataMap[globalCurrentCheckpointName];
   if (data != null) {
     globalCurrentResolutionHeight = data.resolutionHeight;
     globalCurrentResolutionWidth = data.resolutionWidth;
     globalCurrentSamplingSteps = data.samplingSteps;
     globalCurrentSamplingMethod = data.samplingMethod;
     globalCurrentCfgScale = data.cfgScale;
+    globalDenoiseStrength = data.denoisingStrength;
   } else {
+    // Fallbacks if no checkpoint or data
+    if (globalCheckpointDataMap.isNotEmpty) {
+      // If we have models but non-selected, select the first one
+      final firstKey = globalCheckpointDataMap.keys.first;
+      globalCurrentCheckpointName = firstKey;
+      syncActiveCheckpointSettings(); // Re-run with the new selection
+      return;
+    }
     globalCurrentResolutionHeight = 512;
     globalCurrentResolutionWidth = 512;
     globalCurrentSamplingSteps = 20;
     globalCurrentSamplingMethod = 'DPM++ 2M';
     globalCurrentCfgScale = 3.5;
+    globalDenoiseStrength = 0.95;
   }
 }
 
-// Selected checkpoint name
-late String globalCurrentCheckpointName;
+// Selected checkpoint name storage
+String globalCurrentCheckpointName = '';
 
 // Selected resolution
 late int globalCurrentResolutionHeight;
@@ -163,44 +96,12 @@ late String globalMaskFill;
 late int globalBatchSize;
 late String globalNegativePrompt;
 
-Future<void> saveDenoiseStrength() async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setDouble('denoiseStrength', globalDenoiseStrength);
-}
-
-Future<void> saveMaskBlur() async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('maskBlur', globalMaskBlur);
-}
-
-Future<void> saveMaskFill() async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('maskFill', globalMaskFill);
-}
-
-Future<void> saveBatchSize() async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('batchSize', globalBatchSize);
-}
-
-Future<void> saveNegativePrompt() async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('negativePrompt', globalNegativePrompt);
-}
-
-Future<void> loadGenerationSettings() async {
-  final prefs = await SharedPreferences.getInstance();
-  globalDenoiseStrength = prefs.getDouble('denoiseStrength') ?? 0.5;
-  globalMaskBlur = prefs.getInt('maskBlur') ?? 8;
-  globalMaskFill = prefs.getString('maskFill') ?? 'fill';
-  globalBatchSize = prefs.getInt('batchSize') ?? 2;
-  globalNegativePrompt = prefs.getString('negativePrompt') ?? '';
-}
-
 // ===== Checkpoint Testing Variables ===== //
 
 ValueNotifier<bool> globalIsCheckpointTesting = ValueNotifier<bool>(false);
-ValueNotifier<String?> globalCurrentTestingCheckpoint = ValueNotifier<String?>(null);
+ValueNotifier<String?> globalCurrentTestingCheckpoint = ValueNotifier<String?>(
+  null,
+);
 ValueNotifier<int> globalCurrentCheckpointTestIndex = ValueNotifier<int>(0);
 ValueNotifier<int> globalTotalCheckpointsToTest = ValueNotifier<int>(0);
 ValueNotifier<bool> globalIsChangingCheckpoint = ValueNotifier<bool>(false);
@@ -217,22 +118,6 @@ String globalInpaintPrompt = '';
 // Inpaint prompt history
 Set<String> globalInpaintHistory = {};
 Set<String> globalFavoritePrompts = {};
-
-Future<void> saveInpaintHistory() async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setStringList('inpaintHistory', globalInpaintHistory.toList());
-  await prefs.setStringList('favoritePrompts', globalFavoritePrompts.toList());
-}
-
-Future<void> loadInpaintHistory() async {
-  final prefs = await SharedPreferences.getInstance();
-  globalInpaintHistory = Set<String>.from(
-    prefs.getStringList('inpaintHistory') ?? [].toSet(),
-  );
-  globalFavoritePrompts = Set<String>.from(
-    prefs.getStringList('favoritePrompts') ?? [].toSet(),
-  ); // NEW
-}
 
 // ===== Results Variables ===== //
 
@@ -261,32 +146,6 @@ final ValueNotifier<bool> globalShowDetailedProgress = ValueNotifier<bool>(
 final ValueNotifier<bool> globalAutoHideProgress = ValueNotifier<bool>(true);
 
 // ===== Lora Variables ===== //
-
-// Lora data
-class LoraData {
-  String title;
-  String alias;
-  Set<String> tags;
-  double maxStrength = 1;
-
-  LoraData({
-    required this.title,
-    required this.alias,
-    required this.tags,
-  });
-
-  Map<String, dynamic> toJson() => {
-    'title': title,
-    'alias': alias,
-    'tags': tags.toList(),
-  };
-
-  factory LoraData.fromJson(Map<String, dynamic> json) => LoraData(
-    title: json['title'],
-    alias: json['alias'],
-    tags: Set<String>.from(json['tags']),
-  );
-}
 
 // Lora data map
 Map<String, LoraData> globalLoraDataMap = {};

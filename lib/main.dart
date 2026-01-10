@@ -1,19 +1,36 @@
 // ==================== Main Page ==================== //
 
-// Flutter imports
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 // Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/api_calls.dart';
+import 'package:sd_companion/logic/storage/storage_service.dart';
 
 // Local imports - Pages
 import 'package:sd_companion/main_page.dart';
+
+// Local imports - Widgets
+import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // ========== Main App ========== //
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Set system UI style for a modern look
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.light,
+      statusBarColor: Colors.transparent,
+    ),
+  );
+
   runApp(const MyApp());
 }
 
@@ -37,293 +54,402 @@ class LoadingScreen extends StatefulWidget {
 }
 
 class _LoadingScreenState extends State<LoadingScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fade;
+    with TickerProviderStateMixin {
+  // Animations
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  late AnimationController _contentController;
+  late Animation<double> _contentFade;
+
+  // State
+  bool _isOffline = false;
+  bool _isConnecting = false;
+  final TextEditingController _ipController = TextEditingController();
+  final TextEditingController _portController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+
+    // Pulsing icon animation
+    _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
-    _initialize();
-  }
-
-  InputDecoration modernInputDecoration({required String hint}) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-
-      filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.1),
-
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: Colors.white.withValues(alpha: 0.5),
-          width: 1.5,
-        ),
-      ),
-
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    _pulseAnimation = CurvedAnimation(
+      parent: _pulseController,
+      curve: Curves.easeInOut,
     );
-  }
 
-  Future<void> _initialize() async {
-    // Load previously saved server settings
-    await loadServerSettings();
+    // Content fade-in animation
+    _contentController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _contentFade = CurvedAnimation(
+      parent: _contentController,
+      curve: Curves.easeIn,
+    );
 
-    // Controllers
-    final serverIP = TextEditingController(text: globalServerIP.value);
-    final serverPort = TextEditingController(text: globalServerPort.value);
-
-    // Check if the server is online
-    await checkServerStatus();
-
-    // Keep showing the popup until the server is reachable
-    while (!globalServerStatus.value) {
-      // Display server connection dialog
-      final shouldExit = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: Colors.grey.shade800,
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Offline or invalid settings message
-                Text(
-                  'Server is currently offline or unreachable.\nCheck settings below.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white, fontSize: 15),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Server IP and Port fields
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: serverIP,
-                        keyboardType: TextInputType.number,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
-                        decoration: modernInputDecoration(hint: 'Server IP'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    SizedBox(
-                      width: 90,
-                      child: TextField(
-                        controller: serverPort,
-                        keyboardType: TextInputType.number,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
-                        decoration: modernInputDecoration(hint: 'Port'),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Buttons: Reconnect or Exit
-                Row(
-                  children: [
-                    // Reconnect button
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.lime.shade600,
-                                Colors.cyan.shade500,
-                              ],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                // Save new server settings
-                                globalServerIP.value = serverIP.text;
-                                globalServerPort.value = serverPort.text;
-                                saveServerSettings(
-                                  serverIP.text,
-                                  serverPort.text,
-                                );
-
-                                // Close dialog and retry connection
-                                Navigator.pop(context, false);
-                              },
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 14.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.wifi,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Reconnect',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    // Exit button
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.red.shade700,
-                                Colors.red.shade400,
-                              ],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () => Navigator.pop(context, true),
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 14.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.exit_to_app,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Exit',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      );
-
-      // Exit app if user chose to exit
-      if (shouldExit == true) {
-        // ignore: use_build_context_synchronously
-        Navigator.of(context).pop();
-        return;
-      }
-
-      // Re-check server status after user tries again
-      await checkServerStatus();
-    }
-
-    // Continue normal initialization if server is online
-
-    await loadCheckpointDataMap();
-    await loadGenerationSettings();
-    await loadInpaintHistory();
-    await syncCheckpointDataFromServer();
-    await loadLoraDataFromServer();
-
-    if (!mounted) return;
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const MainPage()));
+    _contentController.forward();
+    _initialize();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _pulseController.dispose();
+    _contentController.dispose();
+    _ipController.dispose();
+    _portController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initialize() async {
+    await StorageService.loadServerSettings();
+    _ipController.text = globalServerIP.value;
+    _portController.text = globalServerPort.value;
+
+    await checkServerStatus();
+
+    if (globalServerStatus.value) {
+      _startApp();
+    } else {
+      if (mounted) setState(() => _isOffline = true);
+    }
+  }
+
+  Future<void> _handleReconnect() async {
+    if (_isConnecting) return;
+
+    setState(() {
+      _isConnecting = true;
+    });
+
+    // Save and apply new settings
+    globalServerIP.value = _ipController.text;
+    globalServerPort.value = _portController.text;
+    await StorageService.saveServerSettings(
+      _ipController.text,
+      _portController.text,
+    );
+
+    // Small delay for visual feedback
+    await Future.delayed(const Duration(milliseconds: 800));
+
+    await checkServerStatus();
+
+    if (globalServerStatus.value) {
+      _startApp();
+    } else {
+      if (mounted) {
+        setState(() => _isConnecting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to connect to server. Check address.'),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _startApp() async {
+    if (mounted) {
+      setState(() {
+        _isOffline = false;
+        _isConnecting = false;
+      });
+    }
+
+    // Load necessary data and sync
+    try {
+      await StorageService.loadCheckpointDataMap();
+      await StorageService.loadGenerationSettings();
+      await StorageService.loadInpaintHistory();
+      await syncCheckpointDataFromServer();
+      await loadLoraDataFromServer();
+    } catch (e) {
+      if (kDebugMode) {
+        print("Warning during loading: $e");
+      }
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => MainPage(key: mainPageKey)),
+    );
+  }
+
+  InputDecoration _modernInputDecoration({
+    required String hint,
+    IconData? icon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: icon != null
+          ? Icon(icon, color: Colors.white30, size: 20)
+          : null,
+      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.05),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: BorderSide(
+          color: AppTheme.accentPrimary.withValues(alpha: 0.5),
+          width: 1.5,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final background = Colors.grey.shade800.withValues(alpha: 0.4);
-    final accent = Colors.cyan.shade400;
-
     return Scaffold(
-      backgroundColor: background,
-      body: Center(
+      backgroundColor: const Color(0xFF0A0A0A),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.topRight,
+            radius: 1.5,
+            colors: [
+              AppTheme.accentPrimary.withValues(alpha: 0.15),
+              Colors.transparent,
+            ],
+          ),
+        ),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 600),
+          child: _isOffline ? _buildOfflineUI() : _buildLoadingUI(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingUI() {
+    return Center(
+      key: const ValueKey('loading'),
+      child: FadeTransition(
+        opacity: _contentFade,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            FadeTransition(
-              opacity: _fade,
-              child: Icon(Icons.auto_awesome, color: accent, size: 72),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              "Loading workspace…",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w500,
+            ScaleTransition(
+              scale: Tween(begin: 0.9, end: 1.1).animate(_pulseAnimation),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppTheme.accentPrimary.withValues(alpha: 0.1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.accentPrimary.withValues(alpha: 0.2),
+                      blurRadius: 30,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: AppTheme.accentPrimary,
+                  size: 64,
+                ),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 48),
+            const Text(
+              "Initializing Workspace",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "Preparing your creative environment...",
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 40),
             SizedBox(
-              width: 200,
-              child: LinearProgressIndicator(
-                color: accent,
-                backgroundColor: Colors.white.withValues(alpha: 0.1),
-                minHeight: 6,
+              width: 240,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  color: AppTheme.accentPrimary,
+                  backgroundColor: Colors.white.withValues(alpha: 0.05),
+                  minHeight: 4,
+                ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOfflineUI() {
+    return Center(
+      key: const ValueKey('offline'),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: FadeTransition(
+          opacity: _contentFade,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.red.withValues(alpha: 0.1),
+                ),
+                child: const Icon(
+                  Icons.wifi_off_rounded,
+                  color: AppTheme.error,
+                  size: 64,
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Text(
+                "Connection Required",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                "Stable Diffusion server is unreachable.",
+                style: TextStyle(color: Colors.white54, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.03),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.05),
+                  ),
+                ),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: _ipController,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: _modernInputDecoration(
+                              hint: 'Server IP',
+                              icon: Icons.lan_outlined,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 100,
+                          child: TextField(
+                            controller: _portController,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: _modernInputDecoration(hint: 'Port'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    const SizedBox(height: 20),
+                    InkWell(
+                      onTap: _handleReconnect,
+                      borderRadius: BorderRadius.circular(20),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: double.infinity,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: _isConnecting
+                                ? [Colors.grey.shade800, Colors.grey.shade900]
+                                : [
+                                    AppTheme.accentPrimary,
+                                    AppTheme.accentSecondary,
+                                  ],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            if (!_isConnecting)
+                              BoxShadow(
+                                color: AppTheme.accentPrimary.withValues(
+                                  alpha: 0.3,
+                                ),
+                                blurRadius: 15,
+                                offset: const Offset(0, 5),
+                              ),
+                          ],
+                        ),
+                        child: Center(
+                          child: _isConnecting
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  'Connect to Server',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextButton.icon(
+                onPressed: () => exit(0),
+                icon: const Icon(
+                  Icons.power_settings_new,
+                  color: Colors.white30,
+                  size: 20,
+                ),
+                label: const Text(
+                  'Shut down app',
+                  style: TextStyle(color: Colors.white30, fontSize: 14),
+                ),
+              ),
+              const SizedBox(height: 48),
+            ],
+          ),
         ),
       ),
     );

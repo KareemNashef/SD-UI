@@ -1,0 +1,74 @@
+lib/
+├── elements/
+│   ├── canvas/
+│   │   ├── canvas_gesture.dart
+│   │   ├── mask_painter.dart
+│   │   └── zoom_preview_widget.dart
+│   ├── modals/
+│   │   ├── checkpoint_modal.dart
+│   │   ├── history_modal.dart
+│   │   ├── lora_modal.dart
+│   │   └── metadata_modal.dart
+│   ├── settings/
+│   │   ├── checkpoint_settings.dart
+│   │   ├── generation_settings.dart
+│   │   └── server_settings.dart
+│   ├── ui/
+│   │   ├── image_upload_container.dart
+│   │   ├── progress_overlay.dart
+│   │   └── results_carousel.dart
+│   └── widgets/
+│       ├── glass_action_buttons.dart
+│       ├── glass_app_bar.dart
+│       ├── glass_badge.dart
+│       ├── glass_bottom_bar.dart
+│       ├── glass_button.dart
+│       ├── glass_card.dart
+│       ├── glass_container.dart
+│       ├── glass_drag_handle.dart
+│       ├── glass_header.dart
+│       ├── glass_input.dart
+│       ├── glass_modal.dart
+│       ├── glass_navigation_bar.dart
+│       ├── glass_refresh_button.dart
+│       ├── glass_selection_chip.dart
+│       ├── glass_slider.dart
+│       ├── glass_tab_bar.dart
+│       ├── glass_tile.dart
+│       └── theme_constants.dart
+├── logic/
+│   ├── backend/
+│   │   ├── a1111_backend.dart
+│   │   └── checkpoint_utils.dart
+│   ├── drawing/
+│   │   ├── drawing_coordinates.dart
+│   │   └── mask_generator.dart
+│   ├── image/
+│   │   └── image_processor.dart
+│   ├── models/
+│   │   ├── checkpoint_data.dart
+│   │   ├── drawing_models.dart
+│   │   └── lora_data.dart
+│   ├── prompt/
+│   │   └── prompt_intelligence.dart
+│   ├── services/
+│   │   ├── checkpoint_testing_service.dart
+│   │   └── progress_service.dart
+│   ├── storage/
+│   │   └── storage_service.dart
+│   ├── utils/
+│   │   ├── checkpoint_organizer.dart
+│   │   ├── image_metadata_parser.dart
+│   │   ├── sampler_names.dart
+│   │   └── test_mode.dart
+│   ├── api_calls.dart
+│   ├── generation_logic.dart
+│   └── globals.dart
+├── pages/
+│   ├── blank_page.dart
+│   ├── inpaint_page.dart
+│   ├── results_page.dart
+│   └── settings_page.dart
+├── main.dart
+├── main_page.dart
+└── structure.txt
