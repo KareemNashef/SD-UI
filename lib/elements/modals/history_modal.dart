@@ -9,6 +9,7 @@ import 'package:sd_companion/elements/widgets/glass_header.dart';
 import 'package:sd_companion/elements/widgets/glass_tab_bar.dart';
 import 'package:sd_companion/elements/widgets/glass_tile.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
+import 'package:sd_companion/elements/widgets/glass_input.dart';
 
 // Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
@@ -245,32 +246,13 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: SizedBox(
             height: 40,
-            child: TextField(
+            child: GlassInput(
               onChanged: (value) => setState(() {
                 searchQuery = value;
                 _updateFilteredList();
               }),
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              cursorColor: AppTheme.accentPrimary,
-              textAlignVertical: TextAlignVertical.center,
-              decoration: InputDecoration(
-                hintText: 'Search known elements...',
-                hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.3),
-                ),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: AppTheme.accentPrimary.withValues(alpha: 0.7),
-                  size: 18,
-                ),
-                filled: true,
-                fillColor: Colors.black.withValues(alpha: 0.2),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: EdgeInsets.zero,
-              ),
+              hintText: 'Search known elements...',
+              prefixIcon: Icons.search,
             ),
           ),
         ),

@@ -15,10 +15,12 @@ class GlassInput extends StatelessWidget {
   final TextInputType? keyboardType;
   final bool obscureText;
   final int? maxLines;
+  final int? minLines;
   final ValueChanged<String>? onChanged;
   final Color? accentColor;
   final IconData? prefixIcon;
   final bool enabled;
+  final FocusNode? focusNode;
 
   const GlassInput({
     super.key,
@@ -28,10 +30,12 @@ class GlassInput extends StatelessWidget {
     this.keyboardType,
     this.obscureText = false,
     this.maxLines = 1,
+    this.minLines,
     this.onChanged,
     this.accentColor,
     this.prefixIcon,
     this.enabled = true,
+    this.focusNode,
   });
 
   // ===== Build Methods ===== //
@@ -42,11 +46,14 @@ class GlassInput extends StatelessWidget {
 
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       keyboardType: keyboardType,
       obscureText: obscureText,
       maxLines: maxLines,
+      minLines: minLines,
       onChanged: onChanged,
       enabled: enabled,
+      onTapOutside: (event) => FocusScope.of(context).unfocus(),
       style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         hintText: hintText,
@@ -95,6 +102,8 @@ class GlassTextArea extends StatelessWidget {
   final int minLines;
   final int maxLines;
   final bool enabled;
+  final FocusNode? focusNode;
+  final IconData? prefixIcon;
 
   const GlassTextArea({
     super.key,
@@ -105,6 +114,8 @@ class GlassTextArea extends StatelessWidget {
     this.minLines = 3,
     this.maxLines = 8,
     this.enabled = true,
+    this.focusNode,
+    this.prefixIcon,
   });
 
   // ===== Build Methods ===== //
@@ -113,12 +124,15 @@ class GlassTextArea extends StatelessWidget {
   Widget build(BuildContext context) {
     return GlassInput(
       controller: controller,
+      focusNode: focusNode,
       hintText: hintText,
       onChanged: onChanged,
       accentColor: accentColor,
       maxLines: maxLines,
+      minLines: minLines,
       keyboardType: TextInputType.multiline,
       enabled: enabled,
+      prefixIcon: prefixIcon,
     );
   }
 }

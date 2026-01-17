@@ -28,24 +28,30 @@ class ResultsPageState extends State<ResultsPage>
   Widget build(BuildContext context) {
     super.build(context); // REQUIRED!
 
-    return const Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBody: true,
-      extendBodyBehindAppBar: true,
-      appBar: GlassAppBar(title: 'LIBRARY'),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          SingleChildScrollView(
-            physics: BouncingScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(16, 110, 16, 120),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [ResultsCarousel()],
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: const Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        extendBodyBehindAppBar: true,
+        appBar: GlassAppBar(title: 'LIBRARY'),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            SingleChildScrollView(
+              physics: BouncingScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(16, 110, 16, 120),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Focus(autofocus: true, child: SizedBox.shrink()),
+                  ResultsCarousel(),
+                ],
+              ),
             ),
-          ),
-          ProgressOverlay(),
-        ],
+            ProgressOverlay(),
+          ],
+        ),
       ),
     );
   }

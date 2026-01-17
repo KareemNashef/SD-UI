@@ -30,36 +30,34 @@ class GlassSelectionChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectiveAccent = accentColor ?? AppTheme.accentPrimary;
 
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: padding ?? const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? effectiveAccent : const Color(0x0DFFFFFF),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? effectiveAccent : const Color(0x1AFFFFFF),
-            ),
-            // Simplified shadow
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: effectiveAccent.withValues(alpha: 0.4),
-                      blurRadius: 8,
-                      spreadRadius: 0,
-                    ),
-                  ]
-                : null,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding:
+            padding ?? const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+        decoration: BoxDecoration(
+          color: isSelected ? effectiveAccent : const Color(0x0DFFFFFF),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? effectiveAccent : const Color(0x1AFFFFFF),
           ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.white60,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              fontSize: 12,
-            ),
+          // Simplified shadow
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: effectiveAccent.withValues(alpha: 0.4),
+                    blurRadius: 8,
+                    spreadRadius: 0,
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white60,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 12,
           ),
         ),
       ),

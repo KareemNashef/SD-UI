@@ -251,7 +251,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   void _editSelectedImage() {
     if (_selectedImageUrl == null) return;
     globalImageToEdit.value = _selectedImageUrl;
-    globalPageIndex.value = 0;
+    navigateToInpaintPage();
   }
 
   // ===== Widgets ===== //
@@ -694,7 +694,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             // Main Image Card
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              height: 550,
+              height: 470,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.grey.shade900,

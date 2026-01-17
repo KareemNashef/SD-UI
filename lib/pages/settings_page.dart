@@ -29,24 +29,29 @@ class SettingsPageState extends State<SettingsPage>
   Widget build(BuildContext context) {
     super.build(context); // REQUIRED!
 
-    return const Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBody: true,
-      extendBodyBehindAppBar: true,
-      appBar: GlassAppBar(title: 'SYSTEM'),
-      body: SingleChildScrollView(
-        physics: BouncingScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(16, 110, 16, 120),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ServerSettings(),
-            SizedBox(height: 24),
-            CheckpointSettings(),
-            SizedBox(height: 24),
-            GenerationSettings(),
-            SizedBox(height: 20),
-          ],
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: const Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        extendBodyBehindAppBar: true,
+        appBar: GlassAppBar(title: 'SYSTEM'),
+        body: SingleChildScrollView(
+          physics: BouncingScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(16, 110, 16, 120),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Invisible dummy focus node to absorb focus restoration
+              Focus(autofocus: true, child: SizedBox.shrink()),
+              ServerSettings(),
+              SizedBox(height: 24),
+              CheckpointSettings(),
+              SizedBox(height: 24),
+              GenerationSettings(),
+              SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );

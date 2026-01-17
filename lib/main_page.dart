@@ -8,20 +8,12 @@ import 'package:flutter/services.dart';
 import 'package:sd_companion/elements/widgets/glass_navigation_bar.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
-// Local imports - Logic
-import 'package:sd_companion/logic/globals.dart';
-
 // Local imports - Pages
 import 'package:sd_companion/pages/inpaint_page.dart';
 import 'package:sd_companion/pages/results_page.dart';
 import 'package:sd_companion/pages/settings_page.dart';
 
 // Main Page Implementation
-
-// --- INSERT THE KEY AND FUNCTION HERE IF NOT IN GLOBALS.DART ---
-// final GlobalKey<MainPageState> mainPageKey = GlobalKey<MainPageState>();
-// void navigateToResultsPage() => mainPageKey.currentState?.switchToPage(1);
-// ---------------------------------------------------------------
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -47,7 +39,7 @@ class MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-    _pageController = PageController(initialPage: globalPageIndex.value);
+    _pageController = PageController();
   }
 
   @override
@@ -72,16 +64,6 @@ class MainPageState extends State<MainPage> {
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeOutQuart,
       );
-      // We don't need to set globalPageIndex here manually because
-      // animateToPage will trigger _onPageChanged
-    }
-  }
-
-  void _onPageChanged(int index) {
-    // When swiping, update the global index so the NavBar pill animates to match
-    if (globalPageIndex.value != index) {
-      _dismissKeyboard();
-      globalPageIndex.value = index;
     }
   }
 
@@ -106,7 +88,6 @@ class MainPageState extends State<MainPage> {
               PageView(
                 controller: _pageController,
                 physics: const BouncingScrollPhysics(),
-                onPageChanged: _onPageChanged,
                 children: _pages,
               ),
 
@@ -117,29 +98,24 @@ class MainPageState extends State<MainPage> {
                 left: 0,
                 right: 0,
                 bottom: isKeyboardOpen ? -100 : 20,
-                child: ValueListenableBuilder(
-                  valueListenable: globalPageIndex,
-                  builder: (context, index, _) {
-                    return GlassNavigationBar(
-                      controller: _pageController,
-                      items: const [
-                        GlassNavigationBarItem(
-                          icon: Icons.brush_rounded,
-                          title: 'Inpaint',
-                        ),
-                        GlassNavigationBarItem(
-                          icon: Icons.perm_media_rounded,
-                          title: 'Results',
-                        ),
-                        GlassNavigationBarItem(
-                          icon: Icons.tune_rounded,
-                          title: 'Settings',
-                        ),
-                      ],
-                      onTabSelected: (i) {
-                        switchToPage(i); // Use the unified method
-                      },
-                    );
+                child: GlassNavigationBar(
+                  controller: _pageController,
+                  items: const [
+                    GlassNavigationBarItem(
+                      icon: Icons.brush_rounded,
+                      title: 'Inpaint',
+                    ),
+                    GlassNavigationBarItem(
+                      icon: Icons.perm_media_rounded,
+                      title: 'Results',
+                    ),
+                    GlassNavigationBarItem(
+                      icon: Icons.tune_rounded,
+                      title: 'Settings',
+                    ),
+                  ],
+                  onTabSelected: (i) {
+                    switchToPage(i); // Use the unified method
                   },
                 ),
               ),

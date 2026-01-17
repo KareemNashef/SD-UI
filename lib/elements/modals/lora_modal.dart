@@ -207,7 +207,6 @@ class __LorasContentState extends State<_LorasContent>
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Header is already lightweight, no changes needed
         GlassHeader(
           title: 'LoRA Library',
           trailing: Row(

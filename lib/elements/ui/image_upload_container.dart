@@ -18,6 +18,7 @@ import 'package:sd_companion/elements/modals/checkpoint_test_modal.dart';
 import 'package:sd_companion/elements/modals/history_modal.dart';
 import 'package:sd_companion/elements/modals/lora_modal.dart';
 import 'package:sd_companion/elements/widgets/glass_action_buttons.dart';
+import 'package:sd_companion/elements/widgets/glass_input.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
@@ -362,7 +363,6 @@ class _ImageContainerState extends State<ImageContainer> {
       _showError('Please select an image first');
       return;
     }
-    await checkServerStatus();
     await _checkpointTestingService.startCheckpointTesting(
       checkpoints: checkpoints,
       onGenerate: generateImage,
@@ -373,7 +373,11 @@ class _ImageContainerState extends State<ImageContainer> {
     List<String> samplers,
     String target,
   ) async {
-    _startCheckpointTesting(samplers);
+    await _checkpointTestingService.startSamplerTesting(
+      samplers: samplers,
+      targetCheckpoint: target,
+      onGenerate: generateImage,
+    );
   }
 
   void _showError(String message) {
@@ -1204,49 +1208,12 @@ class _ImageContainerState extends State<ImageContainer> {
         ),
 
         // Text Field Container
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppTheme.glassBackground,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-              border: Border.all(color: AppTheme.glassBorder),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: TextField(
-              focusNode: _promptFocusNode,
-              controller: userPrompt,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                height: 1.5,
-                fontWeight: FontWeight.w500,
-              ),
-              minLines: 4,
-              maxLines: 8,
-              keyboardAppearance: Brightness.dark,
-              cursorColor: AppTheme.accentPrimary,
-              decoration: InputDecoration(
-                hintText:
-                    'Imagine a futuristic city with glowing neon lights...',
-                hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  fontSize: 15,
-                ),
-                filled: true,
-                fillColor: Colors.transparent,
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.all(20),
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
-          ),
+        GlassInput(
+          controller: userPrompt,
+          hintText: 'Imagine a futuristic city with glowing neon lights...',
+          maxLines: 3,
+          prefixIcon: Icons.science_outlined,
+          onChanged: (_) => setState(() {}),
         ),
       ],
     );

@@ -192,7 +192,6 @@ class _GlassOptionButtonState extends State<GlassOptionButton> {
             height: 56,
             width: 56,
             decoration: BoxDecoration(
-              // NO BackdropFilter - massive performance win
               color: widget.isActive
                   ? AppTheme.accentPrimary.withValues(alpha: 0.15)
                   : AppTheme.glassBackground,

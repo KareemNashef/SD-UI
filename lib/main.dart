@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 
 // Local imports - Elements
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
+import 'package:sd_companion/elements/widgets/glass_input.dart';
 
 // Local imports - Logic
 import 'package:sd_companion/logic/api_calls.dart';
@@ -188,37 +189,6 @@ class _LoadingScreenState extends State<LoadingScreen>
     );
   }
 
-  InputDecoration _modernInputDecoration({
-    required String hint,
-    IconData? icon,
-  }) {
-    return InputDecoration(
-      hintText: hint,
-      prefixIcon: icon != null
-          ? Icon(icon, color: Colors.white30, size: 20)
-          : null,
-      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-      filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.05),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(
-          color: AppTheme.accentPrimary.withValues(alpha: 0.5),
-          width: 1.5,
-        ),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-    );
-  }
-
   // ===== Build Methods ===== //
 
   @override
@@ -364,24 +334,20 @@ class _LoadingScreenState extends State<LoadingScreen>
                       children: [
                         Expanded(
                           flex: 2,
-                          child: TextField(
+                          child: GlassInput(
                             controller: _ipController,
                             keyboardType: TextInputType.number,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: _modernInputDecoration(
-                              hint: 'Server IP',
-                              icon: Icons.lan_outlined,
-                            ),
+                            hintText: 'Server IP',
+                            prefixIcon: Icons.lan_outlined,
                           ),
                         ),
                         const SizedBox(width: 12),
                         SizedBox(
                           width: 100,
-                          child: TextField(
+                          child: GlassInput(
                             controller: _portController,
                             keyboardType: TextInputType.number,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: _modernInputDecoration(hint: 'Port'),
+                            hintText: 'Port',
                           ),
                         ),
                       ],

@@ -17,6 +17,8 @@ void showMetadataModal(BuildContext context, Map<String, String> infoMap) {
 }
 
 class _MetadataContent extends StatelessWidget {
+  // ===== Variables ===== //
+
   final Map<String, String> infoMap;
 
   const _MetadataContent({required this.infoMap});

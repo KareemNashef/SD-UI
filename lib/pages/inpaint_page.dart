@@ -27,17 +27,23 @@ class InpaintPageState extends State<InpaintPage>
   Widget build(BuildContext context) {
     super.build(context);
 
-    return const Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBody: true,
-      extendBodyBehindAppBar: true,
-      appBar: GlassAppBar(title: 'CANVAS'),
-      body: SingleChildScrollView(
-        physics: BouncingScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(16, 110, 16, 120),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [ImageContainer()],
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: const Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        extendBodyBehindAppBar: true,
+        appBar: GlassAppBar(title: 'CANVAS'),
+        body: SingleChildScrollView(
+          physics: BouncingScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(16, 110, 16, 120),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Focus(autofocus: true, child: SizedBox.shrink()),
+              ImageContainer(),
+            ],
+          ),
         ),
       ),
     );

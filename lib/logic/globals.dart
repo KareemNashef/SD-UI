@@ -20,15 +20,22 @@ final A1111Backend globalBackend = A1111Backend();
 
 // ===== App Variables ===== //
 
-// Page index
-ValueNotifier<int> globalPageIndex = ValueNotifier(0);
-
-// 1. Define a global key to track the MainPageState
+// MainPageState key
 final GlobalKey<MainPageState> mainPageKey = GlobalKey<MainPageState>();
 
-// 2. The External Function you requested
+// Function to navigate to inpaint page
+void navigateToInpaintPage() {
+  mainPageKey.currentState?.switchToPage(0);
+}
+
+// Function to navigate to results page
 void navigateToResultsPage() {
   mainPageKey.currentState?.switchToPage(1);
+}
+
+// Function to navigate to settings page
+void navigateToSettingsPage() {
+  mainPageKey.currentState?.switchToPage(2);
 }
 
 // ===== Server Variables ===== //
@@ -81,25 +88,25 @@ void syncActiveCheckpointSettings() {
 String globalCurrentCheckpointName = '';
 
 // Selected resolution
-late int globalCurrentResolutionHeight;
-late int globalCurrentResolutionWidth;
+int globalCurrentResolutionHeight = 512;
+int globalCurrentResolutionWidth = 512;
 
 // Selected checkpoint sampling steps
-late int globalCurrentSamplingSteps;
+int globalCurrentSamplingSteps = 20;
 
 // Selected checkpoint sampling method
-late String globalCurrentSamplingMethod;
+String globalCurrentSamplingMethod = 'Euler a';
 
 // Selected checkpoint cfg scale
-late double globalCurrentCfgScale;
+double globalCurrentCfgScale = 7.0;
 
 // ===== Generation Variables ===== //
 
-late double globalDenoiseStrength;
-late int globalMaskBlur;
-late String globalMaskFill;
-late int globalBatchSize;
-late String globalNegativePrompt;
+double globalDenoiseStrength = 0.95;
+int globalMaskBlur = 8;
+String globalMaskFill = 'fill';
+int globalBatchSize = 1;
+String globalNegativePrompt = '';
 
 // ===== Checkpoint Testing Variables ===== //
 

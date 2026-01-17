@@ -7,9 +7,6 @@ import 'package:flutter/services.dart';
 // Local imports - Elements
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
-// Local imports - Logic
-import 'package:sd_companion/logic/globals.dart';
-
 // Glass Navigation Bar Implementation
 
 class GlassNavigationBar extends StatelessWidget {
@@ -90,7 +87,6 @@ class GlassNavigationBar extends StatelessWidget {
       child: Container(
         height: barHeight,
         decoration: BoxDecoration(
-          // NO BackdropFilter - massive performance improvement
           color: AppTheme.glassBackground,
           borderRadius: BorderRadius.circular(AppTheme.radiusFull),
           border: Border.all(color: AppTheme.glassBorder, width: 1),
@@ -108,13 +104,13 @@ class GlassNavigationBar extends StatelessWidget {
             final tabWidth = constraints.maxWidth / items.length;
 
             return AnimatedBuilder(
-              animation: controller ?? globalPageIndex,
+              animation: controller ?? ValueNotifier(0),
               builder: (context, child) {
                 double currentScrollPage;
                 if (controller != null && controller!.hasClients) {
                   currentScrollPage = controller!.page ?? 0.0;
                 } else {
-                  currentScrollPage = globalPageIndex.value.toDouble();
+                  currentScrollPage = ValueNotifier(0).value.toDouble();
                 }
 
                 return Stack(
@@ -159,7 +155,7 @@ class GlassNavigationBar extends StatelessWidget {
                           height: indicatorHeight,
                           child: InkWell(
                             onTap: () {
-                              if (globalPageIndex.value != index) {
+                              if (controller!.page != index) {
                                 HapticFeedback.selectionClick();
                                 onTabSelected(index);
                               }

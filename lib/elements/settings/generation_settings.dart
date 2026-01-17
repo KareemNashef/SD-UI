@@ -28,12 +28,14 @@ class GenerationSettingsState extends State<GenerationSettings> {
   final _negativePromptController = TextEditingController(
     text: globalNegativePrompt,
   );
+  final _negativeFocusNode = FocusNode();
 
   // ===== Lifecycle Methods ===== //
 
   @override
   void dispose() {
     _negativePromptController.dispose();
+    _negativeFocusNode.dispose();
     super.dispose();
   }
 
@@ -155,44 +157,49 @@ class GenerationSettingsState extends State<GenerationSettings> {
             const SizedBox(height: 32),
 
             // ===== Inpainting Mode ===== //
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.start,
-                  children: [
-                    _buildMaskOption('Fill', 'fill'),
-                    _buildMaskOption('Original', 'original'),
-                    _buildMaskOption('Latent Noise', 'latent noise'),
-                    _buildMaskOption('Latent Nothing', 'latent nothing'),
-                  ],
-                );
-              },
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.start,
+              children: [
+                _buildMaskOption('Fill', 'fill'),
+                _buildMaskOption('Original', 'original'),
+                _buildMaskOption('Latent Noise', 'latent noise'),
+                _buildMaskOption('Latent Nothing', 'latent nothing'),
+              ],
             ),
 
             const SizedBox(height: 32),
 
             // ===== Negative Prompt ===== //
-            Text(
-              'NEGATIVE PROMPT',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 12),
-            GlassInput(
-              controller: _negativePromptController,
-              hintText: 'blur, low quality, watermark, text, bad anatomy...',
-              maxLines: 3,
-              prefixIcon: Icons.block_flipped,
-              onChanged: (value) {
-                globalNegativePrompt = value;
-                StorageService.saveNegativePrompt();
-              },
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'NEGATIVE PROMPT',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                GlassTextArea(
+                  controller: _negativePromptController,
+                  focusNode: _negativeFocusNode,
+                  hintText:
+                      'blur, low quality, watermark, text, bad anatomy...',
+                  minLines: 3,
+                  maxLines: 5,
+                  prefixIcon: Icons.block,
+                  accentColor: AppTheme.accentSecondary,
+                  onChanged: (value) {
+                    globalNegativePrompt = value;
+                    StorageService.saveNegativePrompt();
+                  },
+                ),
+              ],
             ),
           ],
         ),

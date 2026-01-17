@@ -42,7 +42,6 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        // NO BackdropFilter - use semi-transparent solid color
         color: const Color(0xE6000000), // 90% opacity black
         border: Border(
           bottom: BorderSide(
