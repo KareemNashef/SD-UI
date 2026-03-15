@@ -78,8 +78,12 @@ Future<void> updateCheckpointMetadata({
         samplingSteps: existingData?.samplingSteps ?? 20,
         samplingMethod: existingData?.samplingMethod ?? 'DPM++ 2M',
         cfgScale: existingData?.cfgScale ?? 3.5,
-        resolutionHeight: existingData?.resolutionHeight ?? 512,
-        resolutionWidth: existingData?.resolutionWidth ?? 512,
+        resolutionHeight:
+            existingData?.resolutionHeight ??
+            (baseModel == 'SD 1.5' ? 512 : 1152),
+        resolutionWidth:
+            existingData?.resolutionWidth ??
+            (baseModel == 'SD 1.5' ? 512 : 896),
         baseModel: baseModel,
       );
     }

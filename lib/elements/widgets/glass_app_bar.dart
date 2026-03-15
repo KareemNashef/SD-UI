@@ -19,6 +19,7 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showStatusIndicator;
   final double height;
   final Widget? leading;
+  final VoidCallback? onTitleTap;
 
   const GlassAppBar({
     super.key,
@@ -28,6 +29,7 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.showStatusIndicator = true,
     this.height = 100,
     this.leading,
+    this.onTitleTap,
   });
 
   // ===== Class Methods ===== //
@@ -63,54 +65,58 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
               systemOverlayStyle: SystemUiOverlayStyle.light,
               leading: leading,
               actions: actions,
-              title: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2.0,
-                      color: Colors.white,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black,
-                          offset: Offset(0, 2),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0x0DFFFFFF),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: const Color(0x26FFFFFF),
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        subtitle!,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                          color: AppTheme.textSecondary,
-                        ),
+              title: GestureDetector(
+                onTap: onTitleTap,
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.0,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black,
+                            offset: Offset(0, 2),
+                            blurRadius: 4,
+                          ),
+                        ],
                       ),
                     ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0x0DFFFFFF),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: const Color(0x26FFFFFF),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          subtitle!,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
             if (showStatusIndicator)

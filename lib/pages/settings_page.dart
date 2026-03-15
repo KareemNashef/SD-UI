@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 
 // Local imports - Elements
 import 'package:sd_companion/elements/settings/checkpoint_settings.dart';
-import 'package:sd_companion/elements/settings/edit_settings.dart';
 import 'package:sd_companion/elements/settings/generation_settings.dart';
 import 'package:sd_companion/elements/settings/server_settings.dart';
 import 'package:sd_companion/elements/widgets/glass_app_bar.dart';
@@ -45,13 +44,12 @@ class SettingsPageState extends State<SettingsPage>
             children: [
               // Invisible dummy focus node to absorb focus restoration
               Focus(autofocus: true, child: SizedBox.shrink()),
+              SizedBox(height: 16),
               ServerSettings(),
               SizedBox(height: 24),
               CheckpointSettings(),
               SizedBox(height: 24),
               GenerationSettings(),
-              SizedBox(height: 24),
-              EditSettings(),
               SizedBox(height: 20),
             ],
           ),

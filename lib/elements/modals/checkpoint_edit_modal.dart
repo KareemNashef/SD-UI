@@ -244,7 +244,6 @@ class _CheckpointEditorModalState extends State<CheckpointEditorModal> {
               ),
               GlassInput(
                 controller: _urlController,
-                hintText: "https://civitai.com/image...",
                 prefixIcon: Icons.link_rounded,
                 maxLines: 1,
               ),

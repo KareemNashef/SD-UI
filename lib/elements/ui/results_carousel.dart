@@ -9,7 +9,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 // Local imports - Elements
+import 'package:sd_companion/elements/modals/crop_modal.dart';
 import 'package:sd_companion/elements/modals/metadata_modal.dart';
+import 'package:sd_companion/elements/modals/resize_modal.dart';
+import 'package:sd_companion/elements/modals/upscale_modal.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
@@ -252,6 +255,109 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
     if (_selectedImageUrl == null) return;
     globalImageToEdit.value = _selectedImageUrl;
     navigateToInpaintPage();
+  }
+
+  /// Returns the selected image as bytes, or null if unavailable.
+  Future<Uint8List?> _getSelectedImageBytes() async {
+    if (_selectedImageUrl == null) return null;
+    final url = _selectedImageUrl!;
+    if (_isBase64DataUrl(url)) {
+      try {
+        return _imageCache[url] ??
+            base64Decode(_extractBase64Data(url));
+      } catch (_) {
+        return null;
+      }
+    }
+    try {
+      return await fetchImageBytes(url);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _showEditDestinationMenu() {
+    if (_selectedImageUrl == null) return;
+    final parentContext = context;
+    showModalBottomSheet<void>(
+      context: parentContext,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: AppTheme.glassBackground.withValues(alpha: 0.98),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppTheme.radiusLarge),
+          ),
+          border: Border(
+            top: BorderSide(color: AppTheme.glassBorder),
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Send to',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(
+                  Icons.crop_rounded,
+                  color: AppTheme.accentPrimary,
+                ),
+                title: const Text('Crop', style: TextStyle(color: Colors.white)),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  final bytes = await _getSelectedImageBytes();
+                  if (!parentContext.mounted) return;
+                  if (bytes != null) {
+                    showCropModal(parentContext, initialImageBytes: bytes);
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.photo_size_select_large_rounded,
+                  color: AppTheme.accentPrimary,
+                ),
+                title: const Text('Resize', style: TextStyle(color: Colors.white)),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  final bytes = await _getSelectedImageBytes();
+                  if (!parentContext.mounted) return;
+                  if (bytes != null) {
+                    showResizeModal(parentContext, initialImageBytes: bytes);
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppTheme.accentPrimary,
+                ),
+                title: const Text('Upscale', style: TextStyle(color: Colors.white)),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  final bytes = await _getSelectedImageBytes();
+                  if (!parentContext.mounted) return;
+                  if (bytes != null) {
+                    showUpscaleModal(parentContext, initialImageBytes: bytes);
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   // ===== Widgets ===== //
@@ -611,11 +717,12 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             margin: const EdgeInsets.symmetric(horizontal: 4),
           ),
 
-          // Edit Button
+          // Edit Button (tap = inpaint, long-press = choose Crop or Resize)
           _buildIconAction(
             Icons.auto_fix_high,
             'Edit',
             hasImage ? _editSelectedImage : null,
+            onLongPress: hasImage ? _showEditDestinationMenu : null,
           ),
 
           // Info Button
@@ -642,10 +749,11 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
     IconData icon,
     String tooltip,
     VoidCallback? onTap, {
+    VoidCallback? onLongPress,
     bool isLoading = false,
     bool isDestructive = false,
   }) {
-    final isEnabled = onTap != null;
+    final isEnabled = onTap != null || onLongPress != null;
     final color = isDestructive ? Colors.red.shade400 : Colors.white;
 
     return Expanded(
@@ -656,6 +764,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: onTap,
+            onLongPress: onLongPress,
             child: SizedBox(
               height: 50,
               child: Center(

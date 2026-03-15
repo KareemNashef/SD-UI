@@ -182,6 +182,64 @@ class A1111Backend {
     }
   }
 
+  // =================================================================
+  // SeedVR2 Upscaling
+  // =================================================================
+  Future<String> upscaleSeedVR2({
+    required Uint8List imageBytes,
+    required int resolution,
+    Function(Map<String, dynamic> progressData)? onProgress,
+  }) async {
+    final base64Image = base64Encode(imageBytes);
+
+    final body = {"image": base64Image, "resolution": resolution};
+
+    final url = Uri.parse('$_baseUrl/seedvr2/upscale');
+    bool isDone = false;
+
+    // 1. Start the upscale request without awaiting it immediately
+    final upscaleFuture = http
+        .post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .whenComplete(() => isDone = true);
+
+    // 2. Polling loop: Ping standard A1111/Forge progress while waiting
+    if (onProgress != null) {
+      while (!isDone) {
+        await Future.delayed(const Duration(milliseconds: 1000));
+        if (isDone) break; // Break early if it finished during delay
+
+        try {
+          final progressData = await fetchProgress();
+          onProgress(progressData);
+        } catch (e) {
+          debugPrint('Failed to poll upscale progress: $e');
+        }
+      }
+    }
+
+    // 3. Await the actual upscaling result
+    final response = await upscaleFuture;
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      final String upscaledImage = responseData['image'];
+
+      // Attach data URI scheme if not present so Flutter can display it easily
+      if (upscaledImage.startsWith('data:image/')) {
+        return upscaledImage;
+      }
+      return 'data:image/png;base64,$upscaledImage';
+    } else {
+      throw Exception(
+        'Upscaling failed: HTTP ${response.statusCode}: ${response.body}',
+      );
+    }
+  }
+
   Future<List<String>> generateImg2Img({
     required String prompt,
     required Uint8List imageBytes,

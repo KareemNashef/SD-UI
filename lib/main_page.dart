@@ -29,7 +29,7 @@ class MainPageState extends State<MainPage> {
   // ===== Pages ===== //
   final List<Widget> _pages = const [
     InpaintPage(),
-    ResultsPage(), // Index 1
+    ResultsPage(),
     SettingsPage(),
   ];
 
