@@ -81,8 +81,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
     String? newSelectedImage = _selectedImageUrl;
     if (isInitialSetup) {
       newSelectedImage = imageList.isNotEmpty ? imageList.first : null;
-    } else if (_selectedImageUrl != null &&
-        !imageSet.contains(_selectedImageUrl)) {
+    } else if (_selectedImageUrl != null && !imageSet.contains(_selectedImageUrl)) {
       final oldList = _lastKnownImageList;
       final deletedIndex = oldList.indexOf(_selectedImageUrl!);
 
@@ -141,14 +140,11 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
       }
 
       const downloadsPath = '/storage/emulated/0/Download';
-      final fileName =
-          'generated_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final fileName = 'generated_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final savePath = '$downloadsPath/$fileName';
 
       if (_isBase64DataUrl(_selectedImageUrl!)) {
-        final bytes =
-            _imageCache[_selectedImageUrl!] ??
-            base64Decode(_extractBase64Data(_selectedImageUrl!));
+        final bytes = _imageCache[_selectedImageUrl!] ?? base64Decode(_extractBase64Data(_selectedImageUrl!));
         final file = File(savePath);
         await file.writeAsBytes(bytes);
       } else {
@@ -168,19 +164,11 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
           ),
           backgroundColor: Colors.green.shade600,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusSmall * 0.8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSmall * 0.8)),
         ),
       );
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Error saving: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('Error saving: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -217,13 +205,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
         final info = responseData['info'] as String?;
 
         if (info == null || info.isEmpty) {
-          messenger.showSnackBar(
-            const SnackBar(
-              content: Text('No metadata found'),
-              backgroundColor: Colors.orange,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          messenger.showSnackBar(const SnackBar(content: Text('No metadata found'), backgroundColor: Colors.orange, behavior: SnackBarBehavior.floating));
           return;
         }
 
@@ -232,13 +214,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
       }
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        messenger.showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
       }
     } finally {
       if (mounted) {
@@ -263,8 +239,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
     final url = _selectedImageUrl!;
     if (_isBase64DataUrl(url)) {
       try {
-        return _imageCache[url] ??
-            base64Decode(_extractBase64Data(url));
+        return _imageCache[url] ?? base64Decode(_extractBase64Data(url));
       } catch (_) {
         return null;
       }
@@ -285,12 +260,8 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
       builder: (ctx) => Container(
         decoration: BoxDecoration(
           color: AppTheme.glassBackground.withValues(alpha: 0.98),
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(AppTheme.radiusLarge),
-          ),
-          border: Border(
-            top: BorderSide(color: AppTheme.glassBorder),
-          ),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLarge)),
+          border: Border(top: BorderSide(color: AppTheme.glassBorder)),
         ),
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         child: SafeArea(
@@ -300,19 +271,11 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             children: [
               Text(
                 'Send to',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
-                ),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1),
               ),
               const SizedBox(height: 12),
               ListTile(
-                leading: const Icon(
-                  Icons.crop_rounded,
-                  color: AppTheme.accentPrimary,
-                ),
+                leading: const Icon(Icons.crop_rounded, color: AppTheme.accentPrimary),
                 title: const Text('Crop', style: TextStyle(color: Colors.white)),
                 onTap: () async {
                   Navigator.of(ctx).pop();
@@ -324,10 +287,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                 },
               ),
               ListTile(
-                leading: const Icon(
-                  Icons.photo_size_select_large_rounded,
-                  color: AppTheme.accentPrimary,
-                ),
+                leading: const Icon(Icons.photo_size_select_large_rounded, color: AppTheme.accentPrimary),
                 title: const Text('Resize', style: TextStyle(color: Colors.white)),
                 onTap: () async {
                   Navigator.of(ctx).pop();
@@ -339,10 +299,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                 },
               ),
               ListTile(
-                leading: const Icon(
-                  Icons.auto_awesome_rounded,
-                  color: AppTheme.accentPrimary,
-                ),
+                leading: const Icon(Icons.auto_awesome_rounded, color: AppTheme.accentPrimary),
                 title: const Text('Upscale', style: TextStyle(color: Colors.white)),
                 onTap: () async {
                   Navigator.of(ctx).pop();
@@ -371,22 +328,11 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(
-                  height: 60,
-                  width: 60,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3,
-                    color: AppTheme.accentPrimary,
-                  ),
-                ),
+                const SizedBox(height: 60, width: 60, child: CircularProgressIndicator(strokeWidth: 3, color: AppTheme.accentPrimary)),
                 const SizedBox(height: 24),
                 Text(
                   'Generating...',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 18, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -396,19 +342,9 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.photo_library_outlined,
-                size: 64,
-                color: Colors.white.withValues(alpha: 0.1),
-              ),
+              Icon(Icons.photo_library_outlined, size: 64, color: Colors.white.withValues(alpha: 0.1)),
               const SizedBox(height: 16),
-              Text(
-                'Gallery is empty',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.3),
-                  fontSize: 16,
-                ),
-              ),
+              Text('Gallery is empty', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 16)),
             ],
           ),
         );
@@ -421,8 +357,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
 
     // LOGIC: Check if we are comparing and have a valid input file
     final File? inputFile = globalInputImage.value;
-    final bool showInput =
-        _isComparing && inputFile != null && inputFile.existsSync();
+    final bool showInput = _isComparing && inputFile != null && inputFile.existsSync();
 
     // The key ensures the widget rebuilds with animation when switching sources
     final imageKey = showInput ? 'input_image' : _selectedImageUrl!;
@@ -437,13 +372,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             // 1. The Image Layer
             ClipRRect(
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-              child: showInput
-                  ? Image.file(
-                      inputFile,
-                      fit: BoxFit.contain,
-                      gaplessPlayback: true,
-                    )
-                  : _buildResultImageWidget(_selectedImageUrl!),
+              child: showInput ? Image.file(inputFile, fit: BoxFit.contain, gaplessPlayback: true) : _buildResultImageWidget(_selectedImageUrl!),
             ),
 
             // 2. The Status Badge (Visual Feedback)
@@ -454,38 +383,19 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                 opacity: _isComparing ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 200),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: showInput
-                        ? AppTheme.warning.withValues(alpha: 0.9)
-                        : AppTheme.accentPrimary.withValues(alpha: 0.8),
+                    color: showInput ? AppTheme.warning.withValues(alpha: 0.9) : AppTheme.accentPrimary.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        blurRadius: 8,
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 8)],
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        showInput ? Icons.input : Icons.image,
-                        color: Colors.white,
-                        size: 14,
-                      ),
+                      Icon(showInput ? Icons.input : Icons.image, color: Colors.white, size: 14),
                       const SizedBox(width: 6),
                       Text(
                         showInput ? 'INPUT SOURCE' : 'GENERATED RESULT',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
                       ),
                     ],
                   ),
@@ -501,19 +411,11 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   Widget _buildResultImageWidget(String url) {
     if (_isBase64DataUrl(url)) {
       if (_imageCache[url] != null) {
-        return Image.memory(
-          _imageCache[url]!,
-          fit: BoxFit.contain,
-          gaplessPlayback: true,
-        );
+        return Image.memory(_imageCache[url]!, fit: BoxFit.contain, gaplessPlayback: true);
       }
       // Attempt decode on fly if not cached
       try {
-        return Image.memory(
-          base64Decode(_extractBase64Data(url)),
-          fit: BoxFit.contain,
-          gaplessPlayback: true,
-        );
+        return Image.memory(base64Decode(_extractBase64Data(url)), fit: BoxFit.contain, gaplessPlayback: true);
       } catch (e) {
         return const Icon(Icons.broken_image, color: Colors.white24);
       }
@@ -521,11 +423,8 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
       return CachedNetworkImage(
         imageUrl: url,
         fit: BoxFit.contain,
-        placeholder: (_, __) => const Center(
-          child: CircularProgressIndicator(color: AppTheme.accentPrimary),
-        ),
-        errorWidget: (_, __, ___) =>
-            const Icon(Icons.broken_image, color: Colors.white24),
+        placeholder: (_, __) => const Center(child: CircularProgressIndicator(color: AppTheme.accentPrimary)),
+        errorWidget: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white24),
       );
     }
   }
@@ -553,15 +452,8 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
               width: isSelected ? 56 : 48,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isSelected
-                      ? AppTheme.accentPrimary
-                      : AppTheme.glassBorderLight,
-                  width: isSelected ? 2 : 1,
-                ),
-                boxShadow: isSelected
-                    ? AppTheme.glowPrimary(intensity: 0.3)
-                    : null,
+                border: Border.all(color: isSelected ? AppTheme.accentPrimary : AppTheme.glassBorderLight, width: isSelected ? 2 : 1),
+                boxShadow: isSelected ? AppTheme.glowPrimary(intensity: 0.3) : null,
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall * 0.5),
@@ -574,11 +466,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                               cacheWidth: 112, // 2x 56
                             )
                           : Container(color: Colors.grey.shade900))
-                    : CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        fit: BoxFit.cover,
-                        memCacheWidth: 112,
-                      ),
+                    : CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover, memCacheWidth: 112),
               ),
             ),
           );
@@ -599,13 +487,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
         color: AppTheme.glassBackground,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
         border: Border.all(color: AppTheme.glassBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 16, offset: const Offset(0, 4))],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -616,11 +498,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             child: Container(
               height: 50,
               decoration: BoxDecoration(
-                gradient: hasImage
-                    ? AppTheme.gradientPrimary
-                    : LinearGradient(
-                        colors: [Colors.grey.shade800, Colors.grey.shade700],
-                      ),
+                gradient: hasImage ? AppTheme.gradientPrimary : LinearGradient(colors: [Colors.grey.shade800, Colors.grey.shade700]),
                 borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                 boxShadow: hasImage ? AppTheme.glowPrimary(intensity: 0.3) : [],
               ),
@@ -632,29 +510,11 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (_isSaving)
-                        const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      else
-                        const Icon(
-                          Icons.download_rounded,
-                          color: Colors.white,
-                          size: 22,
-                        ),
+                      if (_isSaving) const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) else const Icon(Icons.download_rounded, color: Colors.white, size: 22),
                       const SizedBox(width: 8),
                       Text(
                         _isSaving ? 'Saving' : 'Save',
-                        style: TextStyle(
-                          color: hasImage ? Colors.white : Colors.white38,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: hasImage ? Colors.white : Colors.white38, fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ],
                   ),
@@ -669,9 +529,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
           Expanded(
             child: Listener(
               // Trigger compare state on press down
-              onPointerDown: (hasImage && hasInput)
-                  ? (_) => setState(() => _isComparing = true)
-                  : null,
+              onPointerDown: (hasImage && hasInput) ? (_) => setState(() => _isComparing = true) : null,
               // Reset on release or cancel
               onPointerUp: (_) => setState(() => _isComparing = false),
               onPointerCancel: (_) => setState(() => _isComparing = false),
@@ -679,29 +537,21 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                  onTap: (hasImage && hasInput)
-                      ? () {}
-                      : null, // Needed for ripple
+                  onTap: (hasImage && hasInput) ? () {} : null, // Needed for ripple
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 100),
                     height: 50,
                     decoration: _isComparing
                         ? BoxDecoration(
                             color: Colors.amber.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(
-                              AppTheme.radiusMedium,
-                            ),
-                            border: Border.all(
-                              color: Colors.amber.withValues(alpha: 0.5),
-                            ),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
                           )
                         : null,
                     child: Icon(
                       Icons.compare,
                       // If holding, turn Amber. If disabled, turn gray.
-                      color: (hasImage && hasInput)
-                          ? (_isComparing ? Colors.amber : Colors.white)
-                          : Colors.white12,
+                      color: (hasImage && hasInput) ? (_isComparing ? Colors.amber : Colors.white) : Colors.white12,
                       size: 24,
                     ),
                   ),
@@ -710,49 +560,22 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             ),
           ),
 
-          Container(
-            width: 1,
-            height: 24,
-            color: Colors.white10,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-          ),
+          Container(width: 1, height: 24, color: Colors.white10, margin: const EdgeInsets.symmetric(horizontal: 4)),
 
           // Edit Button (tap = inpaint, long-press = choose Crop or Resize)
-          _buildIconAction(
-            Icons.auto_fix_high,
-            'Edit',
-            hasImage ? _editSelectedImage : null,
-            onLongPress: hasImage ? _showEditDestinationMenu : null,
-          ),
+          _buildIconAction(Icons.auto_fix_high, 'Edit', hasImage ? _editSelectedImage : null, onLongPress: hasImage ? _showEditDestinationMenu : null),
 
           // Info Button
-          _buildIconAction(
-            Icons.info_outline,
-            'Info',
-            (hasImage && !_isFetchingInfo) ? _showImageInfo : null,
-            isLoading: _isFetchingInfo,
-          ),
+          _buildIconAction(Icons.info_outline, 'Info', (hasImage && !_isFetchingInfo) ? _showImageInfo : null, isLoading: _isFetchingInfo),
 
           // Delete Button
-          _buildIconAction(
-            Icons.delete_outline,
-            'Delete',
-            hasImage ? _deleteSelectedImage : null,
-            isDestructive: true,
-          ),
+          _buildIconAction(Icons.delete_outline, 'Delete', hasImage ? _deleteSelectedImage : null, isDestructive: true),
         ],
       ),
     );
   }
 
-  Widget _buildIconAction(
-    IconData icon,
-    String tooltip,
-    VoidCallback? onTap, {
-    VoidCallback? onLongPress,
-    bool isLoading = false,
-    bool isDestructive = false,
-  }) {
+  Widget _buildIconAction(IconData icon, String tooltip, VoidCallback? onTap, {VoidCallback? onLongPress, bool isLoading = false, bool isDestructive = false}) {
     final isEnabled = onTap != null || onLongPress != null;
     final color = isDestructive ? Colors.red.shade400 : Colors.white;
 
@@ -768,20 +591,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             child: SizedBox(
               height: 50,
               child: Center(
-                child: isLoading
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: color,
-                        ),
-                      )
-                    : Icon(
-                        icon,
-                        color: isEnabled ? color : Colors.white12,
-                        size: 24,
-                      ),
+                child: isLoading ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: color)) : Icon(icon, color: isEnabled ? color : Colors.white12, size: 24),
               ),
             ),
           ),
@@ -806,31 +616,12 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
               height: 470,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.grey.shade900,
+                color: AppTheme.surfaceCard,
                 borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                border: Border.all(
-                  color: imageList.isNotEmpty
-                      ? AppTheme.accentPrimary.withValues(alpha: 0.3)
-                      : AppTheme.glassBorder,
-                  width: 1.5,
-                ),
-                boxShadow: imageList.isNotEmpty
-                    ? [
-                        BoxShadow(
-                          color: AppTheme.accentPrimary.withValues(alpha: 0.15),
-                          blurRadius: 20,
-                        ),
-                      ]
-                    : [],
+                border: Border.all(color: imageList.isNotEmpty ? AppTheme.accentPrimary.withValues(alpha: 0.3) : AppTheme.glassBorder, width: 1.5),
+                boxShadow: imageList.isNotEmpty ? [BoxShadow(color: AppTheme.accentPrimary.withValues(alpha: 0.15), blurRadius: 20)] : [],
               ),
-              child: imageList.isEmpty
-                  ? _buildEmptyState()
-                  : Column(
-                      children: [
-                        _buildMainImage(),
-                        _buildImageThumbnails(imageList),
-                      ],
-                    ),
+              child: imageList.isEmpty ? _buildEmptyState() : Column(children: [_buildMainImage(), _buildImageThumbnails(imageList)]),
             ),
 
             // Action Dock

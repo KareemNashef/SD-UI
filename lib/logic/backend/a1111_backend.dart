@@ -17,17 +17,14 @@ class A1111Backend {
   // ===== Class Variables ===== //
 
   // Helper to construct base URL
-  String get _baseUrl =>
-      'http://${globalServerIP.value}:${globalServerPort.value}';
+  String get _baseUrl => 'http://${globalServerIP.value}:${globalServerPort.value}';
 
   // ===== Class Methods ===== //
 
   Future<bool> checkStatus() async {
     final url = Uri.parse('$_baseUrl/sdapi/v1/sd-models');
     try {
-      final response = await http
-          .get(url)
-          .timeout(const Duration(milliseconds: 500));
+      final response = await http.get(url).timeout(const Duration(milliseconds: 500));
       return response.statusCode == 200;
     } catch (_) {
       return false;
@@ -38,9 +35,7 @@ class A1111Backend {
     // Force the server to refresh the list of checkpoints
     final refreshURL = '$_baseUrl/sdapi/v1/refresh-checkpoints';
     try {
-      await http
-          .post(Uri.parse(refreshURL))
-          .timeout(const Duration(seconds: 5));
+      await http.post(Uri.parse(refreshURL)).timeout(const Duration(seconds: 5));
     } catch (_) {}
 
     final serverUrl = '$_baseUrl/sdapi/v1/sd-models';
@@ -53,11 +48,7 @@ class A1111Backend {
       // Map A1111 specific keys to the common format required by the utility
       final List<Map<String, dynamic>> processedModels = rawModels.map((m) {
         final model = m as Map<String, dynamic>;
-        return {
-          'model_name': model['model_name'] as String,
-          'title': model['title'] as String,
-          'hash': model['hash'] as String?,
-        };
+        return {'model_name': model['model_name'] as String, 'title': model['title'] as String, 'hash': model['hash'] as String?};
       }).toList();
 
       // Use the shared utility for metadata processing and global state updates
@@ -70,6 +61,7 @@ class A1111Backend {
   Future<void> setCheckpoint(String name) async {
     final serverUrl = '$_baseUrl/sdapi/v1/options';
     final progressUrl = '$_baseUrl/sdapi/v1/progress';
+    final txt2imgUrl = '$_baseUrl/sdapi/v1/txt2img';
 
     try {
       final checkpointData = globalCheckpointDataMap[name];
@@ -79,11 +71,10 @@ class A1111Backend {
       }
 
       // Send the checkpoint change request
-      await http.post(
-        Uri.parse(serverUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({"sd_model_checkpoint": checkpointData.title}),
-      );
+      await http.post(Uri.parse(serverUrl), headers: {'Content-Type': 'application/json'}, body: jsonEncode({"sd_model_checkpoint": checkpointData.title}));
+
+      // Send a quick 1x1 pixel text2image request to force the server to switch checkpoints immediately
+      await http.post(Uri.parse(txt2imgUrl), headers: {'Content-Type': 'application/json'}, body: jsonEncode({"prompt": "", "steps": 1, "width": 10, "height": 10, "sampler_name": "Euler a", "cfg_scale": 1.0, "save_images": false}));
 
       // Poll the progress endpoint until the model is loaded
       while (true) {
@@ -93,8 +84,7 @@ class A1111Backend {
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           // When progress is 0 and state is empty, the model change is complete
-          if (data['progress'] == 0 &&
-              (data['state']['job'] == null || data['state']['job'].isEmpty)) {
+          if (data['progress'] == 0 && (data['state']['job'] == null || data['state']['job'].isEmpty)) {
             break;
           }
         }
@@ -107,9 +97,7 @@ class A1111Backend {
   Future<void> loadLoras() async {
     try {
       // 1. Refresh loras
-      final refreshResponse = await http.post(
-        Uri.parse('$_baseUrl/sdapi/v1/refresh-loras'),
-      );
+      final refreshResponse = await http.post(Uri.parse('$_baseUrl/sdapi/v1/refresh-loras'));
 
       if (refreshResponse.statusCode != 200) {
         debugPrint('Failed to refresh loras');
@@ -117,9 +105,7 @@ class A1111Backend {
       }
 
       // 2. Load loras
-      final loraResponse = await http.get(
-        Uri.parse('$_baseUrl/sdapi/v1/loras'),
-      );
+      final loraResponse = await http.get(Uri.parse('$_baseUrl/sdapi/v1/loras'));
 
       if (loraResponse.statusCode != 200) return;
 
@@ -136,18 +122,14 @@ class A1111Backend {
         String baseModel = 'Unknown';
 
         try {
-          final metadataResponse = await http.get(
-            Uri.parse('$_baseUrl/file=models/Lora/$name.civitai.info'),
-          );
+          final metadataResponse = await http.get(Uri.parse('$_baseUrl/file=models/Lora/$name.civitai.info'));
           if (metadataResponse.statusCode == 200) {
             final metadata = jsonDecode(metadataResponse.body);
             displayName = metadata['model']?['name'] ?? displayName;
             baseModel = metadata['baseModel'] ?? 'Unknown';
 
             if (metadata['trainedWords'] is List) {
-              trainedWords = Set<String>.from(
-                metadata['trainedWords'].cast<String>(),
-              );
+              trainedWords = Set<String>.from(metadata['trainedWords'].cast<String>());
             }
           }
         } catch (e) {
@@ -155,17 +137,10 @@ class A1111Backend {
         }
 
         // 4. Construct thumbnail URL
-        final String thumbnailUrl =
-            '$_baseUrl/file=models/Lora/$name.preview.png';
+        final String thumbnailUrl = '$_baseUrl/file=models/Lora/$name.preview.png';
         debugPrint('Thumbnail URL: $thumbnailUrl');
 
-        globalLoraDataMap[name] = LoraData(
-          name: name,
-          displayName: displayName,
-          trainedWords: trainedWords,
-          thumbnailUrl: thumbnailUrl,
-          baseModel: baseModel,
-        );
+        globalLoraDataMap[name] = LoraData(name: name, displayName: displayName, trainedWords: trainedWords, thumbnailUrl: thumbnailUrl, baseModel: baseModel);
       }
     } catch (e) {
       debugPrint('Failed to load lora data from server: $e');
@@ -182,14 +157,21 @@ class A1111Backend {
     }
   }
 
+  // Added new method strictly for SeedVR2 polling
+  Future<Map<String, dynamic>> fetchSeedVR2Progress() async {
+    final url = Uri.parse('$_baseUrl/seedvr2/progress');
+    final response = await http.get(url).timeout(const Duration(seconds: 2));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to fetch SeedVR2 progress: ${response.statusCode}');
+    }
+  }
+
   // =================================================================
   // SeedVR2 Upscaling
   // =================================================================
-  Future<String> upscaleSeedVR2({
-    required Uint8List imageBytes,
-    required int resolution,
-    Function(Map<String, dynamic> progressData)? onProgress,
-  }) async {
+  Future<String> upscaleSeedVR2({required Uint8List imageBytes, required int resolution, Function(Map<String, dynamic> progressData)? onProgress}) async {
     final base64Image = base64Encode(imageBytes);
 
     final body = {"image": base64Image, "resolution": resolution};
@@ -197,46 +179,38 @@ class A1111Backend {
     final url = Uri.parse('$_baseUrl/seedvr2/upscale');
     bool isDone = false;
 
-    // 1. Start the upscale request without awaiting it immediately
-    final upscaleFuture = http
-        .post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        )
-        .whenComplete(() => isDone = true);
+    // 1. Start the upscale request (this blocks the python server until finished)
+    final upscaleFuture = http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body)).whenComplete(() => isDone = true);
 
-    // 2. Polling loop: Ping standard A1111/Forge progress while waiting
+    // 2. Poll our new SeedVR2 progress endpoint instead of A1111's default progress
     if (onProgress != null) {
       while (!isDone) {
-        await Future.delayed(const Duration(milliseconds: 1000));
-        if (isDone) break; // Break early if it finished during delay
+        await Future.delayed(const Duration(milliseconds: 500)); // Poll every half-second
+        if (isDone) break;
 
         try {
-          final progressData = await fetchProgress();
+          final progressData = await fetchSeedVR2Progress();
+          // progressData will contain: {"progress": 0.25, "status": "Phase 2: DiT Upscaling", "is_running": true}
           onProgress(progressData);
         } catch (e) {
-          debugPrint('Failed to poll upscale progress: $e');
+          debugPrint('Failed to poll SeedVR2 upscale progress: $e');
         }
       }
     }
 
-    // 3. Await the actual upscaling result
+    // 3. Await the final image
     final response = await upscaleFuture;
 
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body) as Map<String, dynamic>;
       final String upscaledImage = responseData['image'];
 
-      // Attach data URI scheme if not present so Flutter can display it easily
       if (upscaledImage.startsWith('data:image/')) {
         return upscaledImage;
       }
       return 'data:image/png;base64,$upscaledImage';
     } else {
-      throw Exception(
-        'Upscaling failed: HTTP ${response.statusCode}: ${response.body}',
-      );
+      throw Exception('Upscaling failed: HTTP ${response.statusCode}: ${response.body}');
     }
   }
 
@@ -245,6 +219,7 @@ class A1111Backend {
     required Uint8List imageBytes,
     required Uint8List? maskBytes,
     required String loraPromptAdditions,
+    required String positivePrompt,
     required String negativePrompt,
     required String samplerName,
     required int width,
@@ -254,14 +229,15 @@ class A1111Backend {
     required double cfgScale,
     required double denoiseStrength,
     required int maskBlur,
-    required int
-    inpaintingFill, // This param is int, but older logic used string lookup. A1111 expects int.
+    required int inpaintingFill, // This param is int, but older logic used string lookup. A1111 expects int.
   }) async {
     final base64Image = base64Encode(imageBytes);
     final base64Mask = maskBytes != null ? base64Encode(maskBytes) : null;
 
     final body = {
-      "prompt": prompt + loraPromptAdditions,
+      "prompt": (positivePrompt.isNotEmpty ? '$positivePrompt, ' : '') +
+          prompt +
+          loraPromptAdditions,
       "negative_prompt": negativePrompt,
       "sampler_name": samplerName,
       "scheduler": "Automatic",
@@ -284,11 +260,7 @@ class A1111Backend {
     };
 
     final url = Uri.parse('$_baseUrl/sdapi/v1/img2img');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
-    );
+    final response = await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body));
 
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body) as Map<String, dynamic>;
@@ -312,11 +284,7 @@ class A1111Backend {
 
   Future<Map<String, dynamic>> getPngInfo(String base64Image) async {
     final url = Uri.parse('$_baseUrl/sdapi/v1/png-info');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'image': base64Image}),
-    );
+    final response = await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode({'image': base64Image}));
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     } else {

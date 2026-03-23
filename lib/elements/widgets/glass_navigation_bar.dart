@@ -14,12 +14,7 @@ class GlassNavigationBar extends StatelessWidget {
   final Function(int) onTabSelected;
   final PageController? controller;
 
-  const GlassNavigationBar({
-    super.key,
-    required this.items,
-    required this.onTabSelected,
-    this.controller,
-  });
+  const GlassNavigationBar({super.key, required this.items, required this.onTabSelected, this.controller});
 
   // ===== Class Methods ===== //
 
@@ -44,11 +39,7 @@ class GlassNavigationBar extends StatelessWidget {
             offset: Offset(0, translationY),
             child: Opacity(
               opacity: iconOpacity,
-              child: Icon(
-                items[index].icon,
-                color: AppTheme.textTertiary,
-                size: 24,
-              ),
+              child: Icon(items[index].icon, color: AppTheme.textTertiary, size: 24),
             ),
           ),
           Transform.translate(
@@ -90,13 +81,7 @@ class GlassNavigationBar extends StatelessWidget {
           color: AppTheme.glassBackground,
           borderRadius: BorderRadius.circular(AppTheme.radiusFull),
           border: Border.all(color: AppTheme.glassBorder, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10))],
         ),
         padding: const EdgeInsets.all(5.0),
         child: LayoutBuilder(
@@ -126,18 +111,8 @@ class GlassNavigationBar extends StatelessWidget {
                         margin: const EdgeInsets.symmetric(horizontal: 2.0),
                         decoration: BoxDecoration(
                           color: AppTheme.accentPrimary,
-                          borderRadius: BorderRadius.circular(
-                            AppTheme.radiusFull,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.accentPrimary.withValues(
-                                alpha: 0.4,
-                              ),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                          boxShadow: [BoxShadow(color: AppTheme.accentPrimary.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))],
                         ),
                       ),
                     ),
@@ -145,10 +120,7 @@ class GlassNavigationBar extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: List.generate(items.length, (index) {
-                        double selectionValue = _calculateSelectionValue(
-                          index,
-                          currentScrollPage,
-                        );
+                        double selectionValue = _calculateSelectionValue(index, currentScrollPage);
 
                         return SizedBox(
                           width: tabWidth,
@@ -160,14 +132,10 @@ class GlassNavigationBar extends StatelessWidget {
                                 onTabSelected(index);
                               }
                             },
-                            borderRadius: BorderRadius.circular(
-                              AppTheme.radiusFull,
-                            ),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                             splashColor: Colors.transparent,
                             highlightColor: Colors.transparent,
-                            child: Center(
-                              child: _buildTabItem(index, selectionValue),
-                            ),
+                            child: Center(child: _buildTabItem(index, selectionValue)),
                           ),
                         );
                       }),

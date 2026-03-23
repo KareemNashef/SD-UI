@@ -24,11 +24,7 @@ const _kRadius = 20.0;
 /// Shows the upscale modal. Result image can be sent to the results carousel.
 /// If [initialImageBytes] is provided, the modal opens with that image loaded.
 void showUpscaleModal(BuildContext context, {Uint8List? initialImageBytes}) {
-  GlassModal.show(
-    context,
-    heightFactor: 0.92,
-    child: _UpscaleModalContent(initialImageBytes: initialImageBytes),
-  );
+  GlassModal.show(context, heightFactor: 0.92, child: _UpscaleModalContent(initialImageBytes: initialImageBytes));
 }
 
 class _UpscaleModalContent extends StatefulWidget {
@@ -50,6 +46,8 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
 
   bool _processing = false;
   bool _sending = false;
+  double? _progress;
+  String? _statusText;
 
   @override
   void initState() {
@@ -138,6 +136,8 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
     setState(() {
       _sending = true;
       _processing = true;
+      _progress = null;
+      _statusText = null;
     });
 
     try {
@@ -145,7 +145,12 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
         imageBytes: _originalBytes!,
         resolution: _resolutionNotifier.value,
         onProgress: (progressData) {
-          // Could update progress bar here if needed
+          if (mounted) {
+            setState(() {
+              _progress = (progressData['progress'] as num?)?.toDouble();
+              _statusText = progressData['status'] as String?;
+            });
+          }
         },
       );
 
@@ -178,11 +183,7 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Column(
         children: [
-          const GlassHeader(
-            title: 'Upscale Image',
-            icon: Icons.hd_rounded,
-            iconColor: _kGreen,
-          ),
+          const GlassHeader(title: 'Upscale Image', icon: Icons.hd_rounded, iconColor: _kGreen),
           Expanded(
             child: Stack(
               fit: StackFit.expand,
@@ -193,16 +194,9 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(
-                        child: _ViewerCard(
-                          hasImage: hasImage,
-                          originalBytes: _originalBytes,
-                          onPickImage: _pickImage,
-                        ),
+                        child: _ViewerCard(hasImage: hasImage, originalBytes: _originalBytes, onPickImage: _pickImage),
                       ),
-                      if (hasImage) ...[
-                        const SizedBox(height: 16),
-                        _GlassCard(child: _buildUpscaleControls()),
-                      ],
+                      if (hasImage) ...[const SizedBox(height: 16), _GlassCard(child: _buildUpscaleControls())],
                       const SizedBox(height: 16),
                       _buildActions(hasImage),
                     ],
@@ -215,37 +209,18 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
                   child: (_processing || _sending)
                       ? Container(
                           key: const ValueKey('overlay'),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.45),
-                            borderRadius: BorderRadius.circular(_kRadius),
-                          ),
+                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.45), borderRadius: BorderRadius.circular(_kRadius)),
                           child: Center(
                             child: Container(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 40,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 32,
-                                horizontal: 24,
-                              ),
+                              margin: const EdgeInsets.symmetric(horizontal: 40),
+                              padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF121212),
                                 borderRadius: BorderRadius.circular(28),
-                                border: Border.all(
-                                  color: _kGreen.withValues(alpha: 0.3),
-                                  width: 1.5,
-                                ),
+                                border: Border.all(color: _kGreen.withValues(alpha: 0.3), width: 1.5),
                                 boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.6),
-                                    blurRadius: 30,
-                                    spreadRadius: 10,
-                                  ),
-                                  BoxShadow(
-                                    color: _kGreen.withValues(alpha: 0.1),
-                                    blurRadius: 20,
-                                    spreadRadius: 0,
-                                  ),
+                                  BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 30, spreadRadius: 10),
+                                  BoxShadow(color: _kGreen.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 0),
                                 ],
                               ),
                               child: Column(
@@ -254,56 +229,33 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
                                   Stack(
                                     alignment: Alignment.center,
                                     children: [
+                                      SizedBox(width: 70, height: 70, child: CircularProgressIndicator(color: _kGreen.withValues(alpha: 0.15), strokeWidth: 3.5, value: 1.0)),
                                       SizedBox(
                                         width: 70,
                                         height: 70,
-                                        child: CircularProgressIndicator(
-                                          color: _kGreen.withValues(
-                                            alpha: 0.15,
-                                          ),
-                                          strokeWidth: 3.5,
-                                          value: 1.0,
-                                        ),
+                                        child: CircularProgressIndicator(color: _kGreen, strokeWidth: 3.5, value: _progress),
                                       ),
-                                      const SizedBox(
-                                        width: 70,
-                                        height: 70,
-                                        child: CircularProgressIndicator(
-                                          color: _kGreen,
-                                          strokeWidth: 3.5,
-                                        ),
-                                      ),
-                                      const Icon(
-                                        Icons.auto_awesome_rounded,
-                                        color: _kGreen,
-                                        size: 28,
-                                      ),
+                                      const Icon(Icons.auto_awesome_rounded, color: _kGreen, size: 28),
                                     ],
                                   ),
                                   const SizedBox(height: 24),
                                   Text(
-                                    _sending
-                                        ? 'UPSCALE IN PROGRESS'
-                                        : 'PREPARING...',
+                                    _statusText?.toUpperCase() ?? (_sending ? 'UPSCALE IN PROGRESS' : 'PREPARING...'),
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 1.5,
-                                    ),
+                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1.5),
                                   ),
+                                  if (_progress != null) ...[
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      '${(_progress! * 100).toInt()}%',
+                                      style: const TextStyle(color: _kGreen, fontSize: 18, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
                                   if (_sending) ...[
                                     const SizedBox(height: 10),
                                     Text(
                                       'Enhancing details & resolution',
-                                      style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.5,
-                                        ),
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                      style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11, fontWeight: FontWeight.w500),
                                     ),
                                   ],
                                 ],
@@ -350,58 +302,29 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
               children: [
                 const Text(
                   'Presets',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
                 ),
                 _Pill(
                   child: Text(
                     'Target: ${resolution}p',
-                    style: const TextStyle(
-                      color: _kGreen,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: const TextStyle(color: _kGreen, fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildPresetBtn(720, 'HD'),
-                const SizedBox(width: 8),
-                _buildPresetBtn(1080, 'FHD'),
-                const SizedBox(width: 8),
-                _buildPresetBtn(1440, 'QHD'),
-              ],
-            ),
+            Row(children: [_buildPresetBtn(720, 'HD'), const SizedBox(width: 8), _buildPresetBtn(1080, 'FHD'), const SizedBox(width: 8), _buildPresetBtn(1440, 'QHD')]),
             const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
-                  child: _DimChip(
-                    label: 'Original',
-                    value: _origW != null
-                        ? '${_origW} × ${_origH}'
-                        : '--- × ---',
-                  ),
+                  child: _DimChip(label: 'Original', value: _origW != null ? '$_origW × $_origH' : '--- × ---'),
                 ),
                 const SizedBox(width: 12),
-                const Icon(
-                  Icons.keyboard_double_arrow_right_rounded,
-                  color: Colors.white24,
-                  size: 20,
-                ),
+                const Icon(Icons.keyboard_double_arrow_right_rounded, color: Colors.white24, size: 20),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _DimChip(
-                    label: 'Resulting',
-                    value: '$targetW × $targetH',
-                    accent: true,
-                  ),
+                  child: _DimChip(label: 'Resulting', value: '$targetW × $targetH', accent: true),
                 ),
               ],
             ),
@@ -423,24 +346,14 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
               duration: const Duration(milliseconds: 200),
               height: 44,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? _kGreen
-                    : Colors.white.withValues(alpha: 0.05),
+                color: isSelected ? _kGreen : Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: isSelected
-                      ? _kGreen
-                      : Colors.white.withValues(alpha: 0.1),
-                ),
+                border: Border.all(color: isSelected ? _kGreen : Colors.white.withValues(alpha: 0.1)),
               ),
               child: Center(
                 child: Text(
                   '$val ($label)',
-                  style: TextStyle(
-                    color: isSelected ? Colors.black87 : Colors.white70,
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                  ),
+                  style: TextStyle(color: isSelected ? Colors.black87 : Colors.white70, fontSize: 12, fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500),
                 ),
               ),
             ),
@@ -452,28 +365,14 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
 
   Widget _buildActions(bool hasImage) {
     if (!hasImage) {
-      return _ActionButton(
-        icon: Icons.add_photo_alternate_rounded,
-        label: 'Select Image',
-        color: _kGreen,
-        onTap: _pickImage,
-      );
+      return _ActionButton(icon: Icons.add_photo_alternate_rounded, label: 'Select Image', color: _kGreen, onTap: _pickImage);
     }
     return Row(
       children: [
-        _IconBtn(
-          icon: Icons.photo_library_outlined,
-          color: Colors.white70,
-          onTap: _pickImage,
-        ),
+        _IconBtn(icon: Icons.photo_library_outlined, color: Colors.white70, onTap: _pickImage),
         const SizedBox(width: 12),
         Expanded(
-          child: _ActionButton(
-            icon: Icons.auto_awesome_rounded,
-            label: 'Upscale',
-            color: _kGreen,
-            onTap: _upscaleAndSend,
-          ),
+          child: _ActionButton(icon: Icons.auto_awesome_rounded, label: 'Upscale', color: _kGreen, onTap: _upscaleAndSend),
         ),
       ],
     );
@@ -481,11 +380,7 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
 }
 
 class _ViewerCard extends StatelessWidget {
-  const _ViewerCard({
-    required this.hasImage,
-    required this.originalBytes,
-    required this.onPickImage,
-  });
+  const _ViewerCard({required this.hasImage, required this.originalBytes, required this.onPickImage});
 
   final bool hasImage;
   final Uint8List? originalBytes;
@@ -507,15 +402,7 @@ class _ViewerCard extends StatelessWidget {
                   child: SizedBox(
                     width: double.infinity,
                     height: double.infinity,
-                    child: InteractiveViewer(
-                      minScale: 1.0,
-                      maxScale: 10.0,
-                      child: Image.memory(
-                        originalBytes!,
-                        fit: BoxFit.contain,
-                        gaplessPlayback: true,
-                      ),
-                    ),
+                    child: InteractiveViewer(minScale: 1.0, maxScale: 10.0, child: Image.memory(originalBytes!, fit: BoxFit.contain, gaplessPlayback: true)),
                   ),
                 ),
               ),
@@ -537,14 +424,7 @@ class _EmptyViewer extends StatelessWidget {
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(_kRadius),
-          gradient: LinearGradient(
-            colors: [
-              Colors.white.withValues(alpha: 0.06),
-              Colors.white.withValues(alpha: 0.02),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          gradient: LinearGradient(colors: [Colors.white.withValues(alpha: 0.06), Colors.white.withValues(alpha: 0.02)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -557,26 +437,15 @@ class _EmptyViewer extends StatelessWidget {
                 color: _kGreenDim,
                 border: Border.all(color: _kGreenBorder),
               ),
-              child: const Icon(
-                Icons.add_photo_alternate_rounded,
-                color: _kGreen,
-                size: 26,
-              ),
+              child: const Icon(Icons.add_photo_alternate_rounded, color: _kGreen, size: 26),
             ),
             const SizedBox(height: 14),
             const Text(
               'Tap to select an image',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'PNG, JPG, WEBP supported',
-              style: TextStyle(color: Colors.white30, fontSize: 12),
-            ),
+            const Text('PNG, JPG, WEBP supported', style: TextStyle(color: Colors.white30, fontSize: 12)),
           ],
         ),
       ),
@@ -591,13 +460,7 @@ class _GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassContainer(
-      borderRadius: _kRadius,
-      backgroundColor: AppTheme.glassBackground,
-      borderColor: AppTheme.glassBorder,
-      padding: padding ?? const EdgeInsets.all(18),
-      child: child,
-    );
+    return GlassContainer(borderRadius: _kRadius, backgroundColor: AppTheme.glassBackground, borderColor: AppTheme.glassBorder, padding: padding ?? const EdgeInsets.all(18), child: child);
   }
 }
 
@@ -620,11 +483,7 @@ class _Pill extends StatelessWidget {
 }
 
 class _DimChip extends StatelessWidget {
-  const _DimChip({
-    required this.label,
-    required this.value,
-    this.accent = false,
-  });
+  const _DimChip({required this.label, required this.value, this.accent = false});
   final String label;
   final String value;
   final bool accent;
@@ -636,25 +495,16 @@ class _DimChip extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: accent ? _kGreenDim : Colors.white.withValues(alpha: 0.04),
-        border: Border.all(
-          color: accent ? _kGreenBorder : Colors.white.withValues(alpha: 0.1),
-        ),
+        border: Border.all(color: accent ? _kGreenBorder : Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white54, fontSize: 11),
-          ),
+          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(
-              color: accent ? _kGreen : Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: accent ? _kGreen : Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -663,12 +513,7 @@ class _DimChip extends StatelessWidget {
 }
 
 class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
+  const _ActionButton({required this.icon, required this.label, required this.color, required this.onTap});
 
   final IconData icon;
   final String label;
@@ -687,13 +532,7 @@ class _ActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             color: color,
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.2),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))],
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -704,12 +543,7 @@ class _ActionButton extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.black87,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    letterSpacing: 0.3,
-                  ),
+                  style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: 0.3),
                 ),
               ],
             ),
@@ -721,11 +555,7 @@ class _ActionButton extends StatelessWidget {
 }
 
 class _IconBtn extends StatelessWidget {
-  const _IconBtn({
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
+  const _IconBtn({required this.icon, required this.color, required this.onTap});
 
   final IconData icon;
   final Color color;

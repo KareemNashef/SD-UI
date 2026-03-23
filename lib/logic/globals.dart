@@ -107,13 +107,12 @@ int globalMaskBlur = 8;
 String globalMaskFill = 'fill';
 int globalBatchSize = 1;
 String globalNegativePrompt = '';
+String globalPositivePrompt = '';
 
 // ===== Checkpoint Testing Variables ===== //
 
 ValueNotifier<bool> globalIsCheckpointTesting = ValueNotifier<bool>(false);
-ValueNotifier<String?> globalCurrentTestingCheckpoint = ValueNotifier<String?>(
-  null,
-);
+ValueNotifier<String?> globalCurrentTestingCheckpoint = ValueNotifier<String?>(null);
 ValueNotifier<int> globalCurrentCheckpointTestIndex = ValueNotifier<int>(0);
 ValueNotifier<int> globalTotalCheckpointsToTest = ValueNotifier<int>(0);
 ValueNotifier<bool> globalIsChangingCheckpoint = ValueNotifier<bool>(false);
@@ -140,8 +139,7 @@ ValueNotifier<Set<String>> globalResultImages = ValueNotifier({});
 final ValueNotifier<bool> globalIsGenerating = ValueNotifier<bool>(false);
 
 // Global storage for current progress data from the API
-final ValueNotifier<Map<String, dynamic>?> globalProgressData =
-    ValueNotifier<Map<String, dynamic>?>(null);
+final ValueNotifier<Map<String, dynamic>?> globalProgressData = ValueNotifier<Map<String, dynamic>?>(null);
 
 // Global flag to track if we should show intermediate images
 final ValueNotifier<bool> globalShowProgressImages = ValueNotifier<bool>(true);
@@ -150,9 +148,7 @@ final ValueNotifier<bool> globalShowProgressImages = ValueNotifier<bool>(true);
 final ValueNotifier<int> globalProgressPollInterval = ValueNotifier<int>(500);
 
 // Whether to show detailed progress information (steps, ETA, etc.)
-final ValueNotifier<bool> globalShowDetailedProgress = ValueNotifier<bool>(
-  true,
-);
+final ValueNotifier<bool> globalShowDetailedProgress = ValueNotifier<bool>(true);
 
 // Whether to automatically hide progress overlay when complete
 final ValueNotifier<bool> globalAutoHideProgress = ValueNotifier<bool>(true);

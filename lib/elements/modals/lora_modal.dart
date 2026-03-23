@@ -98,11 +98,25 @@ class __LorasContentState extends State<_LorasContent>
     final result = _performGrouping(globalLoraDataMap.values.toList());
 
     if (mounted) {
+      // Calculate initial index based on current checkpoint's base model
+      int initialIndex = 0;
+      final currentBaseModel =
+          globalCheckpointDataMap[globalCurrentCheckpointName]?.baseModel;
+
+      if (currentBaseModel != null) {
+        final keys = result.keys.toList();
+        final foundIndex = keys.indexOf(currentBaseModel);
+        if (foundIndex != -1) {
+          initialIndex = foundIndex;
+        }
+      }
+
       setState(() {
         _groupedLoras = result;
         _tabController = TabController(
           length: _groupedLoras!.length,
           vsync: this,
+          initialIndex: initialIndex,
         );
       });
     }
@@ -141,12 +155,27 @@ class __LorasContentState extends State<_LorasContent>
     if (mounted) {
       // Re-run grouping
       final newGroups = _performGrouping(globalLoraDataMap.values.toList());
+
+      // Calculate initial index based on current checkpoint's base model
+      int initialIndex = 0;
+      final currentBaseModel =
+          globalCheckpointDataMap[globalCurrentCheckpointName]?.baseModel;
+
+      if (currentBaseModel != null) {
+        final keys = newGroups.keys.toList();
+        final foundIndex = keys.indexOf(currentBaseModel);
+        if (foundIndex != -1) {
+          initialIndex = foundIndex;
+        }
+      }
+
       setState(() {
         _groupedLoras = newGroups;
         _tabController?.dispose();
         _tabController = TabController(
           length: _groupedLoras!.length,
           vsync: this,
+          initialIndex: initialIndex,
         );
         _isRefreshing = false;
       });

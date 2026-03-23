@@ -21,13 +21,11 @@ class ProgressService {
 
   Timer? _progressTimer;
   bool _isPolling = false;
-  bool _hasStartedGeneration =
-      false; // Track if generation has actually started
+  bool _hasStartedGeneration = false; // Track if generation has actually started
   int _errorCount = 0; // Track consecutive errors
   DateTime? _startTime; // Track when polling started
   static const int _maxErrors = 3; // Max consecutive errors before stopping
-  static const int _minPollingTimeMs =
-      2000; // Minimum time before allowing completion check
+  static const int _minPollingTimeMs = 2000; // Minimum time before allowing completion check
 
   // ===== Class Methods ===== //
 
@@ -43,10 +41,7 @@ class ProgressService {
     globalProgressData.value = null; // Reset progress data
 
     // Poll every 500ms for smooth updates
-    _progressTimer = Timer.periodic(
-      const Duration(milliseconds: 500),
-      (timer) => _fetchProgress(),
-    );
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) => _fetchProgress());
   }
 
   /// Stops polling the progress API
@@ -80,7 +75,6 @@ class ProgressService {
 
       // Use centralized API call
       final progressData = await fetchProgress();
-      debugPrint('Progress Data Received: $progressData');
 
       _errorCount = 0; // Reset error count on success
 
@@ -92,18 +86,22 @@ class ProgressService {
       final state = progressData['state'] as Map<String, dynamic>? ?? {};
       final jobCount = state['job_count'] as int? ?? 0;
       final samplingSteps = state['sampling_steps'] as int? ?? 0;
+      final samplingStep = (state['sampling_step'] as int?) ?? 0;
+
+      // Check for potential checkpoint switching (stuck at 0 steps while time passes)
+      final timeSinceStart = _startTime != null ? DateTime.now().difference(_startTime!).inMilliseconds : 0;
+
+      if (samplingStep == 0 && progress == 0.0 && jobCount > 0 && timeSinceStart > 1500) {
+        progressData['is_switching_checkpoint'] = true;
+        debugPrint('LOG: Detected potential checkpoint switching...');
+      }
 
       // Check if generation has actually started
       if (!_hasStartedGeneration) {
-        _hasStartedGeneration =
-            progress > 0.0 ||
-            jobCount > 0 ||
-            ((state['sampling_step'] as int?) ?? 0) > 0;
+        _hasStartedGeneration = progress > 0.0 || jobCount > 0 || samplingStep > 0;
 
         if (_hasStartedGeneration) {
-          debugPrint(
-            'LOG: Generation Started! Initial values -> progress: $progress, jobs: $jobCount, steps: $samplingSteps',
-          );
+          debugPrint('LOG: Generation Started! Initial values -> progress: $progress, jobs: $jobCount, steps: $samplingSteps');
         }
       }
 
@@ -120,12 +118,8 @@ class ProgressService {
           });
         }
       } else {
-        final timeSinceStart = _startTime != null
-            ? DateTime.now().difference(_startTime!).inMilliseconds
-            : 0;
-        debugPrint(
-          'LOG: Busy/Queuing (${timeSinceStart}ms) -> progress: $progress, jobs: $jobCount, started: $_hasStartedGeneration',
-        );
+        final timeSinceStart = _startTime != null ? DateTime.now().difference(_startTime!).inMilliseconds : 0;
+        debugPrint('LOG: Busy/Queuing (${timeSinceStart}ms) -> progress: $progress, jobs: $jobCount, started: $_hasStartedGeneration');
       }
     } catch (e) {
       // Handle network errors
@@ -174,9 +168,7 @@ class ProgressService {
         debugPrint('Complete: Final sampling step on last job');
         isComplete = true;
       } else {
-        debugPrint(
-          'Sampling step complete but more jobs remaining: ${jobNo + 1}/$jobCount',
-        );
+        debugPrint('Sampling step complete but more jobs remaining: ${jobNo + 1}/$jobCount');
       }
     }
 
@@ -184,9 +176,7 @@ class ProgressService {
     // as it was causing premature completion detection
 
     if (!isComplete) {
-      debugPrint(
-        'Still generating - Progress: $progress, Step: $samplingStep/$samplingSteps, Job: ${jobNo + 1}/$jobCount',
-      );
+      debugPrint('Still generating - Progress: $progress, Step: $samplingStep/$samplingSteps, Job: ${jobNo + 1}/$jobCount');
     }
 
     return isComplete;

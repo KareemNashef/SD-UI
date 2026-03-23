@@ -48,6 +48,7 @@ class GenerationLogic {
       imageBytes: imageBytes,
       maskBytes: maskBytes,
       loraPromptAdditions: loraPromptAdditions,
+      positivePrompt: globalPositivePrompt,
       negativePrompt: globalNegativePrompt,
       samplerName: globalCurrentSamplingMethod,
       width: globalCurrentResolutionWidth.toInt(),

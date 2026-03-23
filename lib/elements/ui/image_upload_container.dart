@@ -78,8 +78,7 @@ class _ImageContainerState extends State<ImageContainer> {
   final FocusNode _promptFocusNode = FocusNode();
 
   // Checkpoint Testing
-  final CheckpointTestingService _checkpointTestingService =
-      CheckpointTestingService();
+  final CheckpointTestingService _checkpointTestingService = CheckpointTestingService();
 
   // Lora Variables
   Map<String, double> _selectedLoras = {};
@@ -125,8 +124,7 @@ class _ImageContainerState extends State<ImageContainer> {
       }
 
       final tempDir = await getTemporaryDirectory();
-      final tempPath =
-          '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.png';
+      final tempPath = '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.png';
       final file = File(tempPath);
       await file.writeAsBytes(imageBytes);
       final ui.Image image = await decodeImageFromList(imageBytes);
@@ -146,9 +144,7 @@ class _ImageContainerState extends State<ImageContainer> {
   }
 
   Future<void> _pickImage() async {
-    final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-    );
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       final file = File(pickedFile.path);
       final bytes = await file.readAsBytes();
@@ -192,17 +188,7 @@ class _ImageContainerState extends State<ImageContainer> {
     setState(() {
       _isDrawing = true;
       _currentPathPoints = [];
-      _undoHistory.add(
-        List<DrawingPath>.from(
-          _paths.map(
-            (p) => DrawingPath(
-              points: p.points,
-              mode: p.mode,
-              strokeWidth: p.strokeWidth,
-            ),
-          ),
-        ),
-      );
+      _undoHistory.add(List<DrawingPath>.from(_paths.map((p) => DrawingPath(points: p.points, mode: p.mode, strokeWidth: p.strokeWidth))));
     });
     _addPointToCurrentPath(details.localPosition, containerSize);
   }
@@ -216,13 +202,7 @@ class _ImageContainerState extends State<ImageContainer> {
     if (!_isDrawing) return;
     setState(() {
       if (_currentPathPoints.isNotEmpty) {
-        _paths.add(
-          DrawingPath(
-            points: List.from(_currentPathPoints),
-            mode: _currentMode,
-            strokeWidth: _strokeWidth,
-          ),
-        );
+        _paths.add(DrawingPath(points: List.from(_currentPathPoints), mode: _currentMode, strokeWidth: _strokeWidth));
       }
       _currentPathPoints.clear();
       _isDrawing = false;
@@ -234,11 +214,7 @@ class _ImageContainerState extends State<ImageContainer> {
     if (_decodedImage == null) return;
     _canvasRenderedSize = containerSize;
 
-    final imagePoint = convertScreenToImageCoordinates(
-      localPosition: localPosition,
-      containerSize: containerSize,
-      decodedImage: _decodedImage!,
-    );
+    final imagePoint = convertScreenToImageCoordinates(localPosition: localPosition, containerSize: containerSize, decodedImage: _decodedImage!);
 
     _currentPanLocalPosition = localPosition;
     setState(() {
@@ -263,22 +239,12 @@ class _ImageContainerState extends State<ImageContainer> {
 
   Future<Uint8List?> _generateDrawingMask() async {
     if (_decodedImage == null || _canvasRenderedSize == null) return null;
-    return await generateDrawingMask(
-      decodedImage: _decodedImage!,
-      paths: _paths,
-      canvasRenderedSize: _canvasRenderedSize!,
-    );
+    return await generateDrawingMask(decodedImage: _decodedImage!, paths: _paths, canvasRenderedSize: _canvasRenderedSize!);
   }
 
   Future<List<Uint8List>> _generateOutpaintData() async {
     if (_decodedImage == null) return [];
-    return await generateOutpaintData(
-      decodedImage: _decodedImage!,
-      padLeft: _padLeft,
-      padRight: _padRight,
-      padTop: _padTop,
-      padBottom: _padBottom,
-    );
+    return await generateOutpaintData(decodedImage: _decodedImage!, padLeft: _padLeft, padRight: _padRight, padTop: _padTop, padBottom: _padBottom);
   }
 
   // ===== Generation Logic ===== //
@@ -312,38 +278,17 @@ class _ImageContainerState extends State<ImageContainer> {
         final generatedMask = await _generateDrawingMask();
         if (generatedMask == null) {
           final recorder = ui.PictureRecorder();
-          Canvas(recorder).drawRect(
-            Rect.fromLTWH(
-              0,
-              0,
-              _decodedImage!.width.toDouble(),
-              _decodedImage!.height.toDouble(),
-            ),
-            Paint()..color = Colors.black,
-          );
-          final img = await recorder.endRecording().toImage(
-            _decodedImage!.width,
-            _decodedImage!.height,
-          );
-          maskBytesToUse = (await img.toByteData(
-            format: ui.ImageByteFormat.png,
-          ))!.buffer.asUint8List();
+          Canvas(recorder).drawRect(Rect.fromLTWH(0, 0, _decodedImage!.width.toDouble(), _decodedImage!.height.toDouble()), Paint()..color = Colors.black);
+          final img = await recorder.endRecording().toImage(_decodedImage!.width, _decodedImage!.height);
+          maskBytesToUse = (await img.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
         } else {
           maskBytesToUse = generatedMask;
         }
       }
 
-      final loraStrings = GenerationLogic.buildLoraPromptAddition(
-        _selectedLoras,
-        _selectedLoraTags,
-      );
+      final loraStrings = GenerationLogic.buildLoraPromptAddition(_selectedLoras, _selectedLoraTags);
 
-      final newImages = await GenerationLogic.generateImg2Img(
-        prompt: userPrompt.text,
-        imageBytes: imageBytesToUse,
-        maskBytes: maskBytesToUse,
-        loraPromptAdditions: loraStrings,
-      );
+      final newImages = await GenerationLogic.generateImg2Img(prompt: userPrompt.text, imageBytes: imageBytesToUse, maskBytes: maskBytesToUse, loraPromptAdditions: loraStrings);
 
       final currentImages = Set<String>.from(globalResultImages.value);
       currentImages.addAll(newImages);
@@ -363,27 +308,15 @@ class _ImageContainerState extends State<ImageContainer> {
       _showError('Please select an image first');
       return;
     }
-    await _checkpointTestingService.startCheckpointTesting(
-      checkpoints: checkpoints,
-      onGenerate: generateImage,
-    );
+    await _checkpointTestingService.startCheckpointTesting(checkpoints: checkpoints, onGenerate: generateImage);
   }
 
-  Future<void> _startSamplerTesting(
-    List<String> samplers,
-    String target,
-  ) async {
-    await _checkpointTestingService.startSamplerTesting(
-      samplers: samplers,
-      targetCheckpoint: target,
-      onGenerate: generateImage,
-    );
+  Future<void> _startSamplerTesting(List<String> samplers, String target) async {
+    await _checkpointTestingService.startSamplerTesting(samplers: samplers, targetCheckpoint: target, onGenerate: generateImage);
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red));
   }
 
   // ===== Class Widgets ===== //
@@ -398,32 +331,15 @@ class _ImageContainerState extends State<ImageContainer> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Colors.grey.shade900,
-              border: Border.all(
-                color: AppTheme.accentPrimary.withValues(alpha: 0.3),
-                width: 2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.accentPrimary.withValues(alpha: 0.2),
-                  blurRadius: 24,
-                  spreadRadius: 4,
-                ),
-              ],
+              border: Border.all(color: AppTheme.accentPrimary.withValues(alpha: 0.3), width: 2),
+              boxShadow: [BoxShadow(color: AppTheme.accentPrimary.withValues(alpha: 0.2), blurRadius: 24, spreadRadius: 4)],
             ),
-            child: Icon(
-              Icons.cloud_upload_rounded,
-              size: 56,
-              color: AppTheme.accentPrimary.withValues(alpha: 0.8),
-            ),
+            child: Icon(Icons.cloud_upload_rounded, size: 56, color: AppTheme.accentPrimary.withValues(alpha: 0.8)),
           ),
           const SizedBox(height: 24),
           Text(
             'Tap to Upload Image',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.95),
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.95), fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -470,8 +386,7 @@ class _ImageContainerState extends State<ImageContainer> {
                     child: Image.asset(
                       'assets/grid_pattern.png',
                       repeat: ImageRepeat.repeat,
-                      errorBuilder: (_, __, ___) =>
-                          const ColoredBox(color: Colors.transparent),
+                      errorBuilder: (_, __, ___) => const ColoredBox(color: Colors.transparent),
                     ),
                   ),
                 ),
@@ -483,15 +398,7 @@ class _ImageContainerState extends State<ImageContainer> {
                   width: imgW * scale,
                   height: imgH * scale,
                   child: Container(
-                    decoration: BoxDecoration(
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          blurRadius: 10,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
+                    decoration: BoxDecoration(boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 10, spreadRadius: 2)]),
                     child: Image.file(_imageFile!, fit: BoxFit.fill),
                   ),
                 ),
@@ -563,18 +470,9 @@ class _ImageContainerState extends State<ImageContainer> {
                   bottom: 10,
                   right: 10,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      "${totalW.toInt()} x ${totalH.toInt()}",
-                      style: const TextStyle(color: Colors.white, fontSize: 10),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)),
+                    child: Text("${totalW.toInt()} x ${totalH.toInt()}", style: const TextStyle(color: Colors.white, fontSize: 10)),
                   ),
                 ),
               ],
@@ -585,19 +483,7 @@ class _ImageContainerState extends State<ImageContainer> {
     );
   }
 
-  Widget _buildDragHandle({
-    required String handleId,
-    double? top,
-    double? bottom,
-    double? left,
-    double? right,
-    double? width,
-    double? height,
-    required MouseCursor cursor,
-    required IconData icon,
-    required bool isHorizontal,
-    required Function(Offset) onDrag,
-  }) {
+  Widget _buildDragHandle({required String handleId, double? top, double? bottom, double? left, double? right, double? width, double? height, required MouseCursor cursor, required IconData icon, required bool isHorizontal, required Function(Offset) onDrag}) {
     final bool isActive = _activeDragHandle == handleId;
 
     return Positioned(
@@ -611,32 +497,25 @@ class _ImageContainerState extends State<ImageContainer> {
         cursor: cursor,
         child: RawGestureDetector(
           gestures: <Type, GestureRecognizerFactory>{
-            AlwaysWinPanGestureRecognizer:
-                GestureRecognizerFactoryWithHandlers<
-                  AlwaysWinPanGestureRecognizer
-                >(() => AlwaysWinPanGestureRecognizer(), (
-                  AlwaysWinPanGestureRecognizer instance,
-                ) {
-                  instance
-                    ..onStart = (_) {
-                      setState(() {
-                        _activeDragHandle = handleId;
-                      });
-                    }
-                    ..onUpdate = (DragUpdateDetails details) {
-                      onDrag(details.delta);
-                    }
-                    ..onEnd = (_) {
-                      setState(() {
-                        _activeDragHandle = null;
-                      });
-                    };
-                }),
+            AlwaysWinPanGestureRecognizer: GestureRecognizerFactoryWithHandlers<AlwaysWinPanGestureRecognizer>(() => AlwaysWinPanGestureRecognizer(), (AlwaysWinPanGestureRecognizer instance) {
+              instance
+                ..onStart = (_) {
+                  setState(() {
+                    _activeDragHandle = handleId;
+                  });
+                }
+                ..onUpdate = (DragUpdateDetails details) {
+                  onDrag(details.delta);
+                }
+                ..onEnd = (_) {
+                  setState(() {
+                    _activeDragHandle = null;
+                  });
+                };
+            }),
           },
           child: Container(
-            decoration: BoxDecoration(
-              color: Colors.cyan.withValues(alpha: 0.0),
-            ),
+            decoration: BoxDecoration(color: Colors.cyan.withValues(alpha: 0.0)),
             child: Center(
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
@@ -645,24 +524,10 @@ class _ImageContainerState extends State<ImageContainer> {
                 decoration: BoxDecoration(
                   color: isActive ? AppTheme.warning : AppTheme.accentPrimary,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isActive ? Colors.white : Colors.white70,
-                    width: isActive ? 2.0 : 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isActive
-                          ? AppTheme.warning.withValues(alpha: 0.4)
-                          : Colors.black26,
-                      blurRadius: isActive ? 8 : 4,
-                    ),
-                  ],
+                  border: Border.all(color: isActive ? Colors.white : Colors.white70, width: isActive ? 2.0 : 1.5),
+                  boxShadow: [BoxShadow(color: isActive ? AppTheme.warning.withValues(alpha: 0.4) : Colors.black26, blurRadius: isActive ? 8 : 4)],
                 ),
-                child: Icon(
-                  isHorizontal ? Icons.height : Icons.width_normal,
-                  color: isActive ? Colors.black87 : Colors.white,
-                  size: 10,
-                ),
+                child: Icon(isHorizontal ? Icons.height : Icons.width_normal, color: isActive ? Colors.black87 : Colors.white, size: 10),
               ),
             ),
           ),
@@ -672,10 +537,7 @@ class _ImageContainerState extends State<ImageContainer> {
   }
 
   Widget _buildImageWithDrawing() {
-    final imageSize = Size(
-      _decodedImage!.width.toDouble(),
-      _decodedImage!.height.toDouble(),
-    );
+    final imageSize = Size(_decodedImage!.width.toDouble(), _decodedImage!.height.toDouble());
     final containerSize = _canvasRenderedSize ?? Size.zero;
     final imageAspectRatio = imageSize.width / imageSize.height;
     final containerAspectRatio = containerSize.width / containerSize.height;
@@ -683,24 +545,13 @@ class _ImageContainerState extends State<ImageContainer> {
     late final Rect displayRect;
     if (imageAspectRatio > containerAspectRatio) {
       final h = containerSize.width / imageAspectRatio;
-      displayRect = Rect.fromLTWH(
-        0,
-        (containerSize.height - h) / 2,
-        containerSize.width,
-        h,
-      );
+      displayRect = Rect.fromLTWH(0, (containerSize.height - h) / 2, containerSize.width, h);
     } else {
       final w = containerSize.height * imageAspectRatio;
-      displayRect = Rect.fromLTWH(
-        (containerSize.width - w) / 2,
-        0,
-        w,
-        containerSize.height,
-      );
+      displayRect = Rect.fromLTWH((containerSize.width - w) / 2, 0, w, containerSize.height);
     }
 
-    final double calculatedZoomFactor =
-        1.0 + (100.0 - _strokeWidth) / 100.0 * 3.0;
+    final double calculatedZoomFactor = 1.0 + (100.0 - _strokeWidth) / 100.0 * 3.0;
 
     return Column(
       children: [
@@ -709,73 +560,47 @@ class _ImageContainerState extends State<ImageContainer> {
             builder: (context, constraints) {
               _canvasRenderedSize = constraints.biggest;
               return ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(22),
-                ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
                 child: RawGestureDetector(
                   gestures: <Type, GestureRecognizerFactory>{
-                    AlwaysWinPanGestureRecognizer:
-                        GestureRecognizerFactoryWithHandlers<
-                          AlwaysWinPanGestureRecognizer
-                        >(() => AlwaysWinPanGestureRecognizer(), (
-                          AlwaysWinPanGestureRecognizer instance,
-                        ) {
-                          instance
-                            ..onStart = (DragStartDetails details) {
-                              _onPanStart(details, constraints.biggest);
-                            }
-                            ..onUpdate = (DragUpdateDetails details) {
-                              _onPanUpdate(details, constraints.biggest);
-                            }
-                            ..onEnd = (DragEndDetails details) {
-                              _onPanEnd(details);
-                            };
-                        }),
+                    AlwaysWinPanGestureRecognizer: GestureRecognizerFactoryWithHandlers<AlwaysWinPanGestureRecognizer>(() => AlwaysWinPanGestureRecognizer(), (AlwaysWinPanGestureRecognizer instance) {
+                      instance
+                        ..onStart = (DragStartDetails details) {
+                          _onPanStart(details, constraints.biggest);
+                        }
+                        ..onUpdate = (DragUpdateDetails details) {
+                          _onPanUpdate(details, constraints.biggest);
+                        }
+                        ..onEnd = (DragEndDetails details) {
+                          _onPanEnd(details);
+                        };
+                    }),
                   },
                   child: Stack(
                     alignment: Alignment.topLeft,
                     children: [
-                      Positioned.fill(
-                        child: Image.file(_imageFile!, fit: BoxFit.contain),
-                      ),
+                      Positioned.fill(child: Image.file(_imageFile!, fit: BoxFit.contain)),
                       if (_decodedImage != null)
                         Positioned.fill(
                           child: CustomPaint(
                             painter: MaskPainter(
                               paths: [
                                 ..._paths,
-                                if (_currentPathPoints.isNotEmpty)
-                                  DrawingPath(
-                                    points: _currentPathPoints,
-                                    mode: _currentMode,
-                                    strokeWidth: _strokeWidth,
-                                  ),
+                                if (_currentPathPoints.isNotEmpty) DrawingPath(points: _currentPathPoints, mode: _currentMode, strokeWidth: _strokeWidth),
                               ],
                               imageSize: imageSize,
                               containerSize: constraints.biggest,
                             ),
                           ),
                         ),
-                      if (_isDrawing &&
-                          _currentPanLocalPosition != null &&
-                          _canvasRenderedSize != null)
+                      if (_isDrawing && _currentPanLocalPosition != null && _canvasRenderedSize != null)
                         Positioned(
                           left: 16,
                           top: 16,
                           child: IgnorePointer(
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(10),
-                              child: ZoomPreviewWidget(
-                                decodedImage: _decodedImage!,
-                                allPaths: _paths,
-                                currentPath: _currentPathPoints,
-                                currentDrawingMode: _currentMode,
-                                strokeWidth: _strokeWidth,
-                                currentDrawingPoint: _currentPanLocalPosition!,
-                                originalCanvasSize: _canvasRenderedSize!,
-                                zoomFactor: calculatedZoomFactor,
-                                displayRect: displayRect,
-                              ),
+                              child: ZoomPreviewWidget(decodedImage: _decodedImage!, allPaths: _paths, currentPath: _currentPathPoints, currentDrawingMode: _currentMode, strokeWidth: _strokeWidth, currentDrawingPoint: _currentPanLocalPosition!, originalCanvasSize: _canvasRenderedSize!, zoomFactor: calculatedZoomFactor, displayRect: displayRect),
                             ),
                           ),
                         ),
@@ -792,13 +617,7 @@ class _ImageContainerState extends State<ImageContainer> {
             color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 16, offset: const Offset(0, 4))],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Column(
@@ -809,42 +628,16 @@ class _ImageContainerState extends State<ImageContainer> {
                 children: [
                   Container(
                     height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.black45,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                    decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(14)),
                     padding: const EdgeInsets.all(3),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildModeButton(DrawingMode.draw, Icons.brush_rounded),
-                        const SizedBox(width: 2),
-                        _buildModeButton(
-                          DrawingMode.erase,
-                          Icons.auto_fix_high_rounded,
-                        ),
-                      ],
-                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [_buildModeButton(DrawingMode.draw, Icons.brush_rounded), const SizedBox(width: 2), _buildModeButton(DrawingMode.erase, Icons.auto_fix_high_rounded)]),
                   ),
                   const SizedBox(width: 8),
-                  _buildActionIcon(
-                    icon: Icons.undo_rounded,
-                    onPressed: _undoHistory.isNotEmpty ? _undo : null,
-                    tooltip: "Undo",
-                  ),
+                  _buildActionIcon(icon: Icons.undo_rounded, onPressed: _undoHistory.isNotEmpty ? _undo : null, tooltip: "Undo"),
                   const SizedBox(width: 8),
-                  _buildActionIcon(
-                    icon: Icons.layers_clear_rounded,
-                    onPressed: _paths.isNotEmpty ? _clearMask : null,
-                    tooltip: "Clear Mask",
-                  ),
+                  _buildActionIcon(icon: Icons.layers_clear_rounded, onPressed: _paths.isNotEmpty ? _clearMask : null, tooltip: "Clear Mask"),
                   const SizedBox(width: 8),
-                  _buildActionIcon(
-                    icon: Icons.restart_alt_rounded,
-                    onPressed: _resetImage,
-                    tooltip: "Reset All",
-                    isDestructive: true,
-                  ),
+                  _buildActionIcon(icon: Icons.restart_alt_rounded, onPressed: _resetImage, tooltip: "Reset All", isDestructive: true),
                 ],
               ),
               const SizedBox(height: 14),
@@ -853,63 +646,26 @@ class _ImageContainerState extends State<ImageContainer> {
                   Container(
                     width: 32,
                     height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.circle,
-                      size: _strokeWidth.clamp(4, 20).toDouble(),
-                      color: AppTheme.accentPrimary,
-                    ),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), shape: BoxShape.circle),
+                    child: Icon(Icons.circle, size: _strokeWidth.clamp(4, 20).toDouble(), color: AppTheme.accentPrimary),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: SizedBox(
                       height: 20,
                       child: SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: AppTheme.accentPrimary,
-                          inactiveTrackColor: Colors.white.withValues(
-                            alpha: 0.1,
-                          ),
-                          thumbColor: Colors.white,
-                          trackHeight: 4,
-                          thumbShape: const RoundSliderThumbShape(
-                            enabledThumbRadius: 8,
-                            elevation: 2,
-                          ),
-                          overlayShape: const RoundSliderOverlayShape(
-                            overlayRadius: 16,
-                          ),
-                        ),
-                        child: Slider(
-                          value: _strokeWidth,
-                          min: 1.0,
-                          max: 100.0,
-                          onChanged: (value) =>
-                              setState(() => _strokeWidth = value),
-                        ),
+                        data: SliderTheme.of(context).copyWith(activeTrackColor: AppTheme.accentPrimary, inactiveTrackColor: Colors.white.withValues(alpha: 0.1), thumbColor: Colors.white, trackHeight: 4, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8, elevation: 2), overlayShape: const RoundSliderOverlayShape(overlayRadius: 16)),
+                        child: Slider(value: _strokeWidth, min: 1.0, max: 100.0, onChanged: (value) => setState(() => _strokeWidth = value)),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                     child: Text(
                       "${_strokeWidth.round()}px",
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -929,31 +685,16 @@ class _ImageContainerState extends State<ImageContainer> {
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.accentPrimary : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-          boxShadow: isSelected ? AppTheme.glowPrimary(intensity: 0.2) : [],
-        ),
+        decoration: BoxDecoration(color: isSelected ? AppTheme.accentPrimary : Colors.transparent, borderRadius: BorderRadius.circular(AppTheme.radiusSmall), boxShadow: isSelected ? AppTheme.glowPrimary(intensity: 0.2) : []),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 14,
-              color: isSelected ? Colors.white : Colors.white24,
-            ),
-          ],
+          children: [Icon(icon, size: 14, color: isSelected ? Colors.white : Colors.white24)],
         ),
       ),
     );
   }
 
-  Widget _buildActionIcon({
-    required IconData icon,
-    required VoidCallback? onPressed,
-    String? tooltip,
-    bool isDestructive = false,
-  }) {
+  Widget _buildActionIcon({required IconData icon, required VoidCallback? onPressed, String? tooltip, bool isDestructive = false}) {
     final isDisabled = onPressed == null;
     return Tooltip(
       message: tooltip ?? '',
@@ -967,22 +708,10 @@ class _ImageContainerState extends State<ImageContainer> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: isDestructive && !isDisabled
-                  ? Colors.redAccent.withValues(alpha: 0.1)
-                  : Colors.white.withValues(alpha: 0.03),
-              border: Border.all(
-                color: isDestructive && !isDisabled
-                    ? AppTheme.error.withValues(alpha: 0.1)
-                    : Colors.white.withValues(alpha: 0.05),
-              ),
+              color: isDestructive && !isDisabled ? Colors.redAccent.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.03),
+              border: Border.all(color: isDestructive && !isDisabled ? AppTheme.error.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.05)),
             ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: isDestructive && !isDisabled
-                  ? AppTheme.error
-                  : Colors.white70,
-            ),
+            child: Icon(icon, size: 18, color: isDestructive && !isDisabled ? AppTheme.error : Colors.white70),
           ),
         ),
       ),
@@ -1000,25 +729,10 @@ class _ImageContainerState extends State<ImageContainer> {
         height: 550,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: hasImage
-              ? Colors.black
-              : AppTheme.glassBackground.withValues(alpha: 0.05),
+          color: AppTheme.surfaceCard,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: hasImage
-                ? accentColor.withValues(alpha: 0.3)
-                : AppTheme.glassBorder,
-            width: hasImage ? 2 : 1,
-          ),
-          boxShadow: hasImage
-              ? [
-                  BoxShadow(
-                    color: accentColor.withValues(alpha: 0.15),
-                    blurRadius: 30,
-                    spreadRadius: -5,
-                  ),
-                ]
-              : [],
+          border: Border.all(color: hasImage ? accentColor.withValues(alpha: 0.3) : AppTheme.glassBorder, width: hasImage ? 2 : 1),
+          boxShadow: hasImage ? [BoxShadow(color: accentColor.withValues(alpha: 0.15), blurRadius: 30, spreadRadius: -5)] : [],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(22),
@@ -1026,15 +740,10 @@ class _ImageContainerState extends State<ImageContainer> {
             fit: StackFit.expand,
             children: [
               // Content
-              hasImage
-                  ? (_isOutpaintingMode
-                        ? _buildImageWithOutpainting()
-                        : _buildImageWithDrawing())
-                  : _buildUploadPrompt(),
+              hasImage ? (_isOutpaintingMode ? _buildImageWithOutpainting() : _buildImageWithDrawing()) : _buildUploadPrompt(),
 
               // Floating Toggle (Only show if image exists)
-              if (hasImage)
-                Positioned(top: 16, right: 16, child: _buildModeToggle()),
+              if (hasImage) Positioned(top: 16, right: 16, child: _buildModeToggle()),
             ],
           ),
         ),
@@ -1064,9 +773,7 @@ class _ImageContainerState extends State<ImageContainer> {
           children: [
             // 1. The Sliding Pill Indicator
             AnimatedAlign(
-              alignment: _isOutpaintingMode
-                  ? Alignment.centerRight
-                  : Alignment.centerLeft,
+              alignment: _isOutpaintingMode ? Alignment.centerRight : Alignment.centerLeft,
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOutQuart,
               child: Container(
@@ -1075,13 +782,7 @@ class _ImageContainerState extends State<ImageContainer> {
                 decoration: BoxDecoration(
                   color: AppTheme.accentPrimary,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.accentPrimary.withValues(alpha: 0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  boxShadow: [BoxShadow(color: AppTheme.accentPrimary.withValues(alpha: 0.4), blurRadius: 10, offset: const Offset(0, 2))],
                 ),
               ),
             ),
@@ -1090,22 +791,8 @@ class _ImageContainerState extends State<ImageContainer> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildToggleItem(
-                  icon: Icons.brush_rounded,
-                  isActive: !_isOutpaintingMode,
-                  onTap: () => setState(() => _isOutpaintingMode = false),
-                  tooltip: "Inpaint (Brush)",
-                  width: itemWidth,
-                  height: itemHeight,
-                ),
-                _buildToggleItem(
-                  icon: Icons.aspect_ratio_rounded,
-                  isActive: _isOutpaintingMode,
-                  onTap: () => setState(() => _isOutpaintingMode = true),
-                  tooltip: "Outpaint (Resize)",
-                  width: itemWidth,
-                  height: itemHeight,
-                ),
+                _buildToggleItem(icon: Icons.brush_rounded, isActive: !_isOutpaintingMode, onTap: () => setState(() => _isOutpaintingMode = false), tooltip: "Inpaint (Brush)", width: itemWidth, height: itemHeight),
+                _buildToggleItem(icon: Icons.aspect_ratio_rounded, isActive: _isOutpaintingMode, onTap: () => setState(() => _isOutpaintingMode = true), tooltip: "Outpaint (Resize)", width: itemWidth, height: itemHeight),
               ],
             ),
           ],
@@ -1114,20 +801,12 @@ class _ImageContainerState extends State<ImageContainer> {
     );
   }
 
-  Widget _buildToggleItem({
-    required IconData icon,
-    required bool isActive,
-    required VoidCallback onTap,
-    required String tooltip,
-    required double width,
-    required double height,
-  }) {
+  Widget _buildToggleItem({required IconData icon, required bool isActive, required VoidCallback onTap, required String tooltip, required double width, required double height}) {
     return Tooltip(
       message: tooltip,
       child: GestureDetector(
         onTap: onTap,
-        behavior:
-            HitTestBehavior.opaque, // Ensures the empty space is clickable
+        behavior: HitTestBehavior.opaque, // Ensures the empty space is clickable
         child: SizedBox(
           width: width,
           height: height,
@@ -1135,13 +814,7 @@ class _ImageContainerState extends State<ImageContainer> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               // Icon color transitions: Black when Active (on pill), White when Inactive
-              child: Icon(
-                icon,
-                size: 20,
-                color: isActive
-                    ? Colors.black
-                    : Colors.white.withValues(alpha: 0.7),
-              ),
+              child: Icon(icon, size: 20, color: isActive ? Colors.black : Colors.white.withValues(alpha: 0.7)),
             ),
           ),
         ),
@@ -1161,20 +834,11 @@ class _ImageContainerState extends State<ImageContainer> {
             children: [
               Row(
                 children: [
-                  const Icon(
-                    Icons.dashboard_customize_rounded,
-                    color: AppTheme.accentPrimary,
-                    size: 18,
-                  ),
+                  const Icon(Icons.dashboard_customize_rounded, color: AppTheme.accentPrimary, size: 18),
                   const SizedBox(width: 8),
                   Text(
                     "PROMPT",
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
-                      letterSpacing: 1.5,
-                    ),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1.5),
                   ),
                 ],
               ),
@@ -1186,19 +850,9 @@ class _ImageContainerState extends State<ImageContainer> {
                     padding: const EdgeInsets.all(4.0),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.clear,
-                          size: 14,
-                          color: Colors.white.withValues(alpha: 0.5),
-                        ),
+                        Icon(Icons.clear, size: 14, color: Colors.white.withValues(alpha: 0.5)),
                         const SizedBox(width: 4),
-                        Text(
-                          "Clear",
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.5),
-                            fontSize: 11,
-                          ),
-                        ),
+                        Text("Clear", style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
                       ],
                     ),
                   ),
@@ -1208,13 +862,7 @@ class _ImageContainerState extends State<ImageContainer> {
         ),
 
         // Text Field Container
-        GlassInput(
-          controller: userPrompt,
-          hintText: 'Imagine a futuristic city with glowing neon lights...',
-          maxLines: 3,
-          prefixIcon: Icons.science_outlined,
-          onChanged: (_) => setState(() {}),
-        ),
+        GlassInput(controller: userPrompt, hintText: 'Imagine a futuristic city with glowing neon lights...', maxLines: 3, prefixIcon: Icons.science_outlined, onChanged: (_) => setState(() {})),
       ],
     );
   }
@@ -1247,10 +895,7 @@ class _ImageContainerState extends State<ImageContainer> {
               tooltip: 'LoRAs',
               onTap: () {
                 FocusScope.of(context).unfocus();
-                showLorasModal(context, _selectedLoras, _selectedLoraTags, (
-                  newLoras,
-                  newTags,
-                ) {
+                showLorasModal(context, _selectedLoras, _selectedLoraTags, (newLoras, newTags) {
                   setState(() {
                     _selectedLoras = newLoras;
                     _selectedLoraTags = newTags;
@@ -1267,9 +912,7 @@ class _ImageContainerState extends State<ImageContainer> {
                 showInpaintHistory(context, (selectedItem) {
                   setState(() {
                     userPrompt.text = selectedItem;
-                    userPrompt.selection = TextSelection.fromPosition(
-                      TextPosition(offset: userPrompt.text.length),
-                    );
+                    userPrompt.selection = TextSelection.fromPosition(TextPosition(offset: userPrompt.text.length));
                   });
                 });
               },
@@ -1291,13 +934,7 @@ class _ImageContainerState extends State<ImageContainer> {
                 });
                 generateImage();
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text("Please enter a prompt first"),
-                    backgroundColor: AppTheme.glassBackgroundDark,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text("Please enter a prompt first"), backgroundColor: AppTheme.glassBackgroundDark, behavior: SnackBarBehavior.floating));
               }
             },
           ),

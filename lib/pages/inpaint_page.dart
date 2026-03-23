@@ -20,8 +20,7 @@ class InpaintPage extends StatefulWidget {
   InpaintPageState createState() => InpaintPageState();
 }
 
-class InpaintPageState extends State<InpaintPage>
-    with AutomaticKeepAliveClientMixin {
+class InpaintPageState extends State<InpaintPage> with AutomaticKeepAliveClientMixin {
   bool _showToolbar = false;
 
   // ===== Build Methods ===== //
@@ -39,25 +38,21 @@ class InpaintPageState extends State<InpaintPage>
         backgroundColor: Colors.transparent,
         extendBody: true,
         extendBodyBehindAppBar: true,
-        appBar: GlassAppBar(
-          title: 'CANVAS',
-          onTitleTap: () => setState(() => _showToolbar = !_showToolbar),
-          subtitle: _showToolbar ? 'Tap title to hide tools' : 'Tap title for tools',
-        ),
+        appBar: GlassAppBar(title: 'CANVAS', onTitleTap: () => setState(() => _showToolbar = !_showToolbar), subtitle: _showToolbar ? 'Tap title to hide tools' : 'Tap title for tools'),
         body: Stack(
           children: [
-            SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 110, 16, 120),
+            const SingleChildScrollView(
+              physics: BouncingScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(16, 110, 16, 120),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Focus(autofocus: true, child: SizedBox.shrink()),
+                  Focus(autofocus: true, child: SizedBox.shrink()),
                   ImageContainer(),
                 ],
               ),
             ),
-            
+
             // Floating Toolbar
             AnimatedPositioned(
               duration: const Duration(milliseconds: 350),
@@ -68,10 +63,7 @@ class InpaintPageState extends State<InpaintPage>
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 250),
                 opacity: _showToolbar ? 1.0 : 0.0,
-                child: IgnorePointer(
-                  ignoring: !_showToolbar,
-                  child: _buildCanvasToolbar(),
-                ),
+                child: IgnorePointer(ignoring: !_showToolbar, child: _buildCanvasToolbar()),
               ),
             ),
           ],
@@ -87,52 +79,26 @@ class InpaintPageState extends State<InpaintPage>
         color: AppTheme.glassBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.glassBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _toolbarItem(
-            icon: Icons.crop_rounded,
-            label: 'Crop',
-            onTap: () => showCropModal(context),
-          ),
+          _toolbarItem(icon: Icons.crop_rounded, label: 'Crop', onTap: () => showCropModal(context)),
           _vDivider(),
-          _toolbarItem(
-            icon: Icons.hd_rounded,
-            label: 'Upscale',
-            onTap: () => showUpscaleModal(context),
-          ),
+          _toolbarItem(icon: Icons.hd_rounded, label: 'Upscale', onTap: () => showUpscaleModal(context)),
           _vDivider(),
-          _toolbarItem(
-            icon: Icons.photo_size_select_large_rounded,
-            label: 'Resize',
-            onTap: () => showResizeModal(context),
-          ),
+          _toolbarItem(icon: Icons.photo_size_select_large_rounded, label: 'Resize', onTap: () => showResizeModal(context)),
         ],
       ),
     );
   }
 
   Widget _vDivider() {
-    return Container(
-      height: 20,
-      width: 1,
-      color: Colors.white.withValues(alpha: 0.1),
-    );
+    return Container(height: 20, width: 1, color: Colors.white.withValues(alpha: 0.1));
   }
 
-  Widget _toolbarItem({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
+  Widget _toolbarItem({required IconData icon, required String label, required VoidCallback onTap}) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -147,12 +113,7 @@ class InpaintPageState extends State<InpaintPage>
               const SizedBox(height: 4),
               Text(
                 label,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.5),
               ),
             ],
           ),

@@ -15,27 +15,14 @@ class GlassSlider extends StatelessWidget {
   final String Function(double)? valueFormatter;
   final Color? accentColor;
 
-  const GlassSlider({
-    super.key,
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    this.divisions,
-    required this.onChanged,
-    this.onChangeEnd,
-    this.valueFormatter,
-    this.accentColor,
-  });
+  const GlassSlider({super.key, required this.label, required this.value, required this.min, required this.max, this.divisions, required this.onChanged, this.onChangeEnd, this.valueFormatter, this.accentColor});
 
   @override
   Widget build(BuildContext context) {
     final effectiveAccent = accentColor ?? AppTheme.accentPrimary;
 
     // Formatting logic
-    final displayValue =
-        valueFormatter?.call(value) ??
-        value.toStringAsFixed(divisions != null ? 0 : 1);
+    final displayValue = valueFormatter?.call(value) ?? value.toStringAsFixed(divisions != null ? 0 : 1);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,30 +37,16 @@ class GlassSlider extends StatelessWidget {
               // Label
               Text(
                 label,
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w500, fontSize: 14),
               ),
 
               // Modern Value Badge
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 3,
-                ),
-                decoration: BoxDecoration(
-                  color: effectiveAccent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(color: effectiveAccent.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
                 child: Text(
                   displayValue,
-                  style: TextStyle(
-                    color: effectiveAccent,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: effectiveAccent, fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ),
             ],
@@ -89,14 +62,7 @@ class GlassSlider extends StatelessWidget {
             data: SliderThemeData(
               trackHeight: 6,
               // Modern Capsule Track
-              trackShape: _ModernCapsuleTrackShape(
-                gradient: LinearGradient(
-                  colors: [
-                    effectiveAccent.withValues(alpha: 0.5),
-                    effectiveAccent,
-                  ],
-                ),
-              ),
+              trackShape: _ModernCapsuleTrackShape(gradient: LinearGradient(colors: [effectiveAccent.withValues(alpha: 0.5), effectiveAccent])),
               // Sleek White Pill/Circle Thumb
               thumbShape: _SleekThumbShape(
                 thumbRadius: 10,
@@ -108,14 +74,7 @@ class GlassSlider extends StatelessWidget {
               activeTickMarkColor: Colors.transparent,
               inactiveTickMarkColor: Colors.transparent,
             ),
-            child: Slider(
-              value: value,
-              min: min,
-              max: max,
-              divisions: divisions,
-              onChanged: onChanged,
-              onChangeEnd: onChangeEnd,
-            ),
+            child: Slider(value: value, min: min, max: max, divisions: divisions, onChanged: onChanged, onChangeEnd: onChangeEnd),
           ),
         ),
       ],
@@ -131,43 +90,18 @@ class _ModernCapsuleTrackShape extends SliderTrackShape {
   const _ModernCapsuleTrackShape({required this.gradient});
 
   @override
-  Rect getPreferredRect({
-    required RenderBox parentBox,
-    Offset offset = Offset.zero,
-    required SliderThemeData sliderTheme,
-    bool isEnabled = false,
-    bool isDiscrete = false,
-  }) {
+  Rect getPreferredRect({required RenderBox parentBox, Offset offset = Offset.zero, required SliderThemeData sliderTheme, bool isEnabled = false, bool isDiscrete = false}) {
     final double trackHeight = sliderTheme.trackHeight ?? 6;
     final double trackLeft = offset.dx;
-    final double trackTop =
-        offset.dy + (parentBox.size.height - trackHeight) / 2;
+    final double trackTop = offset.dy + (parentBox.size.height - trackHeight) / 2;
     final double trackWidth = parentBox.size.width;
     return Rect.fromLTWH(trackLeft, trackTop, trackWidth, trackHeight);
   }
 
   @override
-  void paint(
-    PaintingContext context,
-    Offset offset, {
-    required RenderBox parentBox,
-    required SliderThemeData sliderTheme,
-    required Animation<double> enableAnimation,
-    required TextDirection textDirection,
-    required Offset thumbCenter,
-    Offset? secondaryOffset,
-    bool isDiscrete = false,
-    bool isEnabled = false,
-    double additionalActiveTrackHeight = 0,
-  }) {
+  void paint(PaintingContext context, Offset offset, {required RenderBox parentBox, required SliderThemeData sliderTheme, required Animation<double> enableAnimation, required TextDirection textDirection, required Offset thumbCenter, Offset? secondaryOffset, bool isDiscrete = false, bool isEnabled = false, double additionalActiveTrackHeight = 0}) {
     final Canvas canvas = context.canvas;
-    final Rect trackRect = getPreferredRect(
-      parentBox: parentBox,
-      offset: offset,
-      sliderTheme: sliderTheme,
-      isEnabled: isEnabled,
-      isDiscrete: isDiscrete,
-    );
+    final Rect trackRect = getPreferredRect(parentBox: parentBox, offset: offset, sliderTheme: sliderTheme, isEnabled: isEnabled, isDiscrete: isDiscrete);
 
     final Radius radius = Radius.circular(trackRect.height / 2);
 
@@ -181,22 +115,14 @@ class _ModernCapsuleTrackShape extends SliderTrackShape {
 
     // 2. Active Track (Gradient)
     final double activeWidth = thumbCenter.dx - trackRect.left;
-    final Rect activeRect = Rect.fromLTWH(
-      trackRect.left,
-      trackRect.top,
-      activeWidth,
-      trackRect.height,
-    );
+    final Rect activeRect = Rect.fromLTWH(trackRect.left, trackRect.top, activeWidth, trackRect.height);
 
     if (activeWidth > 0) {
       final Paint activePaint = Paint()
         ..shader = gradient.createShader(activeRect)
         ..style = PaintingStyle.fill;
 
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(activeRect, radius),
-        activePaint,
-      );
+      canvas.drawRRect(RRect.fromRectAndRadius(activeRect, radius), activePaint);
     }
   }
 }
@@ -206,11 +132,7 @@ class _SleekThumbShape extends SliderComponentShape {
   final Color color;
   final Color borderColor;
 
-  const _SleekThumbShape({
-    this.thumbRadius = 10.0,
-    required this.color,
-    required this.borderColor,
-  });
+  const _SleekThumbShape({this.thumbRadius = 10.0, required this.color, required this.borderColor});
 
   @override
   Size getPreferredSize(bool isEnabled, bool isDiscrete) {
@@ -218,20 +140,7 @@ class _SleekThumbShape extends SliderComponentShape {
   }
 
   @override
-  void paint(
-    PaintingContext context,
-    Offset center, {
-    required Animation<double> activationAnimation,
-    required Animation<double> enableAnimation,
-    required bool isDiscrete,
-    required TextPainter labelPainter,
-    required RenderBox parentBox,
-    required SliderThemeData sliderTheme,
-    required TextDirection textDirection,
-    required double value,
-    required double textScaleFactor,
-    required Size sizeWithOverflow,
-  }) {
+  void paint(PaintingContext context, Offset center, {required Animation<double> activationAnimation, required Animation<double> enableAnimation, required bool isDiscrete, required TextPainter labelPainter, required RenderBox parentBox, required SliderThemeData sliderTheme, required TextDirection textDirection, required double value, required double textScaleFactor, required Size sizeWithOverflow}) {
     final Canvas canvas = context.canvas;
 
     // Subtle animation on touch (scale up slightly)
@@ -239,8 +148,7 @@ class _SleekThumbShape extends SliderComponentShape {
 
     // 1. Soft Shadow (Elevation)
     // Standard sleek UI shadow
-    final Path shadowPath = Path()
-      ..addOval(Rect.fromCircle(center: center, radius: currentRadius));
+    final Path shadowPath = Path()..addOval(Rect.fromCircle(center: center, radius: currentRadius));
 
     canvas.drawShadow(shadowPath, Colors.black.withValues(alpha: 0.5), 3, true);
 

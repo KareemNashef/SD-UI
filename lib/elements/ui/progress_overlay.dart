@@ -20,9 +20,7 @@ class ProgressOverlay extends StatelessWidget {
     return ValueListenableBuilder<bool>(
       valueListenable: globalIsCheckpointTesting,
       builder: (context, isCheckpointTesting, child) {
-        final accentColor = isCheckpointTesting
-            ? AppTheme.accentSecondary
-            : AppTheme.accentPrimary;
+        final accentColor = isCheckpointTesting ? AppTheme.accentSecondary : AppTheme.accentPrimary;
 
         return AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
@@ -47,10 +45,7 @@ class ProgressOverlay extends StatelessWidget {
       valueListenable: globalIsChangingCheckpoint,
       builder: (context, isChangingCheckpoint, child) {
         if (isChangingCheckpoint) {
-          return _GlassHudCard(
-            accentColor: accentColor,
-            child: _buildCheckpointLoader(accentColor),
-          );
+          return _GlassHudCard(accentColor: accentColor, child: _buildCheckpointLoader(accentColor));
         }
         return ValueListenableBuilder<Map<String, dynamic>?>(
           valueListenable: globalProgressData,
@@ -59,19 +54,9 @@ class ProgressOverlay extends StatelessWidget {
               valueListenable: globalIsGenerating,
               builder: (context, isGenerating, child) {
                 if (progressData == null || !isGenerating) {
-                  return _GlassHudCard(
-                    accentColor: accentColor,
-                    child: _buildSimpleLoader("Preparing Test...", accentColor),
-                  );
+                  return _GlassHudCard(accentColor: accentColor, child: _buildSimpleLoader("Preparing Test...", accentColor));
                 }
-                return _GlassHudCard(
-                  accentColor: accentColor,
-                  child: _buildProgressContent(
-                    progressData,
-                    accentColor,
-                    isTesting: true,
-                  ),
-                );
+                return _GlassHudCard(accentColor: accentColor, child: _buildProgressContent(progressData, accentColor, isTesting: true));
               },
             );
           },
@@ -90,23 +75,16 @@ class ProgressOverlay extends StatelessWidget {
           valueListenable: globalProgressData,
           builder: (context, progressData, child) {
             if (progressData == null) {
-              return _GlassHudCard(
-                accentColor: accentColor,
-                child: _buildSimpleLoader("Initializing...", accentColor),
-              );
+              return _GlassHudCard(accentColor: accentColor, child: _buildSimpleLoader("Initializing...", accentColor));
             }
 
             // --- CHECKPOINT CHANGE DETECTION ---
             // Extract state info to see if the backend is loading a model
             final state = progressData['state'] as Map<String, dynamic>? ?? {};
-            final jobDescription = (state['job'] as String? ?? '')
-                .toLowerCase();
+            final jobDescription = (state['job'] as String? ?? '').toLowerCase();
 
             // Check for keywords often sent by SD WebUI during model loads
-            final bool isSwitchingModel =
-                jobDescription.contains('loading') ||
-                jobDescription.contains('checkpoint') ||
-                jobDescription.contains('weights');
+            final bool isSwitchingModel = jobDescription.contains('loading') || jobDescription.contains('checkpoint') || jobDescription.contains('weights') || (progressData['is_switching_checkpoint'] as bool? ?? false);
 
             if (isSwitchingModel) {
               return _GlassHudCard(
@@ -120,14 +98,7 @@ class ProgressOverlay extends StatelessWidget {
             }
             // -----------------------------------
 
-            return _GlassHudCard(
-              accentColor: accentColor,
-              child: _buildProgressContent(
-                progressData,
-                accentColor,
-                isTesting: false,
-              ),
-            );
+            return _GlassHudCard(accentColor: accentColor, child: _buildProgressContent(progressData, accentColor, isTesting: false));
           },
         );
       },
@@ -147,23 +118,14 @@ class ProgressOverlay extends StatelessWidget {
             alignment: Alignment.center,
             children: [
               CircularProgressIndicator(color: accentColor, strokeWidth: 2.5),
-              Icon(
-                Icons.auto_awesome,
-                color: Colors.white.withValues(alpha: 0.8),
-                size: 24,
-              ),
+              Icon(Icons.auto_awesome, color: Colors.white.withValues(alpha: 0.8), size: 24),
             ],
           ),
         ),
         const SizedBox(height: 24),
         Text(
           message,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-          ),
+          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5),
         ),
       ],
     );
@@ -180,10 +142,7 @@ class ProgressOverlay extends StatelessWidget {
     return ValueListenableBuilder<String?>(
       valueListenable: globalCurrentTestingCheckpoint,
       builder: (context, checkpointName, _) {
-        return _buildCheckpointContent(
-          accentColor,
-          checkpointName ?? "Loading...",
-        );
+        return _buildCheckpointContent(accentColor, checkpointName ?? "Loading...");
       },
     );
   }
@@ -197,11 +156,7 @@ class ProgressOverlay extends StatelessWidget {
         const SizedBox(height: 24),
         const Text(
           'Switching Model',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Container(
@@ -213,11 +168,7 @@ class ProgressOverlay extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 12,
-              fontFamily: 'monospace',
-            ),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12, fontFamily: 'monospace'),
             textAlign: TextAlign.center,
           ),
         ),
@@ -225,11 +176,7 @@ class ProgressOverlay extends StatelessWidget {
     );
   }
 
-  Widget _buildProgressContent(
-    Map<String, dynamic> data,
-    Color accentColor, {
-    required bool isTesting,
-  }) {
+  Widget _buildProgressContent(Map<String, dynamic> data, Color accentColor, {required bool isTesting}) {
     // Extract Data
     final progress = (data['progress'] as num?)?.toDouble() ?? 0.0;
     final eta = data['eta_relative'] as num? ?? 0;
@@ -255,12 +202,7 @@ class ProgressOverlay extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 'GENERATING',
-                style: TextStyle(
-                  color: accentColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
-                ),
+                style: TextStyle(color: accentColor, fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 1.5),
               ),
             ],
           ),
@@ -268,11 +210,7 @@ class ProgressOverlay extends StatelessWidget {
         const SizedBox(height: 20),
 
         // 2. Scanner Frame Image Preview
-        if (currentImage != null)
-          _ScannerPreviewFrame(
-            base64Image: currentImage,
-            accentColor: accentColor,
-          ),
+        if (currentImage != null) _ScannerPreviewFrame(base64Image: currentImage, accentColor: accentColor),
 
         const SizedBox(height: 24),
 
@@ -282,20 +220,11 @@ class ProgressOverlay extends StatelessWidget {
           children: [
             Text(
               "PROGRESS",
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.4),
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
             ),
             Text(
               "${(progress * 100).toInt()}%",
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                fontFamily: 'monospace',
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900, fontFamily: 'monospace'),
             ),
           ],
         ),
@@ -308,23 +237,9 @@ class ProgressOverlay extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _StatBadge(
-              label: "STEP",
-              value: "$stepCurrent/$stepTotal",
-              icon: Icons.layers,
-            ),
-            if (jobTotal > 1)
-              _StatBadge(
-                label: "BATCH",
-                value: "$jobCurrent/$jobTotal",
-                icon: Icons.copy,
-              ),
-            _StatBadge(
-              label: "ETA",
-              value: "${eta.toInt()}s",
-              icon: Icons.timer,
-              valueColor: accentColor,
-            ),
+            _StatBadge(label: "STEP", value: "$stepCurrent/$stepTotal", icon: Icons.layers),
+            if (jobTotal > 1) _StatBadge(label: "BATCH", value: "$jobCurrent/$jobTotal", icon: Icons.copy),
+            _StatBadge(label: "ETA", value: "${eta.toInt()}s", icon: Icons.timer, valueColor: accentColor),
           ],
         ),
       ],
@@ -352,12 +267,7 @@ class ProgressOverlay extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     "TEST ${index + 1} / $total",
-                    style: TextStyle(
-                      color: accentColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                      letterSpacing: 1.0,
-                    ),
+                    style: TextStyle(color: accentColor, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.0),
                   ),
                 ],
               ),
@@ -382,9 +292,7 @@ class _GlassHudCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Positioned.fill(
-          child: Container(color: Colors.black.withValues(alpha: 0.7)),
-        ),
+        Positioned.fill(child: Container(color: Colors.black.withValues(alpha: 0.7))),
         Center(
           child: Container(
             width: MediaQuery.of(context).size.width * 0.85,
@@ -392,21 +300,10 @@ class _GlassHudCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppTheme.glassBackground.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-              border: Border.all(
-                color: accentColor.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
+              border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1.5),
               boxShadow: [
-                BoxShadow(
-                  color: accentColor.withValues(alpha: 0.15),
-                  blurRadius: 30,
-                  spreadRadius: -5,
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
+                BoxShadow(color: accentColor.withValues(alpha: 0.15), blurRadius: 30, spreadRadius: -5),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20, offset: const Offset(0, 10)),
               ],
             ),
             child: child,
@@ -421,10 +318,7 @@ class _ScannerPreviewFrame extends StatelessWidget {
   final String base64Image;
   final Color accentColor;
 
-  const _ScannerPreviewFrame({
-    required this.base64Image,
-    required this.accentColor,
-  });
+  const _ScannerPreviewFrame({required this.base64Image, required this.accentColor});
 
   @override
   Widget build(BuildContext context) {
@@ -435,13 +329,7 @@ class _ScannerPreviewFrame extends StatelessWidget {
         color: Colors.black,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: accentColor.withValues(alpha: 0.4), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withValues(alpha: 0.1),
-            blurRadius: 20,
-            spreadRadius: 2,
-          ),
-        ],
+        boxShadow: [BoxShadow(color: accentColor.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 2)],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(15),
@@ -449,26 +337,11 @@ class _ScannerPreviewFrame extends StatelessWidget {
           children: [
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
-              child: Image.memory(
-                base64Decode(base64Image),
-                key: ValueKey(base64Image.hashCode),
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-                gaplessPlayback: true,
-              ),
+              child: Image.memory(base64Decode(base64Image), key: ValueKey(base64Image.hashCode), fit: BoxFit.cover, width: double.infinity, height: double.infinity, gaplessPlayback: true),
             ),
             Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    accentColor.withValues(alpha: 0.05),
-                    Colors.transparent,
-                  ],
-                ),
+                gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, accentColor.withValues(alpha: 0.05), Colors.transparent]),
               ),
             ),
           ],
@@ -489,10 +362,7 @@ class _NeonProgressBar extends StatelessWidget {
     return Container(
       height: 6,
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(3),
-      ),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3)),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth * progress;
@@ -503,18 +373,9 @@ class _NeonProgressBar extends StatelessWidget {
                 curve: Curves.easeOut,
                 width: width,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [color.withValues(alpha: 0.5), color],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
+                  gradient: LinearGradient(colors: [color.withValues(alpha: 0.5), color], begin: Alignment.centerLeft, end: Alignment.centerRight),
                   borderRadius: BorderRadius.circular(3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.4),
-                      blurRadius: 6,
-                    ),
-                  ],
+                  boxShadow: [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 6)],
                 ),
               ),
             ],
@@ -531,12 +392,7 @@ class _StatBadge extends StatelessWidget {
   final IconData icon;
   final Color? valueColor;
 
-  const _StatBadge({
-    required this.label,
-    required this.value,
-    required this.icon,
-    this.valueColor,
-  });
+  const _StatBadge({required this.label, required this.value, required this.icon, this.valueColor});
 
   @override
   Widget build(BuildContext context) {
@@ -546,20 +402,11 @@ class _StatBadge extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           value,
-          style: TextStyle(
-            color: valueColor ?? Colors.white,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'monospace',
-          ),
+          style: TextStyle(color: valueColor ?? Colors.white, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
         ),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white38,
-            fontSize: 9,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.w600),
         ),
       ],
     );
@@ -576,17 +423,13 @@ class _SpinningGear extends StatefulWidget {
   State<_SpinningGear> createState() => _SpinningGearState();
 }
 
-class _SpinningGearState extends State<_SpinningGear>
-    with SingleTickerProviderStateMixin {
+class _SpinningGearState extends State<_SpinningGear> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat();
   }
 
   @override
@@ -599,11 +442,7 @@ class _SpinningGearState extends State<_SpinningGear>
   Widget build(BuildContext context) {
     return RotationTransition(
       turns: _controller,
-      child: Icon(
-        Icons.settings_suggest,
-        color: widget.color,
-        size: widget.size,
-      ),
+      child: Icon(Icons.settings_suggest, color: widget.color, size: widget.size),
     );
   }
 }

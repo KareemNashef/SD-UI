@@ -32,11 +32,7 @@ class StorageService {
   static Future<void> saveCheckpointDataMap() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final json = jsonEncode(
-      globalCheckpointDataMap.map(
-        (key, value) => MapEntry(key, value.toJson()),
-      ),
-    );
+    final json = jsonEncode(globalCheckpointDataMap.map((key, value) => MapEntry(key, value.toJson())));
     await prefs.setString('checkpointDataMap', json);
     await prefs.setString('currentCheckpointName', globalCurrentCheckpointName);
   }
@@ -47,15 +43,9 @@ class StorageService {
     final json = prefs.getString('checkpointDataMap');
     if (json != null) {
       final Map<String, dynamic> decoded = jsonDecode(json);
-      globalCheckpointDataMap = decoded.map(
-        (key, value) => MapEntry(
-          key,
-          CheckpointData.fromJson(value as Map<String, dynamic>),
-        ),
-      );
+      globalCheckpointDataMap = decoded.map((key, value) => MapEntry(key, CheckpointData.fromJson(value as Map<String, dynamic>)));
     }
-    globalCurrentCheckpointName =
-        prefs.getString('currentCheckpointName') ?? '';
+    globalCurrentCheckpointName = prefs.getString('currentCheckpointName') ?? '';
 
     // Initial sync of local globals after loading all data
     syncActiveCheckpointSettings();
@@ -83,12 +73,9 @@ class StorageService {
     await prefs.setString('negativePrompt', globalNegativePrompt);
   }
 
-  static Future<void> saveGenerationSettings() async {
+  static Future<void> savePositivePrompt() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('maskBlur', globalMaskBlur);
-    await prefs.setString('maskFill', globalMaskFill);
-    await prefs.setInt('batchSize', globalBatchSize);
-    await prefs.setString('negativePrompt', globalNegativePrompt);
+    await prefs.setString('positivePrompt', globalPositivePrompt);
   }
 
   static Future<void> loadGenerationSettings() async {
@@ -97,6 +84,7 @@ class StorageService {
     globalMaskFill = prefs.getString('maskFill') ?? 'fill';
     globalBatchSize = prefs.getInt('batchSize') ?? 2;
     globalNegativePrompt = prefs.getString('negativePrompt') ?? '';
+    globalPositivePrompt = prefs.getString('positivePrompt') ?? '';
   }
 
   // ===== Inpaint History Storage ===== //
@@ -104,19 +92,12 @@ class StorageService {
   static Future<void> saveInpaintHistory() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('inpaintHistory', globalInpaintHistory.toList());
-    await prefs.setStringList(
-      'favoritePrompts',
-      globalFavoritePrompts.toList(),
-    );
+    await prefs.setStringList('favoritePrompts', globalFavoritePrompts.toList());
   }
 
   static Future<void> loadInpaintHistory() async {
     final prefs = await SharedPreferences.getInstance();
-    globalInpaintHistory = Set<String>.from(
-      prefs.getStringList('inpaintHistory') ?? <dynamic>{},
-    );
-    globalFavoritePrompts = Set<String>.from(
-      prefs.getStringList('favoritePrompts') ?? <dynamic>{},
-    );
+    globalInpaintHistory = Set<String>.from(prefs.getStringList('inpaintHistory') ?? <dynamic>{});
+    globalFavoritePrompts = Set<String>.from(prefs.getStringList('favoritePrompts') ?? <dynamic>{});
   }
 }

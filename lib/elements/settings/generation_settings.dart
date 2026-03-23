@@ -25,10 +25,11 @@ class GenerationSettings extends StatefulWidget {
 
 class GenerationSettingsState extends State<GenerationSettings> {
   // ===== Class Variables ===== //
-  final _negativePromptController = TextEditingController(
-    text: globalNegativePrompt,
-  );
+  final _negativePromptController = TextEditingController(text: globalNegativePrompt);
   final _negativeFocusNode = FocusNode();
+
+  final _positivePromptController = TextEditingController(text: globalPositivePrompt);
+  final _positiveFocusNode = FocusNode();
 
   // ===== Lifecycle Methods ===== //
 
@@ -36,6 +37,8 @@ class GenerationSettingsState extends State<GenerationSettings> {
   void dispose() {
     _negativePromptController.dispose();
     _negativeFocusNode.dispose();
+    _positivePromptController.dispose();
+    _positiveFocusNode.dispose();
     super.dispose();
   }
 
@@ -49,15 +52,9 @@ class GenerationSettingsState extends State<GenerationSettings> {
           decoration: BoxDecoration(
             color: AppTheme.accentSecondary.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppTheme.accentSecondary.withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: AppTheme.accentSecondary.withValues(alpha: 0.3)),
           ),
-          child: const Icon(
-            Icons.tune_rounded,
-            color: AppTheme.accentSecondary,
-            size: 22,
-          ),
+          child: const Icon(Icons.tune_rounded, color: AppTheme.accentSecondary, size: 22),
         ),
         const SizedBox(width: 14),
         Column(
@@ -65,21 +62,12 @@ class GenerationSettingsState extends State<GenerationSettings> {
           children: [
             const Text(
               'GENERATION',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: Colors.white54,
-                letterSpacing: 1.5,
-              ),
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white54, letterSpacing: 1.5),
             ),
             const SizedBox(height: 2),
             Text(
               'Parameters',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white.withValues(alpha: 0.95),
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white.withValues(alpha: 0.95)),
             ),
           ],
         ),
@@ -157,15 +145,32 @@ class GenerationSettingsState extends State<GenerationSettings> {
             const SizedBox(height: 32),
 
             // ===== Inpainting Mode ===== //
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.start,
+            Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.start, children: [_buildMaskOption('Fill', 'fill'), _buildMaskOption('Original', 'original'), _buildMaskOption('Latent Noise', 'latent noise'), _buildMaskOption('Latent Nothing', 'latent nothing')]),
+
+            const SizedBox(height: 32),
+
+            // ===== Positive Prompt ===== //
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildMaskOption('Fill', 'fill'),
-                _buildMaskOption('Original', 'original'),
-                _buildMaskOption('Latent Noise', 'latent noise'),
-                _buildMaskOption('Latent Nothing', 'latent nothing'),
+                Text(
+                  'POSITIVE PROMPT',
+                  style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w500, fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                GlassTextArea(
+                  controller: _positivePromptController,
+                  focusNode: _positiveFocusNode,
+                  hintText: 'cinematic, photo, ultra realistic, detailed...',
+                  minLines: 3,
+                  maxLines: 5,
+                  prefixIcon: Icons.add_circle_outline,
+                  accentColor: AppTheme.accentPrimary,
+                  onChanged: (value) {
+                    globalPositivePrompt = value;
+                    StorageService.savePositivePrompt();
+                  },
+                ),
               ],
             ),
 
@@ -177,19 +182,13 @@ class GenerationSettingsState extends State<GenerationSettings> {
               children: [
                 Text(
                   'NEGATIVE PROMPT',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
-                  ),
+                  style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w500, fontSize: 14),
                 ),
                 const SizedBox(height: 12),
                 GlassTextArea(
                   controller: _negativePromptController,
                   focusNode: _negativeFocusNode,
-                  hintText:
-                      'blur, low quality, watermark, text, bad anatomy...',
+                  hintText: 'blur, low quality, watermark, text, bad anatomy...',
                   minLines: 3,
                   maxLines: 5,
                   prefixIcon: Icons.block,
