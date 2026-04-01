@@ -71,7 +71,16 @@ class A1111Backend {
       }
 
       // Send the checkpoint change request
-      await http.post(Uri.parse(serverUrl), headers: {'Content-Type': 'application/json'}, body: jsonEncode({"sd_model_checkpoint": checkpointData.title}));
+      final Map<String, dynamic> optionsBody = {"sd_model_checkpoint": checkpointData.title};
+
+      if (checkpointData.baseModel == "Qwen") {
+        // Use the correct key from the Forge API endpoint
+        optionsBody["forge_additional_modules"] = ["qwen_image_vae.safetensors", "qwen_2.5_vl_7b_fp8_scaled.safetensors"];
+      } else {
+        // Clear the modules for non-Qwen
+        optionsBody["forge_additional_modules"] = [];
+      }
+      await http.post(Uri.parse(serverUrl), headers: {'Content-Type': 'application/json'}, body: jsonEncode(optionsBody));
 
       // Send a quick 1x1 pixel text2image request to force the server to switch checkpoints immediately
       await http.post(Uri.parse(txt2imgUrl), headers: {'Content-Type': 'application/json'}, body: jsonEncode({"prompt": "", "steps": 1, "width": 10, "height": 10, "sampler_name": "Euler a", "cfg_scale": 1.0, "save_images": false}));
@@ -231,18 +240,34 @@ class A1111Backend {
     required int maskBlur,
     required int inpaintingFill, // This param is int, but older logic used string lookup. A1111 expects int.
   }) async {
+    final checkpointData = globalCheckpointDataMap[globalCurrentCheckpointName];
+    final bool isQwen = checkpointData?.baseModel == "Qwen";
+
+    int finalWidth = width;
+    int finalHeight = height;
+    String? base64Mask = maskBytes != null ? base64Encode(maskBytes) : null;
+
+    if (isQwen) {
+      final image = await decodeImageFromList(imageBytes);
+      finalWidth = image.width;
+      finalHeight = image.height;
+      base64Mask = null;
+    }
+
     final base64Image = base64Encode(imageBytes);
-    final base64Mask = maskBytes != null ? base64Encode(maskBytes) : null;
+
+    String scheduler = "Automatic";
+    if (isQwen) {
+      scheduler = "Normal";
+    }
 
     final body = {
-      "prompt": (positivePrompt.isNotEmpty ? '$positivePrompt, ' : '') +
-          prompt +
-          loraPromptAdditions,
+      "prompt": ((positivePrompt.isNotEmpty && !isQwen) ? '$positivePrompt, ' : '') + prompt + loraPromptAdditions,
       "negative_prompt": negativePrompt,
       "sampler_name": samplerName,
-      "scheduler": "Automatic",
-      "width": width,
-      "height": height,
+      "scheduler": scheduler,
+      "width": finalWidth,
+      "height": finalHeight,
       "n_iter": batchSize,
       "steps": steps,
       "cfg_scale": cfgScale,
@@ -254,7 +279,7 @@ class A1111Backend {
       "mask_blur": maskBlur,
       "inpainting_fill": inpaintingFill,
       "inpaint_full_res_padding": 32,
-      "inpaint_full_res": true,
+      "inpaint_full_res": !isQwen,
       "inpainting_mask_invert": 0,
       "mask_round": true,
     };

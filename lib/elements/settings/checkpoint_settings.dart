@@ -55,6 +55,19 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
     }
   }
 
+  void _saveCurrentSettingsToModel() {
+    if (globalCheckpointDataMap[globalCurrentCheckpointName] != null) {
+      final data = globalCheckpointDataMap[globalCurrentCheckpointName]!;
+      data.samplingSteps = globalCurrentSamplingSteps;
+      data.samplingMethod = globalCurrentSamplingMethod;
+      data.cfgScale = globalCurrentCfgScale;
+      data.denoisingStrength = globalDenoiseStrength;
+      data.resolutionWidth = globalCurrentResolutionWidth;
+      data.resolutionHeight = globalCurrentResolutionHeight;
+      StorageService.saveCheckpointDataMap();
+    }
+  }
+
   // ===== Class Widgets ===== //
 
   Widget _buildHeader() {
@@ -111,6 +124,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
         onSelect: (sampler) {
           setState(() {
             globalCurrentSamplingMethod = sampler;
+            _saveCurrentSettingsToModel();
           });
         },
       ),
@@ -162,18 +176,6 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
   }
 
   Widget _buildSliders() {
-    void save() {
-      if (globalCheckpointDataMap[globalCurrentCheckpointName] != null) {
-        final data = globalCheckpointDataMap[globalCurrentCheckpointName]!;
-        data.samplingSteps = globalCurrentSamplingSteps;
-        data.cfgScale = globalCurrentCfgScale;
-        data.denoisingStrength = globalDenoiseStrength;
-        data.resolutionWidth = globalCurrentResolutionWidth;
-        data.resolutionHeight = globalCurrentResolutionHeight;
-        StorageService.saveCheckpointDataMap();
-      }
-    }
-
     return Column(
       children: [
         GlassSlider(
@@ -188,7 +190,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
               globalDenoiseStrength = val;
             });
           },
-          onChangeEnd: (_) => save(),
+          onChangeEnd: (_) => _saveCurrentSettingsToModel(),
           valueFormatter: (val) => val.toStringAsFixed(2),
         ),
         const SizedBox(height: 24),
@@ -203,7 +205,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
               globalCurrentSamplingSteps = val.toInt();
             });
           },
-          onChangeEnd: (_) => save(),
+          onChangeEnd: (_) => _saveCurrentSettingsToModel(),
           valueFormatter: (val) => val.toInt().toString(),
         ),
         const SizedBox(height: 24),
@@ -219,7 +221,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
               globalCurrentCfgScale = val;
             });
           },
-          onChangeEnd: (_) => save(),
+          onChangeEnd: (_) => _saveCurrentSettingsToModel(),
           valueFormatter: (val) => val.toStringAsFixed(1),
         ),
         const SizedBox(height: 24),
@@ -239,7 +241,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                         .toInt();
                   });
                 },
-                onChangeEnd: (_) => save(),
+                onChangeEnd: (_) => _saveCurrentSettingsToModel(),
                 valueFormatter: (val) => '${val.toInt()}',
               ),
             ),
@@ -258,7 +260,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                         .toInt();
                   });
                 },
-                onChangeEnd: (_) => save(),
+                onChangeEnd: (_) => _saveCurrentSettingsToModel(),
                 valueFormatter: (val) => '${val.toInt()}',
               ),
             ),

@@ -16,19 +16,10 @@ import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/api_calls.dart';
 import 'package:sd_companion/logic/models/lora_data.dart';
 
-void showLorasModal(
-  BuildContext context,
-  Map<String, double> selectedLoras,
-  Map<String, Set<String>> selectedLoraTags,
-  Function(Map<String, double>, Map<String, Set<String>>) onApply,
-) {
+void showLorasModal(BuildContext context, Map<String, double> selectedLoras, Map<String, Set<String>> selectedLoraTags, Function(Map<String, double>, Map<String, Set<String>>) onApply) {
   GlassModal.show(
     context,
-    child: _LorasContent(
-      selectedLoras: selectedLoras,
-      selectedLoraTags: selectedLoraTags,
-      onApply: onApply,
-    ),
+    child: _LorasContent(selectedLoras: selectedLoras, selectedLoraTags: selectedLoraTags, onApply: onApply),
   );
 }
 
@@ -37,18 +28,13 @@ class _LorasContent extends StatefulWidget {
   final Map<String, Set<String>> selectedLoraTags;
   final Function(Map<String, double>, Map<String, Set<String>>) onApply;
 
-  const _LorasContent({
-    required this.selectedLoras,
-    required this.selectedLoraTags,
-    required this.onApply,
-  });
+  const _LorasContent({required this.selectedLoras, required this.selectedLoraTags, required this.onApply});
 
   @override
   __LorasContentState createState() => __LorasContentState();
 }
 
-class __LorasContentState extends State<_LorasContent>
-    with TickerProviderStateMixin {
+class __LorasContentState extends State<_LorasContent> with TickerProviderStateMixin {
   late final ValueNotifier<int> _activeCountNotifier;
 
   // Temporary selection state
@@ -100,8 +86,7 @@ class __LorasContentState extends State<_LorasContent>
     if (mounted) {
       // Calculate initial index based on current checkpoint's base model
       int initialIndex = 0;
-      final currentBaseModel =
-          globalCheckpointDataMap[globalCurrentCheckpointName]?.baseModel;
+      final currentBaseModel = globalCheckpointDataMap[globalCurrentCheckpointName]?.baseModel;
 
       if (currentBaseModel != null) {
         final keys = result.keys.toList();
@@ -113,11 +98,7 @@ class __LorasContentState extends State<_LorasContent>
 
       setState(() {
         _groupedLoras = result;
-        _tabController = TabController(
-          length: _groupedLoras!.length,
-          vsync: this,
-          initialIndex: initialIndex,
-        );
+        _tabController = TabController(length: _groupedLoras!.length, vsync: this, initialIndex: initialIndex);
       });
     }
   }
@@ -158,8 +139,7 @@ class __LorasContentState extends State<_LorasContent>
 
       // Calculate initial index based on current checkpoint's base model
       int initialIndex = 0;
-      final currentBaseModel =
-          globalCheckpointDataMap[globalCurrentCheckpointName]?.baseModel;
+      final currentBaseModel = globalCheckpointDataMap[globalCurrentCheckpointName]?.baseModel;
 
       if (currentBaseModel != null) {
         final keys = newGroups.keys.toList();
@@ -172,11 +152,7 @@ class __LorasContentState extends State<_LorasContent>
       setState(() {
         _groupedLoras = newGroups;
         _tabController?.dispose();
-        _tabController = TabController(
-          length: _groupedLoras!.length,
-          vsync: this,
-          initialIndex: initialIndex,
-        );
+        _tabController = TabController(length: _groupedLoras!.length, vsync: this, initialIndex: initialIndex);
         _isRefreshing = false;
       });
     }
@@ -185,9 +161,7 @@ class __LorasContentState extends State<_LorasContent>
   Widget _buildTabContent() {
     // Show a loader while sorting happens to prevent UI freeze
     if (_groupedLoras == null) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.white24),
-      );
+      return const Center(child: CircularProgressIndicator(color: Colors.white24));
     }
 
     if (_groupedLoras!.isEmpty) {
@@ -250,11 +224,7 @@ class __LorasContentState extends State<_LorasContent>
                   if (count == 0) return const SizedBox.shrink();
                   return Padding(
                     padding: const EdgeInsets.only(right: 12),
-                    child: GlassBadge(
-                      label: '$count Active',
-                      icon: Icons.bolt,
-                      accentColor: AppTheme.accentPrimary,
-                    ),
+                    child: GlassBadge(label: '$count Active', icon: Icons.bolt, accentColor: AppTheme.accentPrimary),
                   );
                 },
               ),
@@ -262,13 +232,7 @@ class __LorasContentState extends State<_LorasContent>
             ],
           ),
         ),
-        if (_groupedLoras != null &&
-            _groupedLoras!.isNotEmpty &&
-            _tabController != null)
-          GlassTabBar(
-            controller: _tabController!,
-            tabs: _groupedLoras!.keys.toList(),
-          ),
+        if (_groupedLoras != null && _groupedLoras!.isNotEmpty && _tabController != null) GlassTabBar(controller: _tabController!, tabs: _groupedLoras!.keys.toList()),
         Expanded(child: _buildTabContent()),
         _buildBottomBar(),
       ],
@@ -291,11 +255,7 @@ class __LorasContentState extends State<_LorasContent>
           child: AnimatedRotation(
             turns: _refreshTurns,
             duration: const Duration(seconds: 1),
-            child: Icon(
-              Icons.refresh_rounded,
-              color: _isRefreshing ? AppTheme.accentPrimary : Colors.white70,
-              size: 20,
-            ),
+            child: Icon(Icons.refresh_rounded, color: _isRefreshing ? AppTheme.accentPrimary : Colors.white70, size: 20),
           ),
         ),
       ),
@@ -318,7 +278,7 @@ class __LorasContentState extends State<_LorasContent>
             // In a production app, use a Stream or InheritedWidget to notify tiles
             // For now, setState on parent is acceptable for the "Reset" action
           },
-          primaryLabel: count == 0 ? 'Cancel' : 'Apply Changes',
+          primaryLabel: 'Apply',
           onPrimary: () {
             widget.onApply(_tempSelectedLoras, _tempSelectedLoraTags);
             Navigator.pop(context);
@@ -342,20 +302,13 @@ class _GridViewKeepAlive extends StatefulWidget {
   final Color accentColor;
   final Function(String, double, Set<String>, bool) onUpdate;
 
-  const _GridViewKeepAlive({
-    required this.loras,
-    required this.tempSelectedLoras,
-    required this.tempSelectedLoraTags,
-    required this.accentColor,
-    required this.onUpdate,
-  });
+  const _GridViewKeepAlive({required this.loras, required this.tempSelectedLoras, required this.tempSelectedLoraTags, required this.accentColor, required this.onUpdate});
 
   @override
   State<_GridViewKeepAlive> createState() => _GridViewKeepAliveState();
 }
 
-class _GridViewKeepAliveState extends State<_GridViewKeepAlive>
-    with AutomaticKeepAliveClientMixin {
+class _GridViewKeepAliveState extends State<_GridViewKeepAlive> with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -366,12 +319,7 @@ class _GridViewKeepAliveState extends State<_GridViewKeepAlive>
       cacheExtent: 1000,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       physics: const BouncingScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 220,
-        childAspectRatio: 0.7,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 220, childAspectRatio: 0.7, crossAxisSpacing: 16, mainAxisSpacing: 16),
       itemCount: widget.loras.length,
       itemBuilder: (context, index) {
         final lora = widget.loras[index];
@@ -403,14 +351,7 @@ class _OptimizedLoraTile extends StatefulWidget {
   final Color accentColor;
   final Function(double, Set<String>, bool) onUpdate;
 
-  const _OptimizedLoraTile({
-    super.key,
-    required this.lora,
-    required this.initialStrength,
-    required this.initialSelectedTags,
-    required this.accentColor,
-    required this.onUpdate,
-  });
+  const _OptimizedLoraTile({super.key, required this.lora, required this.initialStrength, required this.initialSelectedTags, required this.accentColor, required this.onUpdate});
 
   @override
   State<_OptimizedLoraTile> createState() => _OptimizedLoraTileState();
@@ -472,21 +413,9 @@ class _OptimizedLoraTileState extends State<_OptimizedLoraTile> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             // Only rebuild border color
-            border: Border.all(
-              color: _isSelected
-                  ? widget.accentColor
-                  : Colors.white.withValues(alpha: 0.1),
-              width: _isSelected ? 2 : 1,
-            ),
+            border: Border.all(color: _isSelected ? widget.accentColor : Colors.white.withValues(alpha: 0.1), width: _isSelected ? 2 : 1),
             // Only rebuild shadow
-            boxShadow: _isSelected
-                ? [
-                    BoxShadow(
-                      color: widget.accentColor.withValues(alpha: 0.2),
-                      blurRadius: 8,
-                    ),
-                  ]
-                : null,
+            boxShadow: _isSelected ? [BoxShadow(color: widget.accentColor.withValues(alpha: 0.2), blurRadius: 8)] : null,
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(18),
@@ -503,10 +432,7 @@ class _OptimizedLoraTileState extends State<_OptimizedLoraTile> {
                 // -----------------------------------------------------
 
                 // Dimmer
-                if (_isSelected)
-                  const Positioned.fill(
-                    child: ColoredBox(color: Color(0xB3000000)),
-                  ),
+                if (_isSelected) const Positioned.fill(child: ColoredBox(color: Color(0xB3000000))),
 
                 // Checkmark
                 if (_isSelected)
@@ -514,11 +440,7 @@ class _OptimizedLoraTileState extends State<_OptimizedLoraTile> {
                     alignment: Alignment.topRight,
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
-                      child: Icon(
-                        Icons.check_circle,
-                        color: widget.accentColor,
-                        size: 20,
-                      ),
+                      child: Icon(Icons.check_circle, color: widget.accentColor, size: 20),
                     ),
                   ),
 
@@ -526,14 +448,7 @@ class _OptimizedLoraTileState extends State<_OptimizedLoraTile> {
                 if (_isSelected)
                   Align(
                     alignment: Alignment.bottomCenter,
-                    child: _TileControls(
-                      strength: _strength,
-                      accentColor: widget.accentColor,
-                      trainedWords: widget.lora.trainedWords,
-                      selectedTags: _selectedTags,
-                      onStrengthChanged: _handleStrengthChange,
-                      onToggleTag: _handleTagToggle,
-                    ),
+                    child: _TileControls(strength: _strength, accentColor: widget.accentColor, trainedWords: widget.lora.trainedWords, selectedTags: _selectedTags, onStrengthChanged: _handleStrengthChange, onToggleTag: _handleTagToggle),
                   ),
               ],
             ),
@@ -561,31 +476,20 @@ class _StaticTileContent extends StatelessWidget {
           // Optimization: decode to smaller size to save RAM/GPU
           memCacheWidth: 400,
           fadeInDuration: const Duration(milliseconds: 200),
-          errorWidget: (_, __, ___) =>
-              const ColoredBox(color: Color(0xFF212121)),
+          errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF212121)),
           placeholder: (_, __) => const ColoredBox(color: Color(0xFF212121)),
         ),
         const Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.transparent, Colors.black12, Colors.black87],
-                stops: [0.0, 0.6, 1.0],
-              ),
+              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black12, Colors.black87], stops: [0.0, 0.6, 1.0]),
             ),
           ),
         ),
         Align(
           alignment: Alignment.bottomLeft,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              12,
-              0,
-              12,
-              36,
-            ), // Space for controls
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 36), // Space for controls
             child: Text(
               lora.displayName,
               style: const TextStyle(
@@ -612,14 +516,7 @@ class _TileControls extends StatelessWidget {
   final Function(double) onStrengthChanged;
   final Function(String) onToggleTag;
 
-  const _TileControls({
-    required this.strength,
-    required this.accentColor,
-    required this.trainedWords,
-    required this.selectedTags,
-    required this.onStrengthChanged,
-    required this.onToggleTag,
-  });
+  const _TileControls({required this.strength, required this.accentColor, required this.trainedWords, required this.selectedTags, required this.onStrengthChanged, required this.onToggleTag});
 
   @override
   Widget build(BuildContext context) {
@@ -633,39 +530,18 @@ class _TileControls extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "Strength",
-                style: TextStyle(color: Colors.white60, fontSize: 10),
-              ),
+              const Text("Strength", style: TextStyle(color: Colors.white60, fontSize: 10)),
               Text(
                 strength.toStringAsFixed(1),
-                style: TextStyle(
-                  color: accentColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                ),
+                style: TextStyle(color: accentColor, fontWeight: FontWeight.bold, fontSize: 11),
               ),
             ],
           ),
           SizedBox(
             height: 24,
             child: SliderTheme(
-              data: SliderThemeData(
-                trackHeight: 2,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-                activeTrackColor: accentColor,
-                inactiveTrackColor: Colors.white24,
-                thumbColor: Colors.white,
-                overlayColor: accentColor.withValues(alpha: 0.2),
-              ),
-              child: Slider(
-                value: strength,
-                min: -1.0,
-                max: 5.0,
-                divisions: 60,
-                onChanged: onStrengthChanged,
-              ),
+              data: SliderThemeData(trackHeight: 2, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6), overlayShape: const RoundSliderOverlayShape(overlayRadius: 10), activeTrackColor: accentColor, inactiveTrackColor: Colors.white24, thumbColor: Colors.white, overlayColor: accentColor.withValues(alpha: 0.2)),
+              child: Slider(value: strength, min: -1.0, max: 5.0, divisions: 60, onChanged: onStrengthChanged),
             ),
           ),
           if (trainedWords.isNotEmpty) ...[
@@ -686,22 +562,13 @@ class _TileControls extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: isActive
-                            ? accentColor.withValues(alpha: 0.8)
-                            : Colors.white.withValues(alpha: 0.1),
+                        color: isActive ? accentColor.withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: isActive ? accentColor : Colors.white24,
-                          width: 1,
-                        ),
+                        border: Border.all(color: isActive ? accentColor : Colors.white24, width: 1),
                       ),
                       child: Text(
                         word,
-                        style: TextStyle(
-                          color: isActive ? Colors.black : Colors.white70,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(color: isActive ? Colors.black : Colors.white70, fontSize: 10, fontWeight: FontWeight.w600),
                       ),
                     ),
                   );

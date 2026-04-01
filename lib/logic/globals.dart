@@ -60,12 +60,21 @@ void syncActiveCheckpointSettings() {
   final data = globalCheckpointDataMap[name];
 
   if (data != null) {
-    globalCurrentResolutionHeight = data.resolutionHeight;
-    globalCurrentResolutionWidth = data.resolutionWidth;
-    globalCurrentSamplingSteps = data.samplingSteps;
-    globalCurrentSamplingMethod = data.samplingMethod;
-    globalCurrentCfgScale = data.cfgScale;
-    globalDenoiseStrength = data.denoisingStrength;
+    if (data.baseModel == "Qwen") {
+      globalCurrentResolutionHeight = data.resolutionHeight;
+      globalCurrentResolutionWidth = data.resolutionWidth;
+      globalCurrentSamplingSteps = 8;
+      globalCurrentSamplingMethod = 'LCM';
+      globalCurrentCfgScale = 1.0;
+      globalDenoiseStrength = 1.0;
+    } else {
+      globalCurrentResolutionHeight = data.resolutionHeight;
+      globalCurrentResolutionWidth = data.resolutionWidth;
+      globalCurrentSamplingSteps = data.samplingSteps;
+      globalCurrentSamplingMethod = data.samplingMethod;
+      globalCurrentCfgScale = data.cfgScale;
+      globalDenoiseStrength = data.denoisingStrength;
+    }
   } else {
     // Fallbacks if no checkpoint or data
     if (globalCheckpointDataMap.isNotEmpty) {
