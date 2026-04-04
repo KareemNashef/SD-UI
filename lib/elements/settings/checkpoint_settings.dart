@@ -78,15 +78,9 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
           decoration: BoxDecoration(
             color: AppTheme.accentPrimary.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppTheme.accentPrimary.withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: AppTheme.accentPrimary.withValues(alpha: 0.3)),
           ),
-          child: const Icon(
-            Icons.dns_rounded,
-            color: AppTheme.accentPrimary,
-            size: 22,
-          ),
+          child: const Icon(Icons.dns_rounded, color: AppTheme.accentPrimary, size: 22),
         ),
         const SizedBox(width: 14),
         Column(
@@ -94,21 +88,12 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
           children: [
             const Text(
               'CHECKPOINT',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: Colors.white54,
-                letterSpacing: 1.5,
-              ),
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white54, letterSpacing: 1.5),
             ),
             const SizedBox(height: 2),
             Text(
               'Model Configuration',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white.withValues(alpha: 0.95),
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white.withValues(alpha: 0.95)),
             ),
           ],
         ),
@@ -146,29 +131,17 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                 children: [
                   Text(
                     "SAMPLING METHOD",
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.4),
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     globalCurrentSamplingMethod,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
             ),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              color: Colors.white24,
-              size: 14,
-            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 14),
           ],
         ),
       ),
@@ -197,7 +170,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
         GlassSlider(
           label: 'Sampling Steps',
           value: globalCurrentSamplingSteps.toDouble(),
-          min: 8,
+          min: 4,
           max: 60,
           accentColor: AppTheme.accentSecondary,
           onChanged: (val) {
@@ -237,8 +210,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                 accentColor: AppTheme.accentTertiary,
                 onChanged: (val) {
                   setState(() {
-                    globalCurrentResolutionWidth = ((val / 32).round() * 32.0)
-                        .toInt();
+                    globalCurrentResolutionWidth = ((val / 32).round() * 32.0).toInt();
                   });
                 },
                 onChangeEnd: (_) => _saveCurrentSettingsToModel(),
@@ -256,8 +228,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                 accentColor: AppTheme.accentTertiary,
                 onChanged: (val) {
                   setState(() {
-                    globalCurrentResolutionHeight = ((val / 32).round() * 32.0)
-                        .toInt();
+                    globalCurrentResolutionHeight = ((val / 32).round() * 32.0).toInt();
                   });
                 },
                 onChangeEnd: (_) => _saveCurrentSettingsToModel(),
@@ -336,24 +307,13 @@ class CheckpointDisplayCard extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onTap;
 
-  const CheckpointDisplayCard({
-    super.key,
-    required this.modelName,
-    this.imageUrl,
-    this.baseModel,
-    this.isLoading = false,
-    required this.onTap,
-  });
+  const CheckpointDisplayCard({super.key, required this.modelName, this.imageUrl, this.baseModel, this.isLoading = false, required this.onTap});
 
   // ===== Class Widgets ===== //
 
   Widget _placeholder() => Container(
     color: AppTheme.surfaceCard,
-    child: Icon(
-      Icons.image_not_supported,
-      color: Colors.white.withValues(alpha: 0.1),
-      size: 40,
-    ),
+    child: Icon(Icons.image_not_supported, color: Colors.white.withValues(alpha: 0.1), size: 40),
   );
 
   // ===== Build Methods ===== //
@@ -369,21 +329,8 @@ class CheckpointDisplayCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.black,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isLoading
-                ? AppTheme.accentPrimary
-                : AppTheme.glassBorderLight,
-            width: isLoading ? 2 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isLoading
-                  ? AppTheme.accentPrimary.withValues(alpha: 0.2)
-                  : Colors.black.withValues(alpha: 0.5),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          border: Border.all(color: isLoading ? AppTheme.accentPrimary : AppTheme.glassBorderLight, width: isLoading ? 2 : 1),
+          boxShadow: [BoxShadow(color: isLoading ? AppTheme.accentPrimary.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.5), blurRadius: 20, offset: const Offset(0, 8))],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(19),
@@ -391,30 +338,12 @@ class CheckpointDisplayCard extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               // Background
-              if (modelName.isNotEmpty)
-                (imageUrl?.startsWith('http') ?? false)
-                    ? CachedNetworkImage(
-                        imageUrl: imageUrl!,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => _placeholder(),
-                      )
-                    : _placeholder()
-              else
-                _placeholder(),
+              if (modelName.isNotEmpty) (imageUrl?.startsWith('http') ?? false) ? CachedNetworkImage(imageUrl: imageUrl!, fit: BoxFit.cover, errorWidget: (_, __, ___) => _placeholder()) : _placeholder() else _placeholder(),
 
               // Gradient Overlay
               Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.2),
-                      Colors.black.withValues(alpha: 0.9),
-                    ],
-                    stops: const [0.5, 0.7, 1.0],
-                  ),
+                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black.withValues(alpha: 0.2), Colors.black.withValues(alpha: 0.9)], stops: const [0.5, 0.7, 1.0]),
                 ),
               ),
 
@@ -429,31 +358,16 @@ class CheckpointDisplayCard extends StatelessWidget {
                     if (baseModel?.isNotEmpty == true)
                       Container(
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.accentPrimary,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(color: AppTheme.accentPrimary, borderRadius: BorderRadius.circular(4)),
                         child: Text(
                           baseModel!.toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                          ),
+                          style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w900),
                         ),
                       ),
                     Text(
                       modelName.isEmpty ? 'Select Model' : modelName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, height: 1.2),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -469,17 +383,11 @@ class CheckpointDisplayCard extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(
-                          color: AppTheme.accentPrimary,
-                        ),
+                        CircularProgressIndicator(color: AppTheme.accentPrimary),
                         SizedBox(height: 12),
                         Text(
                           "LOADING",
-                          style: TextStyle(
-                            color: AppTheme.accentPrimary,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.5,
-                          ),
+                          style: TextStyle(color: AppTheme.accentPrimary, fontWeight: FontWeight.bold, letterSpacing: 1.5),
                         ),
                       ],
                     ),

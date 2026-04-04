@@ -74,10 +74,11 @@ class A1111Backend {
       final Map<String, dynamic> optionsBody = {"sd_model_checkpoint": checkpointData.title};
 
       if (checkpointData.baseModel == "Qwen") {
-        // Use the correct key from the Forge API endpoint
         optionsBody["forge_additional_modules"] = ["qwen_image_vae.safetensors", "qwen_2.5_vl_7b_fp8_scaled.safetensors"];
+      } else if (checkpointData.baseModel == "Flux.1 Kontext") {
+        optionsBody["forge_additional_modules"] = ["ae.safetensors", "clip_l.safetensors", "t5xxl_fp8_e4m3fn_scaled.safetensors"];
       } else {
-        // Clear the modules for non-Qwen
+        // Clear the modules for non-Qwen and non-Flux
         optionsBody["forge_additional_modules"] = [];
       }
       await http.post(Uri.parse(serverUrl), headers: {'Content-Type': 'application/json'}, body: jsonEncode(optionsBody));
@@ -242,6 +243,7 @@ class A1111Backend {
   }) async {
     final checkpointData = globalCheckpointDataMap[globalCurrentCheckpointName];
     final bool isQwen = checkpointData?.baseModel == "Qwen";
+    final bool isFlux = checkpointData?.baseModel == "Flux.1 Kontext";
 
     int finalWidth = width;
     int finalHeight = height;
@@ -259,6 +261,8 @@ class A1111Backend {
     String scheduler = "Automatic";
     if (isQwen) {
       scheduler = "Normal";
+    } else if (isFlux) {
+      scheduler = "Beta";
     }
 
     final body = {
@@ -283,6 +287,10 @@ class A1111Backend {
       "inpainting_mask_invert": 0,
       "mask_round": true,
     };
+
+    if (isFlux) {
+      body["hr_distilled_cfg"] = 3;
+    }
 
     final url = Uri.parse('$_baseUrl/sdapi/v1/img2img');
     final response = await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body));
