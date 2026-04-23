@@ -21,6 +21,18 @@ class A1111Backend {
 
   // ===== Class Methods ===== //
 
+  Future<String> optimizePrompt(String prompt, String? checkpoint, {String? openRouterModel}) async {
+    final url = Uri.parse('$_baseUrl/ollama_optimizer/optimize');
+    final Map<String, dynamic> body = {"prompt": prompt, if (checkpoint != null) "model": checkpoint, if (openRouterModel != null) "openrouter_model": openRouterModel};
+    final response = await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body));
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      return responseData['optimizedPrompt'] as String;
+    } else {
+      throw Exception('Failed to optimize prompt: HTTP ${response.statusCode}');
+    }
+  }
+
   Future<bool> checkStatus() async {
     final url = Uri.parse('$_baseUrl/sdapi/v1/sd-models');
     try {

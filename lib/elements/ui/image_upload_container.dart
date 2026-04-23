@@ -23,6 +23,7 @@ import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
 import 'package:sd_companion/logic/api_calls.dart';
+import 'package:sd_companion/logic/backend/a1111_backend.dart';
 import 'package:sd_companion/logic/drawing/drawing_coordinates.dart';
 import 'package:sd_companion/logic/drawing/mask_generator.dart';
 import 'package:sd_companion/logic/generation_logic.dart';
@@ -68,6 +69,10 @@ class _ImageContainerState extends State<ImageContainer> {
   double _padRight = 0;
   double _padTop = 0;
   double _padBottom = 0;
+
+  // Prompt Variables
+  bool _isOptimizingPrompt = false;
+  String? _previousPrompt;
 
   // Pan Variables
   Offset? _currentPanLocalPosition;
@@ -141,6 +146,59 @@ class _ImageContainerState extends State<ImageContainer> {
     } catch (e) {
       if (mounted) _showError('Error loading image: $e');
     }
+  }
+
+  void _showModelSelectionDialog() {
+    final TextEditingController modelController = TextEditingController(text: globalRouterModel.value);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.surfaceCard,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(color: AppTheme.glassBorder),
+          ),
+          title: const Text(
+            "OpenRouter Model",
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Enter the model ID from OpenRouter", style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+              const SizedBox(height: 16),
+              GlassInput(controller: modelController, hintText: "arcee-ai/trinity-large-preview:free", prefixIcon: Icons.model_training),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel", style: TextStyle(color: Colors.white.withValues(alpha: 0.6))),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                globalRouterModel.value = modelController.text;
+                StorageService.saveRouterModel();
+                Navigator.pop(context);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Optimization model updated"), backgroundColor: AppTheme.accentPrimary, behavior: SnackBarBehavior.floating));
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accentPrimary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text(
+                "Save",
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _pickImage() async {
@@ -823,46 +881,128 @@ class _ImageContainerState extends State<ImageContainer> {
   }
 
   Widget _buildPromptSection() {
+    final bool hasText = userPrompt.text.isNotEmpty;
+    final bool canUndo = _previousPrompt != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Header
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+          padding: const EdgeInsets.fromLTRB(4.0, 0.0, 4.0, 8.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Section Title
               Row(
                 children: [
-                  const Icon(Icons.dashboard_customize_rounded, color: AppTheme.accentPrimary, size: 18),
-                  const SizedBox(width: 8),
+                  const Icon(Icons.dashboard_customize_rounded, color: AppTheme.accentPrimary, size: 16),
+                  const SizedBox(width: 6),
                   Text(
                     "PROMPT",
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1.5),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.2),
                   ),
                 ],
               ),
-              if (userPrompt.text.isNotEmpty)
-                InkWell(
-                  onTap: () => setState(() => userPrompt.clear()),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: Row(
-                      children: [
-                        Icon(Icons.clear, size: 14, color: Colors.white.withValues(alpha: 0.5)),
-                        const SizedBox(width: 4),
-                        Text("Clear", style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
-                      ],
+
+              // Modern Action Toolbar
+              if (hasText)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 1. Undo Button (Icon Only)
+                    if (canUndo) ...[
+                      Tooltip(
+                        message: "Undo",
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              userPrompt.text = _previousPrompt!;
+                              userPrompt.selection = TextSelection.fromPosition(TextPosition(offset: userPrompt.text.length));
+                              _previousPrompt = null;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.all(6.0),
+                            child: Icon(Icons.undo_rounded, size: 16, color: Colors.white.withValues(alpha: 0.6)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+
+                    // 2. AI Optimize Button (Sleek Pill Style)
+                    Tooltip(
+                      message: "Long press to select model",
+                      child: InkWell(
+                        onLongPress: _showModelSelectionDialog,
+                        onTap: _isOptimizingPrompt
+                            ? null
+                            : () async {
+                                setState(() {
+                                  _isOptimizingPrompt = true;
+                                  _previousPrompt = userPrompt.text;
+                                });
+                                try {
+                                  final optimizeResult = await A1111Backend().optimizePrompt(userPrompt.text, globalCheckpointDataMap[globalCurrentCheckpointName]?.baseModel, openRouterModel: globalRouterModel.value);
+                                  if (mounted) {
+                                    setState(() {
+                                      userPrompt.text = optimizeResult;
+                                      userPrompt.selection = TextSelection.fromPosition(TextPosition(offset: userPrompt.text.length));
+                                    });
+                                  }
+                                } catch (e) {
+                                  if (mounted) _showError("Optimization failed: $e");
+                                } finally {
+                                  if (mounted) setState(() => _isOptimizingPrompt = false);
+                                }
+                              },
+                        borderRadius: BorderRadius.circular(20),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentPrimary.withValues(alpha: 0.1),
+                            border: Border.all(color: AppTheme.accentPrimary.withValues(alpha: 0.3), width: 1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              if (_isOptimizingPrompt) const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentPrimary)) else const Icon(Icons.auto_awesome_rounded, size: 14, color: AppTheme.accentPrimary),
+                              const SizedBox(width: 6),
+                              Text(
+                                _isOptimizingPrompt ? "Optimizing..." : "Optimize",
+                                style: const TextStyle(color: AppTheme.accentPrimary, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.3),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 4),
+
+                    // 3. Clear Button (Icon Only)
+                    Tooltip(
+                      message: "Clear",
+                      child: InkWell(
+                        onTap: () => setState(() => userPrompt.clear()),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Padding(
+                          padding: const EdgeInsets.all(6.0),
+                          child: Icon(Icons.close_rounded, size: 16, color: Colors.white.withValues(alpha: 0.6)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
             ],
           ),
         ),
 
         // Text Field Container
-        GlassInput(controller: userPrompt, hintText: 'Imagine a futuristic city with glowing neon lights...', maxLines: 3, prefixIcon: Icons.science_outlined, onChanged: (_) => setState(() {})),
+        GlassInput(controller: userPrompt, hintText: 'Imagine a futuristic city with glowing neon lights...', maxLines: 3, onChanged: (_) => setState(() {})),
       ],
     );
   }
@@ -958,7 +1098,7 @@ class _ImageContainerState extends State<ImageContainer> {
             _buildCanvasEditor(),
             const SizedBox(height: 24),
             _buildPromptSection(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             _buildControlBar(),
             const SizedBox(height: 16), // Bottom padding
           ],

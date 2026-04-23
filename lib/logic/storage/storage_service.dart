@@ -78,6 +78,11 @@ class StorageService {
     await prefs.setString('positivePrompt', globalPositivePrompt);
   }
 
+  static Future<void> saveRouterModel() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('routerModel', globalRouterModel.value);
+  }
+
   static Future<void> loadGenerationSettings() async {
     final prefs = await SharedPreferences.getInstance();
     globalMaskBlur = prefs.getInt('maskBlur') ?? 8;
@@ -85,6 +90,7 @@ class StorageService {
     globalBatchSize = prefs.getInt('batchSize') ?? 2;
     globalNegativePrompt = prefs.getString('negativePrompt') ?? '';
     globalPositivePrompt = prefs.getString('positivePrompt') ?? '';
+    globalRouterModel.value = prefs.getString('routerModel') ?? 'arcee-ai/trinity-large-preview:free';
   }
 
   // ===== Inpaint History Storage ===== //

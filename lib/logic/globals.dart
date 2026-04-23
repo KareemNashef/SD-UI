@@ -49,6 +49,9 @@ ValueNotifier<String> globalServerIP = ValueNotifier('127.0.0.1');
 // Server port
 ValueNotifier<String> globalServerPort = ValueNotifier('7860');
 
+// OpenRouter model for prompt optimization
+ValueNotifier<String> globalRouterModel = ValueNotifier('arcee-ai/trinity-large-preview:free');
+
 // ===== Checkpoint Variables ===== //
 
 // Checkpoint data map
