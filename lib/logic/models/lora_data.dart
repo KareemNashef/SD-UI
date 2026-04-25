@@ -9,7 +9,7 @@ class LoraData {
   Set<String> trainedWords;
   String thumbnailUrl;
   String baseModel;
-  double maxStrength = 1.0;
+  double loraStrength = 1.0;
 
   // ===== Constructor ===== //
   LoraData({
@@ -18,7 +18,7 @@ class LoraData {
     required this.trainedWords,
     required this.thumbnailUrl,
     required this.baseModel,
-    this.maxStrength = 1.0,
+    this.loraStrength = 1.0,
   });
 
   // ===== Class Methods ===== //
@@ -29,7 +29,7 @@ class LoraData {
     'trainedWords': trainedWords.toList(),
     'thumbnailUrl': thumbnailUrl,
     'baseModel': baseModel,
-    'maxStrength': maxStrength,
+    'loraStrength': loraStrength,
   };
 
   factory LoraData.fromJson(Map<String, dynamic> json) => LoraData(
@@ -38,6 +38,6 @@ class LoraData {
     trainedWords: Set<String>.from(json['trainedWords']),
     thumbnailUrl: json['thumbnailUrl'],
     baseModel: json['baseModel'],
-    maxStrength: (json['maxStrength'] as num?)?.toDouble() ?? 1.0,
+    loraStrength: (json['loraStrength'] as num?)?.toDouble() ?? 1.0,
   );
 }

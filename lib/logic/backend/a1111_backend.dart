@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/backend/checkpoint_utils.dart';
 import 'package:sd_companion/logic/models/lora_data.dart';
+import 'package:sd_companion/logic/storage/storage_service.dart';
 
 // A1111 Backend Implementation
 
@@ -132,11 +133,17 @@ class A1111Backend {
       if (loraResponse.statusCode != 200) return;
 
       final data = jsonDecode(loraResponse.body) as List<dynamic>;
-      globalLoraDataMap.clear();
+      
+      final serverLoraNames = data.map((l) => (l['name'] as String?) ?? '').where((n) => n.isNotEmpty).toSet();
+      globalLoraDataMap.removeWhere((key, value) => !serverLoraNames.contains(key));
 
       for (final lora in data) {
         final String name = lora['name'] ?? '';
         if (name.isEmpty) continue;
+
+        if (globalLoraDataMap.containsKey(name)) {
+          continue;
+        }
 
         // 3. Fetch metadata from civitai.info
         String displayName = name;
@@ -164,6 +171,8 @@ class A1111Backend {
 
         globalLoraDataMap[name] = LoraData(name: name, displayName: displayName, trainedWords: trainedWords, thumbnailUrl: thumbnailUrl, baseModel: baseModel);
       }
+      
+      StorageService.saveLoraDataMap();
     } catch (e) {
       debugPrint('Failed to load lora data from server: $e');
     }
@@ -252,6 +261,7 @@ class A1111Backend {
     required double denoiseStrength,
     required int maskBlur,
     required int inpaintingFill, // This param is int, but older logic used string lookup. A1111 expects int.
+    List<String>? stitchImages,
   }) async {
     final checkpointData = globalCheckpointDataMap[globalCurrentCheckpointName];
     final bool isQwen = checkpointData?.baseModel == "Qwen";
@@ -270,12 +280,7 @@ class A1111Backend {
 
     final base64Image = base64Encode(imageBytes);
 
-    String scheduler = "Automatic";
-    if (isQwen) {
-      scheduler = "Normal";
-    } else if (isFlux) {
-      scheduler = "Beta";
-    }
+    String scheduler = globalCurrentScheduler;
 
     final body = {
       "prompt": ((positivePrompt.isNotEmpty && !isQwen) ? '$positivePrompt, ' : '') + prompt + loraPromptAdditions,
@@ -302,6 +307,15 @@ class A1111Backend {
 
     if (isFlux) {
       body["hr_distilled_cfg"] = 3;
+    }
+
+    // Inject imagestitch integrated script when additional stitch images are provided
+    if (stitchImages != null && stitchImages.isNotEmpty) {
+      body["alwayson_scripts"] = {
+        "imagestitch integrated": {
+          "args": [true, stitchImages],
+        },
+      };
     }
 
     final url = Uri.parse('$_baseUrl/sdapi/v1/img2img');
@@ -334,6 +348,14 @@ class A1111Backend {
       return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
       throw Exception('Failed to fetch PNG info: ${response.statusCode}');
+    }
+  }
+
+  Future<void> interruptGeneration() async {
+    final url = Uri.parse('$_baseUrl/sdapi/v1/interrupt');
+    final response = await http.post(url);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to interrupt generation: ${response.statusCode}');
     }
   }
 }

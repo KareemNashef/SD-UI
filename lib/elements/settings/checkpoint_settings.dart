@@ -7,6 +7,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 // Local imports - Elements
 import 'package:sd_companion/elements/modals/checkpoint_select_modal.dart';
 import 'package:sd_companion/elements/modals/sampler_select_modal.dart';
+import 'package:sd_companion/elements/modals/scheduler_select_modal.dart';
 import 'package:sd_companion/elements/widgets/glass_container.dart';
 import 'package:sd_companion/elements/widgets/glass_slider.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
@@ -46,6 +47,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
       setState(() {
         globalCurrentSamplingSteps = data.samplingSteps;
         globalCurrentSamplingMethod = data.samplingMethod;
+        globalCurrentScheduler = data.scheduler;
         globalCurrentCfgScale = data.cfgScale;
         globalDenoiseStrength = data.denoisingStrength;
         globalCurrentResolutionWidth = data.resolutionWidth;
@@ -60,6 +62,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
       final data = globalCheckpointDataMap[globalCurrentCheckpointName]!;
       data.samplingSteps = globalCurrentSamplingSteps;
       data.samplingMethod = globalCurrentSamplingMethod;
+      data.scheduler = globalCurrentScheduler;
       data.cfgScale = globalCurrentCfgScale;
       data.denoisingStrength = globalDenoiseStrength;
       data.resolutionWidth = globalCurrentResolutionWidth;
@@ -136,6 +139,53 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                   const SizedBox(height: 2),
                   Text(
                     globalCurrentSamplingMethod,
+                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSchedulerTile(BuildContext context) {
+    return InkWell(
+      onTap: () => showSchedulerSelectModal(
+        context: context,
+        currentScheduler: globalCurrentScheduler,
+        onSelect: (scheduler) {
+          setState(() {
+            globalCurrentScheduler = scheduler;
+            _saveCurrentSettingsToModel();
+          });
+        },
+      ),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.schedule, color: AppTheme.accentTertiary, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "SCHEDULE METHOD",
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    globalCurrentScheduler,
                     style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                 ],
@@ -270,8 +320,18 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
               onTap: () => showCheckpointSelectModal(
                 context: context,
                 onSelect: (modelName) async {
+                  final oldModelName = globalCurrentCheckpointName;
+                  final oldData = globalCheckpointDataMap[oldModelName];
+                  final newData = globalCheckpointDataMap[modelName];
+
                   Navigator.pop(context);
                   setState(() => _isChangingCheckpoint = true);
+
+                  // Clear loras if base model changed
+                  if (oldData?.baseModel != newData?.baseModel) {
+                    globalSelectedLoras.value = {};
+                    globalSelectedLoraTags.value = {};
+                  }
 
                   globalCurrentCheckpointName = modelName;
                   _applyModelDefaults(modelName);
@@ -286,6 +346,11 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
 
             // Sampler Tile
             _buildSamplerTile(context),
+
+            const SizedBox(height: 16),
+
+            // Scheduler Tile
+            _buildSchedulerTile(context),
 
             const SizedBox(height: 32),
 

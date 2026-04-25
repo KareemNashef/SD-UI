@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 // Local imports - Elements
 import 'package:sd_companion/elements/modals/crop_modal.dart';
 import 'package:sd_companion/elements/modals/resize_modal.dart';
+import 'package:sd_companion/elements/modals/stitch_modal.dart';
 import 'package:sd_companion/elements/modals/upscale_modal.dart';
 import 'package:sd_companion/elements/ui/image_upload_container.dart';
 import 'package:sd_companion/elements/widgets/glass_app_bar.dart';
@@ -89,6 +90,8 @@ class InpaintPageState extends State<InpaintPage> with AutomaticKeepAliveClientM
           _toolbarItem(icon: Icons.hd_rounded, label: 'Upscale', onTap: () => showUpscaleModal(context)),
           _vDivider(),
           _toolbarItem(icon: Icons.photo_size_select_large_rounded, label: 'Resize', onTap: () => showResizeModal(context)),
+          _vDivider(),
+          _toolbarItem(icon: Icons.aspect_ratio_rounded, label: 'Stitch', onTap: () => showStitchModal(context)),
         ],
       ),
     );

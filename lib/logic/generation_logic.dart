@@ -41,6 +41,7 @@ class GenerationLogic {
     required Uint8List imageBytes,
     required Uint8List? maskBytes,
     required String loraPromptAdditions,
+    List<String>? stitchImages,
   }) async {
     // Delegate to the current backend
     return await globalBackend.generateImg2Img(
@@ -59,6 +60,7 @@ class GenerationLogic {
       denoiseStrength: globalDenoiseStrength,
       maskBlur: globalMaskBlur,
       inpaintingFill: _getInpaintingFillValue(globalMaskFill),
+      stitchImages: stitchImages,
     );
   }
 

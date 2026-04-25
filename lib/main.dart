@@ -173,6 +173,7 @@ class _LoadingScreenState extends State<LoadingScreen>
     // Load necessary data and sync
     try {
       await StorageService.loadCheckpointDataMap();
+      await StorageService.loadLoraDataMap();
       await StorageService.loadGenerationSettings();
       await StorageService.loadInpaintHistory();
       await syncCheckpointDataFromServer();

@@ -57,7 +57,7 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
   void initState() {
     super.initState();
     historyList = globalInpaintHistory.toList().reversed.toList();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
 
     // Initialize Intelligence - Defer to next frame to prevent open lag
     Future.microtask(() {
@@ -107,6 +107,17 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
       } else {
         buildingPrompt.add(element);
       }
+    });
+  }
+
+  void _toggleFavorite(String prompt) {
+    setState(() {
+      if (globalFavoritePrompts.contains(prompt)) {
+        globalFavoritePrompts.remove(prompt);
+      } else {
+        globalFavoritePrompts.add(prompt);
+      }
+      StorageService.saveInpaintHistory();
     });
   }
 
@@ -359,12 +370,26 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
       itemBuilder: (context, index) {
         final prompt = historyList[index];
         final isSelected = selectedForDeletion.contains(prompt);
+        final isFavorited = globalFavoritePrompts.contains(prompt);
 
         return GlassTile(
           label: prompt,
           isSelected: isSelected,
           accentColor: Colors.red,
           showCheckbox: isMultiSelectMode,
+          trailing: isMultiSelectMode
+              ? null
+              : AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: Icon(
+                    isFavorited ? Icons.favorite : Icons.favorite_border,
+                    key: ValueKey(isFavorited),
+                    color: isFavorited
+                        ? Colors.redAccent.withValues(alpha: 0.8)
+                        : Colors.white10,
+                    size: 18,
+                  ),
+                ),
           onTap: () {
             if (isMultiSelectMode) {
               setState(() {
@@ -380,11 +405,62 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
               Navigator.pop(context);
             }
           },
-          onLongPress: () {
-            setState(() {
-              isMultiSelectMode = true;
-              selectedForDeletion.add(prompt);
-            });
+          onLongPress: isMultiSelectMode
+              ? null
+              : () {
+                  _toggleFavorite(prompt);
+                },
+          padding: const EdgeInsets.all(12),
+        );
+      },
+    );
+  }
+
+  Widget _buildFavoritesTab() {
+    final favorites = globalFavoritePrompts.toList().reversed.toList();
+
+    if (favorites.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.favorite_border, size: 48, color: Colors.white10),
+            SizedBox(height: 10),
+            Text(
+              'No favorites yet',
+              style: TextStyle(color: Colors.white30, fontSize: 14),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Long press history to add',
+              style: TextStyle(color: Colors.white10, fontSize: 11),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      physics: const BouncingScrollPhysics(),
+      itemCount: favorites.length,
+      itemBuilder: (context, index) {
+        final prompt = favorites[index];
+
+        return GlassTile(
+          label: prompt,
+          isSelected: false,
+          trailing: GestureDetector(
+            onTap: () => _toggleFavorite(prompt),
+            child: const Icon(
+              Icons.favorite,
+              color: Colors.redAccent,
+              size: 18,
+            ),
+          ),
+          onTap: () {
+            widget.onSelect(prompt);
+            Navigator.pop(context);
           },
           padding: const EdgeInsets.all(12),
         );
@@ -486,17 +562,28 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
                     });
                   },
                 )
-              : null,
+              : IconButton(
+                  icon: const Icon(Icons.checklist, color: Colors.white70),
+                  onPressed: () {
+                    setState(() {
+                      isMultiSelectMode = true;
+                    });
+                  },
+                ),
         ),
         const SizedBox(height: 8),
         GlassTabBar(
           controller: _tabController,
-          tabs: const ['Compose', 'History'],
+          tabs: const ['Compose', 'History', 'Favorites'],
         ),
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: [_buildComposeTab(), _buildHistoryTab()],
+            children: [
+              _buildComposeTab(),
+              _buildHistoryTab(),
+              _buildFavoritesTab(),
+            ],
           ),
         ),
         _buildBottomBar(),

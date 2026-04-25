@@ -9,6 +9,7 @@ import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
+import 'package:sd_companion/logic/api_calls.dart';
 
 // Progress Overlay Implementation
 
@@ -241,6 +242,25 @@ class ProgressOverlay extends StatelessWidget {
             if (jobTotal > 1) _StatBadge(label: "BATCH", value: "$jobCurrent/$jobTotal", icon: Icons.copy),
             _StatBadge(label: "ETA", value: "${eta.toInt()}s", icon: Icons.timer, valueColor: accentColor),
           ],
+        ),
+
+        const SizedBox(height: 24),
+
+        // 5. Interrupt Button
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              interruptGeneration();
+            },
+            icon: const Icon(Icons.stop_circle_outlined, color: Colors.redAccent, size: 20),
+            label: const Text('INTERRUPT', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: Colors.redAccent.withOpacity(0.3)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
         ),
       ],
     );

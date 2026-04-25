@@ -13,6 +13,7 @@ class CheckpointData {
   int resolutionHeight;
   int resolutionWidth;
   String baseModel = "SD 1.5";
+  String scheduler;
 
   // ===== Constructor ===== //
   CheckpointData({
@@ -25,6 +26,7 @@ class CheckpointData {
     required this.resolutionHeight,
     required this.resolutionWidth,
     this.baseModel = "SD 1.5",
+    this.scheduler = "Automatic",
   });
 
   // ===== Class Methods ===== //
@@ -39,6 +41,7 @@ class CheckpointData {
     'resolutionHeight': resolutionHeight,
     'resolutionWidth': resolutionWidth,
     'baseModel': baseModel,
+    'scheduler': scheduler,
   };
 
   factory CheckpointData.fromJson(Map<String, dynamic> json) => CheckpointData(
@@ -51,5 +54,6 @@ class CheckpointData {
     resolutionHeight: (json['resolutionHeight'] ?? 512 as num).toInt(),
     resolutionWidth: (json['resolutionWidth'] ?? 512 as num).toInt(),
     baseModel: json['baseModel'] ?? "SD 1.5",
+    scheduler: json['scheduler'] ?? "Automatic",
   );
 }

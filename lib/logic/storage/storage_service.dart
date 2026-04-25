@@ -2,6 +2,7 @@
 
 // Flutter imports
 import 'dart:convert';
+import 'package:sd_companion/logic/models/lora_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Local imports - Logic
@@ -49,6 +50,25 @@ class StorageService {
 
     // Initial sync of local globals after loading all data
     syncActiveCheckpointSettings();
+  }
+
+  // ===== Lora Storage ===== //
+
+  static Future<void> saveLoraDataMap() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final json = jsonEncode(globalLoraDataMap.map((key, value) => MapEntry(key, value.toJson())));
+    await prefs.setString('loraDataMap', json);
+  }
+
+  static Future<void> loadLoraDataMap() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final json = prefs.getString('loraDataMap');
+    if (json != null) {
+      final Map<String, dynamic> decoded = jsonDecode(json);
+      globalLoraDataMap = decoded.map((key, value) => MapEntry(key, LoraData.fromJson(value as Map<String, dynamic>)));
+    }
   }
 
   // ===== Generation Settings Storage ===== //

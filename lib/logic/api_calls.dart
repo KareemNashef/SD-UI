@@ -48,3 +48,8 @@ Future<Uint8List> fetchImageBytes(String url) async {
 Future<Map<String, dynamic>> postPngInfo(String base64Image) async {
   return await globalBackend.getPngInfo(base64Image);
 }
+
+// Interrupt generation
+Future<void> interruptGeneration() async {
+  await globalBackend.interruptGeneration();
+}

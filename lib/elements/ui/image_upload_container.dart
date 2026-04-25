@@ -85,9 +85,8 @@ class _ImageContainerState extends State<ImageContainer> {
   // Checkpoint Testing
   final CheckpointTestingService _checkpointTestingService = CheckpointTestingService();
 
-  // Lora Variables
-  Map<String, double> _selectedLoras = {};
-  Map<String, Set<String>> _selectedLoraTags = {};
+  // Stitch Variables
+  final List<File> _stitchImages = [];
 
   // ===== Lifecycle Methods ===== //
 
@@ -95,6 +94,8 @@ class _ImageContainerState extends State<ImageContainer> {
   void initState() {
     super.initState();
     globalImageToEdit.addListener(_onEditImageRequest);
+    globalSelectedLoras.addListener(_onLoraStateChanged);
+    globalSelectedLoraTags.addListener(_onLoraStateChanged);
   }
 
   @override
@@ -102,7 +103,13 @@ class _ImageContainerState extends State<ImageContainer> {
     userPrompt.dispose();
     _promptFocusNode.dispose();
     globalImageToEdit.removeListener(_onEditImageRequest);
+    globalSelectedLoras.removeListener(_onLoraStateChanged);
+    globalSelectedLoraTags.removeListener(_onLoraStateChanged);
     super.dispose();
+  }
+
+  void _onLoraStateChanged() {
+    if (mounted) setState(() {});
   }
 
   // ===== Class Functions ===== //
@@ -344,9 +351,22 @@ class _ImageContainerState extends State<ImageContainer> {
         }
       }
 
-      final loraStrings = GenerationLogic.buildLoraPromptAddition(_selectedLoras, _selectedLoraTags);
+      final loraStrings = GenerationLogic.buildLoraPromptAddition(
+        globalSelectedLoras.value,
+        globalSelectedLoraTags.value,
+      );
 
-      final newImages = await GenerationLogic.generateImg2Img(prompt: userPrompt.text, imageBytes: imageBytesToUse, maskBytes: maskBytesToUse, loraPromptAdditions: loraStrings);
+      // Encode stitch images to base64 if any
+      List<String>? stitchBase64;
+      if (_stitchImages.isNotEmpty) {
+        stitchBase64 = [];
+        for (final file in _stitchImages) {
+          final bytes = await file.readAsBytes();
+          stitchBase64.add(base64Encode(bytes));
+        }
+      }
+
+      final newImages = await GenerationLogic.generateImg2Img(prompt: userPrompt.text, imageBytes: imageBytesToUse, maskBytes: maskBytesToUse, loraPromptAdditions: loraStrings, stitchImages: stitchBase64);
 
       final currentImages = Set<String>.from(globalResultImages.value);
       currentImages.addAll(newImages);
@@ -1007,6 +1027,152 @@ class _ImageContainerState extends State<ImageContainer> {
     );
   }
 
+  // ===== Stitch Image Helpers ===== //
+
+  Future<void> _pickStitchImage() async {
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() => _stitchImages.add(File(pickedFile.path)));
+    }
+  }
+
+  void _removeStitchImage(int index) {
+    setState(() => _stitchImages.removeAt(index));
+  }
+
+  // ===== Stitch Section Widget ===== //
+
+  Widget _buildStitchSection() {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section header row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4.0, 0.0, 4.0, 8.0),
+            child: Row(
+              children: [
+                const Icon(Icons.auto_awesome_mosaic_rounded, color: AppTheme.accentPrimary, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  "IMAGE STITCH",
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.2),
+                ),
+                const Spacer(),
+                if (_stitchImages.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: AppTheme.accentPrimary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                    child: Text(
+                      '${_stitchImages.length}',
+                      style: const TextStyle(color: AppTheme.accentPrimary, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // Stitch image strip
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceCard,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              border: Border.all(color: _stitchImages.isNotEmpty ? AppTheme.accentPrimary.withValues(alpha: 0.25) : AppTheme.glassBorder),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: _stitchImages.isEmpty
+                ? // Empty state — just the add button
+                  GestureDetector(
+                    onTap: _pickStitchImage,
+                    child: Container(
+                      height: 72,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
+                        borderRadius: BorderRadius.circular(14),
+                        color: Colors.white.withValues(alpha: 0.03),
+                      ),
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.add_photo_alternate_outlined, color: Colors.white.withValues(alpha: 0.4), size: 22),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Add images to stitch",
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : // Populated state — thumbnails + add button
+                  SizedBox(
+                    height: 72,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _stitchImages.length + 1,
+                      separatorBuilder: (_, __) => const SizedBox(width: 10),
+                      itemBuilder: (context, index) {
+                        // Last item is always the "add" tile
+                        if (index == _stitchImages.length) {
+                          return GestureDetector(
+                            onTap: _pickStitchImage,
+                            child: Container(
+                              width: 72,
+                              height: 72,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 1.5),
+                                borderRadius: BorderRadius.circular(14),
+                                color: Colors.white.withValues(alpha: 0.03),
+                              ),
+                              child: Icon(Icons.add_rounded, color: Colors.white.withValues(alpha: 0.4), size: 28),
+                            ),
+                          );
+                        }
+
+                        // Thumbnail tile with remove badge
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Image.file(_stitchImages[index], width: 72, height: 72, fit: BoxFit.cover),
+                            ),
+                            // Remove badge
+                            Positioned(
+                              top: -6,
+                              right: -6,
+                              child: GestureDetector(
+                                onTap: () => _removeStitchImage(index),
+                                child: Container(
+                                  width: 22,
+                                  height: 22,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.error,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.black, width: 2),
+                                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 4)],
+                                  ),
+                                  child: const Icon(Icons.close_rounded, size: 12, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildControlBar() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -1035,12 +1201,15 @@ class _ImageContainerState extends State<ImageContainer> {
               tooltip: 'LoRAs',
               onTap: () {
                 FocusScope.of(context).unfocus();
-                showLorasModal(context, _selectedLoras, _selectedLoraTags, (newLoras, newTags) {
-                  setState(() {
-                    _selectedLoras = newLoras;
-                    _selectedLoraTags = newTags;
-                  });
-                });
+                showLorasModal(
+                  context,
+                  globalSelectedLoras.value,
+                  globalSelectedLoraTags.value,
+                  (newLoras, newTags) {
+                    globalSelectedLoras.value = Map.from(newLoras);
+                    globalSelectedLoraTags.value = Map.from(newTags);
+                  },
+                );
               },
             ),
             const SizedBox(width: 4),
@@ -1098,6 +1267,8 @@ class _ImageContainerState extends State<ImageContainer> {
             _buildCanvasEditor(),
             const SizedBox(height: 24),
             _buildPromptSection(),
+            const SizedBox(height: 16),
+            _buildStitchSection(),
             const SizedBox(height: 16),
             _buildControlBar(),
             const SizedBox(height: 16), // Bottom padding

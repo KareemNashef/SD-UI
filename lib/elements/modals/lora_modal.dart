@@ -15,6 +15,7 @@ import 'package:sd_companion/elements/widgets/theme_constants.dart';
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/api_calls.dart';
 import 'package:sd_companion/logic/models/lora_data.dart';
+import 'package:sd_companion/logic/storage/storage_service.dart';
 
 void showLorasModal(BuildContext context, Map<String, double> selectedLoras, Map<String, Set<String>> selectedLoraTags, Function(Map<String, double>, Map<String, Set<String>>) onApply) {
   GlassModal.show(
@@ -365,7 +366,7 @@ class _OptimizedLoraTileState extends State<_OptimizedLoraTile> {
   @override
   void initState() {
     super.initState();
-    _strength = widget.initialStrength == 0.0 ? 1.0 : widget.initialStrength;
+    _strength = widget.initialStrength == 0.0 ? widget.lora.loraStrength : widget.initialStrength;
     _isSelected = widget.initialStrength != 0.0;
     _selectedTags = Set.from(widget.initialSelectedTags);
   }
@@ -375,7 +376,7 @@ class _OptimizedLoraTileState extends State<_OptimizedLoraTile> {
   void _handleTap() {
     setState(() {
       _isSelected = !_isSelected;
-      if (_isSelected && _strength == 0.0) _strength = 1.0;
+      if (_isSelected && _strength == 0.0) _strength = widget.lora.loraStrength;
     });
     widget.onUpdate(_strength, _selectedTags, _isSelected);
   }
@@ -385,6 +386,10 @@ class _OptimizedLoraTileState extends State<_OptimizedLoraTile> {
       _strength = val;
       if (_strength == 0.0 && _isSelected) _isSelected = false;
     });
+    
+    widget.lora.loraStrength = _strength;
+    StorageService.saveLoraDataMap();
+    
     widget.onUpdate(_strength, _selectedTags, _isSelected);
   }
 

@@ -67,6 +67,7 @@ void syncActiveCheckpointSettings() {
     globalCurrentResolutionWidth = data.resolutionWidth;
     globalCurrentSamplingSteps = data.samplingSteps;
     globalCurrentSamplingMethod = data.samplingMethod;
+    globalCurrentScheduler = data.scheduler;
     globalCurrentCfgScale = data.cfgScale;
     globalDenoiseStrength = data.denoisingStrength;
   } else {
@@ -82,6 +83,7 @@ void syncActiveCheckpointSettings() {
     globalCurrentResolutionWidth = 512;
     globalCurrentSamplingSteps = 20;
     globalCurrentSamplingMethod = 'DPM++ 2M';
+    globalCurrentScheduler = 'Automatic';
     globalCurrentCfgScale = 3.5;
     globalDenoiseStrength = 0.95;
   }
@@ -99,6 +101,9 @@ int globalCurrentSamplingSteps = 20;
 
 // Selected checkpoint sampling method
 String globalCurrentSamplingMethod = 'Euler a';
+
+// Selected checkpoint scheduler
+String globalCurrentScheduler = 'Automatic';
 
 // Selected checkpoint cfg scale
 double globalCurrentCfgScale = 7.0;
@@ -160,3 +165,13 @@ final ValueNotifier<bool> globalAutoHideProgress = ValueNotifier<bool>(true);
 
 // Lora data map
 Map<String, LoraData> globalLoraDataMap = {};
+
+// Global selection state
+final ValueNotifier<Map<String, double>> globalSelectedLoras = ValueNotifier({});
+final ValueNotifier<Map<String, Set<String>>> globalSelectedLoraTags = ValueNotifier({});
+
+// ===== Extra Variables ===== //
+
+// Crop and Stitch Variables
+int globalLastCropX = 0;
+int globalLastCropY = 0;
