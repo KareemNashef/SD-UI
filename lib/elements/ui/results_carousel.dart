@@ -16,8 +16,10 @@ import 'package:sd_companion/elements/modals/upscale_modal.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
+import 'package:sd_companion/logic/backend/backend_kind.dart';
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/api_calls.dart';
+import 'package:sd_companion/logic/models/generation_models.dart';
 import 'package:sd_companion/logic/utils/image_metadata_parser.dart';
 
 // Results Carousel Implementation
@@ -32,14 +34,14 @@ class ResultsCarousel extends StatefulWidget {
 class _ResultsCarouselState extends State<ResultsCarousel> {
   // ===== Class Variables ===== //
 
-  String? _selectedImageUrl;
+  String? _selectedImageId;
   bool _isSaving = false;
   bool _isFetchingInfo = false;
 
   bool _isComparing = false;
 
-  final Map<String, Uint8List> _imageCache = {};
-  List<String> _lastKnownImageList = [];
+  final Map<String, Uint8List> _imageCache = {}; // keyed by imageUrl
+  List<String> _lastKnownImageIds = [];
 
   // ===== Lifecycle Methods ===== //
 
@@ -61,54 +63,69 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   void _onInputChanged() {
     if (mounted) setState(() {});
   }
+
   // ===== Class Methods ===== //
 
-  void _onImagesChanged({bool isInitialSetup = false}) {
-    final imageSet = globalResultImages.value;
-    final imageList = imageSet.toList().reversed.toList();
+  GeneratedImage? _findById(String? id) {
+    if (id == null) return null;
+    for (final image in globalResultImages.value) {
+      if (image.id == id) return image;
+    }
+    return null;
+  }
 
-    _imageCache.removeWhere((key, value) => !imageSet.contains(key));
-    for (final url in imageList) {
-      if (_isBase64DataUrl(url) && !_imageCache.containsKey(url)) {
+  GeneratedImage? get _selectedImage => _findById(_selectedImageId);
+
+  void _onImagesChanged({bool isInitialSetup = false}) {
+    final imageList = globalResultImages.value.reversed.toList();
+    final imageIds = imageList.map((i) => i.id).toList();
+
+    final liveUrls = imageList.map((i) => i.imageUrl).toSet();
+    _imageCache.removeWhere((key, value) => !liveUrls.contains(key));
+    for (final image in imageList) {
+      if (_isBase64DataUrl(image.imageUrl) && !_imageCache.containsKey(image.imageUrl)) {
         try {
-          _imageCache[url] = base64Decode(_extractBase64Data(url));
+          _imageCache[image.imageUrl] = base64Decode(_extractBase64Data(image.imageUrl));
         } catch (e) {
           debugPrint("Failed to decode base64 image: $e");
         }
       }
     }
 
-    String? newSelectedImage = _selectedImageUrl;
+    String? newSelectedId = _selectedImageId;
     if (isInitialSetup) {
-      newSelectedImage = imageList.isNotEmpty ? imageList.first : null;
-    } else if (_selectedImageUrl != null && !imageSet.contains(_selectedImageUrl)) {
-      final oldList = _lastKnownImageList;
-      final deletedIndex = oldList.indexOf(_selectedImageUrl!);
+      newSelectedId = imageIds.isNotEmpty ? imageIds.first : null;
+    } else if (_selectedImageId != null && !imageIds.contains(_selectedImageId)) {
+      final oldList = _lastKnownImageIds;
+      final deletedIndex = oldList.indexOf(_selectedImageId!);
 
       if (deletedIndex != -1 && oldList.length > 1) {
         if (deletedIndex < oldList.length - 1) {
-          newSelectedImage = oldList[deletedIndex + 1];
+          newSelectedId = oldList[deletedIndex + 1];
         } else {
-          newSelectedImage = oldList[deletedIndex - 1];
+          newSelectedId = oldList[deletedIndex - 1];
         }
       } else {
-        newSelectedImage = imageList.isNotEmpty ? imageList.first : null;
+        newSelectedId = imageIds.isNotEmpty ? imageIds.first : null;
+      }
+      if (!imageIds.contains(newSelectedId)) {
+        newSelectedId = imageIds.isNotEmpty ? imageIds.first : null;
       }
     }
 
     if (isInitialSetup) {
       setState(() {
-        _selectedImageUrl = newSelectedImage;
+        _selectedImageId = newSelectedId;
       });
     }
 
-    if (mounted && newSelectedImage != _selectedImageUrl) {
+    if (mounted && newSelectedId != _selectedImageId) {
       setState(() {
-        _selectedImageUrl = newSelectedImage;
+        _selectedImageId = newSelectedId;
       });
     }
 
-    _lastKnownImageList = imageList;
+    _lastKnownImageIds = imageIds;
   }
 
   bool _isBase64DataUrl(String url) {
@@ -124,7 +141,8 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   }
 
   Future<void> _saveSelectedImage() async {
-    if (_selectedImageUrl == null || _isSaving) return;
+    final selected = _selectedImage;
+    if (selected == null || _isSaving) return;
 
     setState(() => _isSaving = true);
     final messenger = ScaffoldMessenger.of(context);
@@ -143,12 +161,12 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
       final fileName = 'generated_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final savePath = '$downloadsPath/$fileName';
 
-      if (_isBase64DataUrl(_selectedImageUrl!)) {
-        final bytes = _imageCache[_selectedImageUrl!] ?? base64Decode(_extractBase64Data(_selectedImageUrl!));
+      if (_isBase64DataUrl(selected.imageUrl)) {
+        final bytes = _imageCache[selected.imageUrl] ?? base64Decode(_extractBase64Data(selected.imageUrl));
         final file = File(savePath);
         await file.writeAsBytes(bytes);
       } else {
-        final bytes = await fetchImageBytes(_selectedImageUrl!);
+        final bytes = await fetchImageBytes(selected.imageUrl);
         final file = File(savePath);
         await file.writeAsBytes(bytes);
       }
@@ -162,7 +180,8 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
               Text('Saved to Downloads'),
             ],
           ),
-          backgroundColor: Colors.green.shade600,
+          // Follows the active backend's accent instead of a fixed green.
+          backgroundColor: AppTheme.accentPrimary,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSmall * 0.8)),
         ),
@@ -177,14 +196,30 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   }
 
   void _deleteSelectedImage() {
-    if (_selectedImageUrl == null) return;
-    final currentSet = Set<String>.from(globalResultImages.value);
-    currentSet.remove(_selectedImageUrl!);
-    globalResultImages.value = currentSet;
+    final selected = _selectedImage;
+    if (selected == null) return;
+    globalResultImages.value = globalResultImages.value.where((i) => i.id != selected.id).toList();
   }
 
   Future<void> _showImageInfo() async {
-    if (_selectedImageUrl == null || _isFetchingInfo) return;
+    final selected = _selectedImage;
+    if (selected == null || _isFetchingInfo) return;
+
+    // ComfyUI has no universal PNG-info contract; show the locally-retained
+    // workflow/prompt metadata instead of calling a Forge-only endpoint.
+    if (selected.backend == BackendKind.comfy) {
+      showMetadataModal(context, {
+        if (selected.promptSnapshot?.isNotEmpty == true) 'Prompt': selected.promptSnapshot!,
+        if (selected.negativePromptSnapshot?.isNotEmpty == true) 'Negative prompt': selected.negativePromptSnapshot!,
+        if (selected.workflowId != null) 'Workflow': selected.workflowId!,
+        if (selected.promptId != null) 'Prompt ID': selected.promptId!,
+        if (selected.outputNodeId != null) 'Output node': selected.outputNodeId!,
+        if (selected.comfyFilename != null) 'Filename': selected.comfyFilename!,
+      });
+      return;
+    }
+
+    if (!globalBackend.capabilities.metadata) return;
 
     setState(() => _isFetchingInfo = true);
     final messenger = ScaffoldMessenger.of(context);
@@ -192,10 +227,10 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
     try {
       String base64Image;
 
-      if (_isBase64DataUrl(_selectedImageUrl!)) {
-        base64Image = _extractBase64Data(_selectedImageUrl!);
+      if (_isBase64DataUrl(selected.imageUrl)) {
+        base64Image = _extractBase64Data(selected.imageUrl);
       } else {
-        final bytes = await fetchImageBytes(_selectedImageUrl!);
+        final bytes = await fetchImageBytes(selected.imageUrl);
         base64Image = base64Encode(bytes);
       }
 
@@ -228,15 +263,17 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   }
 
   void _editSelectedImage() {
-    if (_selectedImageUrl == null) return;
-    globalImageToEdit.value = _selectedImageUrl;
+    final selected = _selectedImage;
+    if (selected == null) return;
+    globalImageToEdit.value = selected.imageUrl;
     navigateToInpaintPage();
   }
 
   /// Returns the selected image as bytes, or null if unavailable.
   Future<Uint8List?> _getSelectedImageBytes() async {
-    if (_selectedImageUrl == null) return null;
-    final url = _selectedImageUrl!;
+    final selected = _selectedImage;
+    if (selected == null) return null;
+    final url = selected.imageUrl;
     if (_isBase64DataUrl(url)) {
       try {
         return _imageCache[url] ?? base64Decode(_extractBase64Data(url));
@@ -252,7 +289,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   }
 
   void _showEditDestinationMenu() {
-    if (_selectedImageUrl == null) return;
+    if (_selectedImage == null) return;
     final parentContext = context;
     showModalBottomSheet<void>(
       context: parentContext,
@@ -275,7 +312,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
               ),
               const SizedBox(height: 12),
               ListTile(
-                leading: const Icon(Icons.crop_rounded, color: AppTheme.accentPrimary),
+                leading: Icon(Icons.crop_rounded, color: AppTheme.accentPrimary),
                 title: const Text('Crop', style: TextStyle(color: Colors.white)),
                 onTap: () async {
                   Navigator.of(ctx).pop();
@@ -287,7 +324,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_size_select_large_rounded, color: AppTheme.accentPrimary),
+                leading: Icon(Icons.photo_size_select_large_rounded, color: AppTheme.accentPrimary),
                 title: const Text('Resize', style: TextStyle(color: Colors.white)),
                 onTap: () async {
                   Navigator.of(ctx).pop();
@@ -298,18 +335,19 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                   }
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.auto_awesome_rounded, color: AppTheme.accentPrimary),
-                title: const Text('Upscale', style: TextStyle(color: Colors.white)),
-                onTap: () async {
-                  Navigator.of(ctx).pop();
-                  final bytes = await _getSelectedImageBytes();
-                  if (!parentContext.mounted) return;
-                  if (bytes != null) {
-                    showUpscaleModal(parentContext, initialImageBytes: bytes);
-                  }
-                },
-              ),
+              if (globalBackend.capabilities.upscale)
+                ListTile(
+                  leading: Icon(Icons.auto_awesome_rounded, color: AppTheme.accentPrimary),
+                  title: const Text('Upscale', style: TextStyle(color: Colors.white)),
+                  onTap: () async {
+                    Navigator.of(ctx).pop();
+                    final bytes = await _getSelectedImageBytes();
+                    if (!parentContext.mounted) return;
+                    if (bytes != null) {
+                      showUpscaleModal(parentContext, initialImageBytes: bytes);
+                    }
+                  },
+                ),
             ],
           ),
         ),
@@ -328,7 +366,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 60, width: 60, child: CircularProgressIndicator(strokeWidth: 3, color: AppTheme.accentPrimary)),
+                SizedBox(height: 60, width: 60, child: CircularProgressIndicator(strokeWidth: 3, color: AppTheme.accentPrimary)),
                 const SizedBox(height: 24),
                 Text(
                   'Generating...',
@@ -353,14 +391,15 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
   }
 
   Widget _buildMainImage() {
-    if (_selectedImageUrl == null) return const Expanded(child: Center());
+    final selected = _selectedImage;
+    if (selected == null) return const Expanded(child: Center());
 
     // LOGIC: Check if we are comparing and have a valid input file
     final File? inputFile = globalInputImage.value;
     final bool showInput = _isComparing && inputFile != null && inputFile.existsSync();
 
     // The key ensures the widget rebuilds with animation when switching sources
-    final imageKey = showInput ? 'input_image' : _selectedImageUrl!;
+    final imageKey = showInput ? 'input_image' : selected.id;
 
     return Expanded(
       child: SizedBox(
@@ -372,7 +411,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             // 1. The Image Layer
             ClipRRect(
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-              child: showInput ? Image.file(inputFile, fit: BoxFit.contain, gaplessPlayback: true) : _buildResultImageWidget(_selectedImageUrl!),
+              child: showInput ? Image.file(inputFile, fit: BoxFit.contain, gaplessPlayback: true) : _buildResultImageWidget(selected.imageUrl),
             ),
 
             // 2. The Status Badge (Visual Feedback)
@@ -380,12 +419,12 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
               top: 12,
               left: 12,
               child: AnimatedOpacity(
-                opacity: _isComparing ? 1.0 : 0.0,
+                opacity: _isComparing ? 1.0 : (globalActiveBackendKind.value == BackendKind.comfy ? 1.0 : 0.0),
                 duration: const Duration(milliseconds: 200),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: showInput ? AppTheme.warning.withValues(alpha: 0.9) : AppTheme.accentPrimary.withValues(alpha: 0.8),
+                    color: showInput ? AppTheme.warning.withValues(alpha: 0.9) : (selected.backend == BackendKind.comfy ? AppTheme.accentSecondary.withValues(alpha: 0.85) : AppTheme.accentPrimary.withValues(alpha: 0.8)),
                     borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                     boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 8)],
                   ),
@@ -394,7 +433,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                       Icon(showInput ? Icons.input : Icons.image, color: Colors.white, size: 14),
                       const SizedBox(width: 6),
                       Text(
-                        showInput ? 'INPUT SOURCE' : 'GENERATED RESULT',
+                        showInput ? 'INPUT SOURCE' : (selected.backend == BackendKind.comfy ? 'COMFYUI' : 'GENERATED RESULT'),
                         style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
                       ),
                     ],
@@ -423,13 +462,13 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
       return CachedNetworkImage(
         imageUrl: url,
         fit: BoxFit.contain,
-        placeholder: (_, __) => const Center(child: CircularProgressIndicator(color: AppTheme.accentPrimary)),
+        placeholder: (_, __) => Center(child: CircularProgressIndicator(color: AppTheme.accentPrimary)),
         errorWidget: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white24),
       );
     }
   }
 
-  Widget _buildImageThumbnails(List<String> imageList) {
+  Widget _buildImageThumbnails(List<GeneratedImage> imageList) {
     return Container(
       height: 80,
       margin: const EdgeInsets.only(top: 16),
@@ -442,10 +481,10 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         itemCount: imageList.length,
         itemBuilder: (context, index) {
-          final imageUrl = imageList[index];
-          final isSelected = imageUrl == _selectedImageUrl;
+          final image = imageList[index];
+          final isSelected = image.id == _selectedImageId;
           return GestureDetector(
-            onTap: () => setState(() => _selectedImageUrl = imageUrl),
+            onTap: () => setState(() => _selectedImageId = image.id),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.only(right: 8),
@@ -457,16 +496,16 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall * 0.5),
-                child: _isBase64DataUrl(imageUrl)
-                    ? (_imageCache[imageUrl] != null
+                child: _isBase64DataUrl(image.imageUrl)
+                    ? (_imageCache[image.imageUrl] != null
                           ? Image.memory(
-                              _imageCache[imageUrl]!,
+                              _imageCache[image.imageUrl]!,
                               fit: BoxFit.cover,
                               gaplessPlayback: true,
                               cacheWidth: 112, // 2x 56
                             )
                           : Container(color: Colors.grey.shade900))
-                    : CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover, memCacheWidth: 112),
+                    : CachedNetworkImage(imageUrl: image.imageUrl, fit: BoxFit.cover, memCacheWidth: 112),
               ),
             ),
           );
@@ -477,7 +516,8 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
 
   // === UPDATED DOCK ===
   Widget _buildActionButtons() {
-    final hasImage = _selectedImageUrl != null;
+    final selected = _selectedImage;
+    final hasImage = selected != null;
     final hasInput = globalInputImage.value != null; // Check global variable
 
     return Container(
@@ -602,10 +642,10 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<Set<String>>(
+    return ValueListenableBuilder<List<GeneratedImage>>(
       valueListenable: globalResultImages,
-      builder: (context, imageSet, child) {
-        final imageList = imageSet.toList().reversed.toList();
+      builder: (context, images, child) {
+        final imageList = images.reversed.toList();
 
         return Column(
           children: [

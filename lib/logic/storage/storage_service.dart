@@ -6,16 +6,44 @@ import 'package:sd_companion/logic/models/lora_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Local imports - Logic
+import 'package:sd_companion/logic/backend/backend_kind.dart';
 import 'package:sd_companion/logic/models/checkpoint_data.dart';
 import 'package:sd_companion/logic/globals.dart';
 
 // Storage Service Implementation
 
+/// Bump when the on-disk shape of any StorageService-owned key changes in a
+/// way that requires a migration step. Nothing currently reads this beyond
+/// recording it, but it exists so a future breaking change has somewhere to
+/// branch from instead of guessing at what's on disk.
+const int storageSchemaVersion = 2;
+
 class StorageService {
   // ===== Class Methods ===== //
 
+  static Future<void> ensureSchemaVersion() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('storageSchemaVersion', storageSchemaVersion);
+  }
+
+  // ===== Backend Selection ===== //
+
+  static Future<void> saveActiveBackendKind(BackendKind kind) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('activeBackendKind', kind.storageKey);
+  }
+
+  static Future<void> loadActiveBackendKind() async {
+    final prefs = await SharedPreferences.getInstance();
+    globalActiveBackendKind.value =
+        BackendKindLabel.fromStorageKey(prefs.getString('activeBackendKind'));
+  }
+
   // ===== Server Settings ===== //
 
+  /// Forge Neo's last-used address. Key names are unchanged from the
+  /// pre-ComfyUI app on purpose: existing installs keep working with no
+  /// migration step, since this key always meant "Forge's address".
   static Future<void> saveServerSettings(String ip, String port) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('serverIP', ip);
@@ -24,8 +52,20 @@ class StorageService {
 
   static Future<void> loadServerSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    globalServerIP.value = prefs.getString('serverIP') ?? '';
-    globalServerPort.value = prefs.getString('serverPort') ?? '';
+    globalServerIP.value = prefs.getString('serverIP') ?? '127.0.0.1';
+    globalServerPort.value = prefs.getString('serverPort') ?? '7860';
+  }
+
+  static Future<void> saveComfyServerSettings(String ip, String port) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('comfyServerIP', ip);
+    await prefs.setString('comfyServerPort', port);
+  }
+
+  static Future<void> loadComfyServerSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    globalComfyServerIP.value = prefs.getString('comfyServerIP') ?? '127.0.0.1';
+    globalComfyServerPort.value = prefs.getString('comfyServerPort') ?? '8188';
   }
 
   // ===== Checkpoint Storage ===== //

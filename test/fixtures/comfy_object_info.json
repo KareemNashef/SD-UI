@@ -1,0 +1,2089 @@
+{
+  "CLIPLoader": {
+    "input": {
+      "required": {
+        "clip_name": [
+          [
+            "TE-FluxZimage.safetensors",
+            "TE-Krea.safetensors",
+            "TE-Qwen.safetensors"
+          ]
+        ],
+        "type": [
+          [
+            "stable_diffusion",
+            "stable_cascade",
+            "sd3",
+            "stable_audio",
+            "mochi",
+            "ltxv",
+            "pixart",
+            "cosmos",
+            "lumina2",
+            "wan",
+            "hidream",
+            "chroma",
+            "ace",
+            "omnigen2",
+            "qwen_image",
+            "hunyuan_image",
+            "flux2",
+            "ovis",
+            "longcat_image",
+            "cogvideox",
+            "lens",
+            "pixeldit",
+            "ideogram4",
+            "boogu",
+            "krea2",
+            "joyimage",
+            "mage",
+            "minimax"
+          ]
+        ]
+      },
+      "optional": {
+        "device": [
+          [
+            "default",
+            "cpu"
+          ],
+          {
+            "advanced": true
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "clip_name",
+        "type"
+      ],
+      "optional": [
+        "device"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "CLIP"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "CLIP"
+    ],
+    "name": "CLIPLoader",
+    "display_name": "Load CLIP",
+    "description": "Recipes:\nsd: clip-l\nstable cascade: clip-g\nsd3: t5 xxl / clip-g / clip-l\nstable audio: t5 base\nmochi: t5 xxl\ncogvideox: t5 xxl (226-token padding)\ncosmos: old t5 xxl\nlumina2: gemma 2 2B\nwan: umt5 xxl\nhidream: llama-3.1 (Recommend) or t5\nomnigen2: qwen vl 2.5 3B\njoyimage: qwen3-vl 8B\nlens: gpt-oss-20b\npixeldit: gemma 2 2B elm\nminimax: MiniMax H3 Qwen3-VL or Music3 Qwen/RVQ",
+    "python_module": "nodes",
+    "category": "model/loaders",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": []
+  },
+  "EmptySD3LatentImage": {
+    "input": {
+      "required": {
+        "width": [
+          "INT",
+          {
+            "default": 1024,
+            "min": 16,
+            "max": 16384,
+            "step": 16
+          }
+        ],
+        "height": [
+          "INT",
+          {
+            "default": 1024,
+            "min": 16,
+            "max": 16384,
+            "step": 16
+          }
+        ],
+        "batch_size": [
+          "INT",
+          {
+            "default": 1,
+            "min": 1,
+            "max": 4096
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "width",
+        "height",
+        "batch_size"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "LATENT"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "LATENT"
+    ],
+    "output_tooltips": [
+      null
+    ],
+    "output_matchtypes": null,
+    "name": "EmptySD3LatentImage",
+    "display_name": null,
+    "description": "",
+    "python_module": "comfy_extras.nodes_sd3",
+    "category": "model/latent/stable diffusion",
+    "output_node": false,
+    "deprecated": false,
+    "experimental": false,
+    "dev_only": false,
+    "api_node": false,
+    "price_badge": null,
+    "search_aliases": null,
+    "essentials_category": null,
+    "has_intermediate_output": false
+  },
+  "Krea2EditGroundedEncode": {
+    "input": {
+      "required": {
+        "clip": [
+          "CLIP"
+        ],
+        "prompt": [
+          "STRING",
+          {
+            "multiline": true,
+            "default": ""
+          }
+        ]
+      },
+      "optional": {
+        "image": [
+          "IMAGE"
+        ],
+        "image_b": [
+          "IMAGE",
+          {
+            "tooltip": "2nd reference (subject) for multi-ref LoRAs; vision blocks in training order: scene, subject"
+          }
+        ],
+        "grounding_px": [
+          "INT",
+          {
+            "default": 768,
+            "min": 0,
+            "max": 4096,
+            "step": 64,
+            "tooltip": "cap longest side fed to Qwen3-VL; 0 = native"
+          }
+        ],
+        "system_prompt": [
+          "STRING",
+          {
+            "multiline": true,
+            "default": "",
+            "tooltip": "advanced (optional): override the grounding system prompt (empty = training default). Steers what the vision encoder attends to, e.g. facial identity detail."
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "clip",
+        "prompt"
+      ],
+      "optional": [
+        "image",
+        "image_b",
+        "grounding_px",
+        "system_prompt"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "CONDITIONING"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "CONDITIONING"
+    ],
+    "name": "Krea2EditGroundedEncode",
+    "display_name": "Krea2 Edit (grounded encode)",
+    "description": "Encodes the edit instruction grounded on the source image (training-matched semantic path).",
+    "python_module": "custom_nodes.comfyui-krea2edit",
+    "category": "krea2edit",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": []
+  },
+  "Krea2EditModelPatch": {
+    "input": {
+      "required": {
+        "model": [
+          "MODEL"
+        ],
+        "source_latent": [
+          "LATENT"
+        ]
+      },
+      "optional": {
+        "source_latent_b": [
+          "LATENT",
+          {
+            "tooltip": "2nd reference (subject photo) for multi-ref LoRAs -> RoPE frame=2, training-matched order: scene first, subject second"
+          }
+        ],
+        "ref_boost": [
+          "FLOAT",
+          {
+            "default": 1,
+            "min": 0,
+            "max": 1000,
+            "step": 0.01,
+            "round": 0.001,
+            "tooltip": "reference-fidelity dial: multiplies target->reference attention. Applies to the LAST ref (= the subject in two-ref workflows, the only ref in single-ref). 1.0 = off, >1 pulls harder toward the reference's appearance, <1 loosens. Optimal value is model-specific"
+          }
+        ],
+        "ref_boost_a": [
+          "FLOAT",
+          {
+            "default": 1,
+            "min": 0,
+            "max": 1000,
+            "step": 0.01,
+            "round": 0.001,
+            "tooltip": "same dial for the FIRST ref (= the scene in two-ref workflows). No effect in single-ref workflows. 1.0 = off"
+          }
+        ],
+        "fit_mode": [
+          [
+            "fit",
+            "crop (legacy)"
+          ],
+          {
+            "default": "fit",
+            "tooltip": "how an image source fits a mismatched output aspect ratio (needs vae + source_image connected): fit = resample the source to the target grid at a centered offset — matches how this model was trained (default, use this); crop (legacy) = center-crop to the target AR then resize (v1/v1.1 geometry, only for older weights)"
+          }
+        ],
+        "ref_boost_mask": [
+          "MASK",
+          {
+            "tooltip": "optional region on the (last) reference to boost, e.g. the face; empty = whole reference"
+          }
+        ],
+        "vae": [
+          "VAE",
+          {
+            "tooltip": "RECOMMENDED with source_image: enables the blur-proof pixel-space path (crop+resize in pixels, encode internally) — immune to input/output resolution mismatches"
+          }
+        ],
+        "source_image": [
+          "IMAGE",
+          {
+            "tooltip": "source as IMAGE (with vae connected): overrides source_latent with exact pixel-space fitting — fixes blurry results from mismatched resolutions"
+          }
+        ],
+        "source_image_b": [
+          "IMAGE",
+          {
+            "tooltip": "2nd reference as IMAGE (with vae)"
+          }
+        ],
+        "target_latent": [
+          "LATENT",
+          {
+            "tooltip": "RECOMMENDED with vae + source_image: wire the SAME latent you feed KSampler.latent_image. Lets the node VAE-encode the source here, before sampling starts, instead of on the first step — otherwise the VAE is pulled onto the GPU mid-sampling and can evict part of the diffusion model, slowing every remaining step on VRAM-tight setups"
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "model",
+        "source_latent"
+      ],
+      "optional": [
+        "source_latent_b",
+        "ref_boost",
+        "ref_boost_a",
+        "fit_mode",
+        "ref_boost_mask",
+        "vae",
+        "source_image",
+        "source_image_b",
+        "target_latent"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "MODEL"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "MODEL"
+    ],
+    "name": "Krea2EditModelPatch",
+    "display_name": "Krea2 Edit (source patch)",
+    "description": "Adds the krea2_edit in-context source-preservation path (source latent as frame=1 tokens) to a Krea2 model.",
+    "python_module": "custom_nodes.comfyui-krea2edit",
+    "category": "krea2edit",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": []
+  },
+  "KSampler": {
+    "input": {
+      "required": {
+        "model": [
+          "MODEL",
+          {
+            "tooltip": "The model used for denoising the input latent."
+          }
+        ],
+        "seed": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 18446744073709552000,
+            "control_after_generate": true,
+            "tooltip": "The random seed used for creating the noise."
+          }
+        ],
+        "steps": [
+          "INT",
+          {
+            "default": 20,
+            "min": 1,
+            "max": 10000,
+            "tooltip": "The number of steps used in the denoising process."
+          }
+        ],
+        "cfg": [
+          "FLOAT",
+          {
+            "default": 8,
+            "min": 0,
+            "max": 100,
+            "step": 0.1,
+            "round": 0.01,
+            "tooltip": "The Classifier-Free Guidance scale balances creativity and adherence to the prompt. Higher values result in images more closely matching the prompt however too high values will negatively impact quality."
+          }
+        ],
+        "sampler_name": [
+          [
+            "euler",
+            "euler_cfg_pp",
+            "euler_ancestral",
+            "euler_ancestral_cfg_pp",
+            "heun",
+            "heunpp2",
+            "exp_heun_2_x0",
+            "exp_heun_2_x0_sde",
+            "dpm_2",
+            "dpm_2_ancestral",
+            "lms",
+            "dpm_fast",
+            "dpm_adaptive",
+            "dpmpp_2s_ancestral",
+            "dpmpp_2s_ancestral_cfg_pp",
+            "dpmpp_sde",
+            "dpmpp_sde_gpu",
+            "dpmpp_2m",
+            "dpmpp_2m_cfg_pp",
+            "dpmpp_2m_sde",
+            "dpmpp_2m_sde_gpu",
+            "dpmpp_2m_sde_heun",
+            "dpmpp_2m_sde_heun_gpu",
+            "dpmpp_3m_sde",
+            "dpmpp_3m_sde_gpu",
+            "ddpm",
+            "lcm",
+            "ipndm",
+            "ipndm_v",
+            "deis",
+            "res_multistep",
+            "res_multistep_cfg_pp",
+            "res_multistep_ancestral",
+            "res_multistep_ancestral_cfg_pp",
+            "gradient_estimation",
+            "gradient_estimation_cfg_pp",
+            "er_sde",
+            "seeds_2",
+            "seeds_3",
+            "sa_solver",
+            "sa_solver_pece",
+            "ddim",
+            "uni_pc",
+            "uni_pc_bh2"
+          ],
+          {
+            "tooltip": "The algorithm used when sampling, this can affect the quality, speed, and style of the generated output."
+          }
+        ],
+        "scheduler": [
+          [
+            "simple",
+            "sgm_uniform",
+            "karras",
+            "exponential",
+            "ddim_uniform",
+            "beta",
+            "normal",
+            "linear_quadratic",
+            "kl_optimal"
+          ],
+          {
+            "tooltip": "The scheduler controls how noise is gradually removed to form the image."
+          }
+        ],
+        "positive": [
+          "CONDITIONING",
+          {
+            "tooltip": "The conditioning describing the attributes you want to include in the image."
+          }
+        ],
+        "negative": [
+          "CONDITIONING",
+          {
+            "tooltip": "The conditioning describing the attributes you want to exclude from the image."
+          }
+        ],
+        "latent_image": [
+          "LATENT",
+          {
+            "tooltip": "The latent image to denoise."
+          }
+        ],
+        "denoise": [
+          "FLOAT",
+          {
+            "default": 1,
+            "min": 0,
+            "max": 1,
+            "step": 0.01,
+            "tooltip": "The amount of denoising applied, lower values will maintain the structure of the initial image allowing for image to image sampling."
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "model",
+        "seed",
+        "steps",
+        "cfg",
+        "sampler_name",
+        "scheduler",
+        "positive",
+        "negative",
+        "latent_image",
+        "denoise"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "LATENT"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "LATENT"
+    ],
+    "name": "KSampler",
+    "display_name": "KSampler",
+    "description": "Uses the provided model, positive and negative conditioning to denoise the latent image.",
+    "python_module": "nodes",
+    "category": "model/sampling",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "output_tooltips": [
+      "The denoised latent."
+    ],
+    "search_aliases": [
+      "sampler",
+      "sample",
+      "generate",
+      "denoise",
+      "diffuse",
+      "txt2img",
+      "img2img"
+    ]
+  },
+  "LoadImage": {
+    "input": {
+      "required": {
+        "image": [
+          [
+            "00000-168498994.png",
+            "00000-3161982786.png",
+            "00000-886154897.png",
+            "00001-1187573919.png",
+            "00002-2515138712.png",
+            "00007-1711969767.png",
+            "00012-2886460156.png",
+            "00016-276426827.png",
+            "00025-602189510.png",
+            "00033-3756153329.png",
+            "00034-2387832780.png",
+            "00036-2496962656.png",
+            "00074-797577538.png",
+            "00096-707633557.png",
+            "00108-3314983563.png",
+            "00124-2431521006.png",
+            "00130-3478241296.png",
+            "00147-963076869.png",
+            "00168-1365143871.png",
+            "00213-2704849417.png",
+            "00227-2704849417.png",
+            "00240-3397640993.png",
+            "00345-3800826451.png",
+            "Architecture.png",
+            "BallerinaBunny.png",
+            "BunnyExplorer.png",
+            "BunnySitting.jpg",
+            "Buttons.png",
+            "Cat.jpeg",
+            "CatVector.png",
+            "DancerInWhite.png",
+            "Dancers.png",
+            "DancersBunny.png",
+            "Dog.jpeg",
+            "Flowers.jpg",
+            "Geisha.png",
+            "GnomeLineArt.png",
+            "Helmet.png",
+            "House3D.jpg",
+            "InfiniteTalkMan.jpg",
+            "Man1.jpg",
+            "Man2.jpg",
+            "Man3.jpg",
+            "ModernDancer.png",
+            "PIXA3D.jpeg",
+            "PixaGirl.png",
+            "PixaromaLogo.png",
+            "Sketch.jpeg",
+            "SphereAndCube3D.png",
+            "WanWoman.png",
+            "Woman1.jpg",
+            "Woman2.jpg",
+            "Woman3.jpeg",
+            "WomanPortraitRed.png",
+            "WomanPose.jpeg",
+            "WomanStanding.png",
+            "XMAS.jpg",
+            "example.png",
+            "robot.png"
+          ],
+          {
+            "image_upload": true
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "image"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "IMAGE",
+      "MASK"
+    ],
+    "output_is_list": [
+      false,
+      false
+    ],
+    "output_name": [
+      "IMAGE",
+      "MASK"
+    ],
+    "name": "LoadImage",
+    "display_name": "Load Image",
+    "description": "",
+    "python_module": "nodes",
+    "category": "image",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": [
+      "load image",
+      "open image",
+      "import image",
+      "image input",
+      "upload image",
+      "read image",
+      "image loader"
+    ],
+    "essentials_category": "Basics"
+  },
+  "LoraLoaderModelOnly": {
+    "input": {
+      "required": {
+        "model": [
+          "MODEL"
+        ],
+        "lora_name": [
+          []
+        ],
+        "strength_model": [
+          "FLOAT",
+          {
+            "default": 1,
+            "min": -100,
+            "max": 100,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "model",
+        "lora_name",
+        "strength_model"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "MODEL"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "MODEL"
+    ],
+    "name": "LoraLoaderModelOnly",
+    "display_name": "Load LoRA",
+    "description": "This LoRAs loader is used to modify the diffusion model, altering the way in which latents are denoised such as applying styles. Multiple LoRA nodes can be linked together.",
+    "python_module": "nodes",
+    "category": "model/loaders",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "output_tooltips": [
+      "The modified diffusion model.",
+      "The modified CLIP model."
+    ],
+    "search_aliases": [
+      "lora",
+      "load lora",
+      "apply lora",
+      "lora loader",
+      "lora model"
+    ],
+    "essentials_category": "Image Generation"
+  },
+  "ResolutionSelector": {
+    "input": {
+      "required": {
+        "aspect_ratio": [
+          "COMBO",
+          {
+            "tooltip": "The aspect ratio for the output dimensions.",
+            "default": "1:1 (Square)",
+            "multiselect": false,
+            "options": [
+              "1:1 (Square)",
+              "2:3 (Portrait Photo)",
+              "3:2 (Photo)",
+              "3:4 (Portrait Standard)",
+              "4:3 (Standard)",
+              "9:16 (Portrait Widescreen)",
+              "16:9 (Widescreen)",
+              "21:9 (Ultrawide)"
+            ]
+          }
+        ],
+        "megapixels": [
+          "FLOAT",
+          {
+            "tooltip": "Target total megapixels. 1.0 MP ≈ 1024x1024 for square.",
+            "default": 1,
+            "min": 0.1,
+            "max": 16,
+            "step": 0.1
+          }
+        ],
+        "multiple": [
+          "INT",
+          {
+            "tooltip": "Nearest multiple of the result to set the selected resolution to.",
+            "advanced": true,
+            "default": 8,
+            "min": 8,
+            "max": 128,
+            "step": 4
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "aspect_ratio",
+        "megapixels",
+        "multiple"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "INT",
+      "INT"
+    ],
+    "output_is_list": [
+      false,
+      false
+    ],
+    "output_name": [
+      "width",
+      "height"
+    ],
+    "output_tooltips": [
+      "Calculated width in pixels multiplied by the selected multiple.",
+      "Calculated height in pixels multiplied by the selected multiple."
+    ],
+    "output_matchtypes": null,
+    "name": "ResolutionSelector",
+    "display_name": "Resolution Selector",
+    "description": "Calculate width and height from aspect ratio and megapixel target. Useful for setting up Empty Latent Image dimensions.",
+    "python_module": "comfy_extras.nodes_resolution",
+    "category": "utilities",
+    "output_node": false,
+    "deprecated": false,
+    "experimental": false,
+    "dev_only": false,
+    "api_node": false,
+    "price_badge": null,
+    "search_aliases": null,
+    "essentials_category": null,
+    "has_intermediate_output": false
+  },
+  "SaveImage": {
+    "input": {
+      "required": {
+        "images": [
+          "IMAGE",
+          {
+            "tooltip": "The images to save."
+          }
+        ],
+        "filename_prefix": [
+          "STRING",
+          {
+            "default": "ComfyUI",
+            "tooltip": "The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values from nodes."
+          }
+        ]
+      },
+      "hidden": {
+        "prompt": "PROMPT",
+        "extra_pnginfo": "EXTRA_PNGINFO"
+      }
+    },
+    "input_order": {
+      "required": [
+        "images",
+        "filename_prefix"
+      ],
+      "hidden": [
+        "prompt",
+        "extra_pnginfo"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "IMAGE"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "images"
+    ],
+    "name": "SaveImage",
+    "display_name": "Save Image",
+    "description": "Saves the input images to your ComfyUI output directory.",
+    "python_module": "nodes",
+    "category": "image",
+    "output_node": true,
+    "has_intermediate_output": false,
+    "search_aliases": [
+      "save",
+      "save image",
+      "export image",
+      "output image",
+      "write image",
+      "download"
+    ],
+    "essentials_category": "Basics"
+  },
+  "UNETLoader": {
+    "input": {
+      "required": {
+        "unet_name": [
+          [
+            "krea2\\Muse-BSY-Krea2-V3.0-pro-C81-Civ-Extended-EDIT-scaled-fp8.safetensors",
+            "nunchaku_qwen_image_edit_2511_ultimate_speed_int4.safetensors",
+            "qwen\\svdq-int4_r32-qwen-image-edit-lightningv1.0-8steps.safetensors"
+          ]
+        ],
+        "weight_dtype": [
+          [
+            "default",
+            "fp8_e4m3fn",
+            "fp8_e4m3fn_fast",
+            "fp8_e5m2"
+          ],
+          {
+            "advanced": true
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "unet_name",
+        "weight_dtype"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "MODEL"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "MODEL"
+    ],
+    "name": "UNETLoader",
+    "display_name": "Load Diffusion Model",
+    "description": "",
+    "python_module": "nodes",
+    "category": "model/loaders",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": []
+  },
+  "VAEDecode": {
+    "input": {
+      "required": {
+        "samples": [
+          "LATENT",
+          {
+            "tooltip": "The latent to be decoded."
+          }
+        ],
+        "vae": [
+          "VAE",
+          {
+            "tooltip": "The VAE model used for decoding the latent."
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "samples",
+        "vae"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "IMAGE"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "IMAGE"
+    ],
+    "name": "VAEDecode",
+    "display_name": "VAE Decode",
+    "description": "Decodes latent images back into pixel space images.",
+    "python_module": "nodes",
+    "category": "model/latent",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "output_tooltips": [
+      "The decoded image."
+    ],
+    "search_aliases": [
+      "decode",
+      "decode latent",
+      "latent to image",
+      "render latent"
+    ]
+  },
+  "VAEEncode": {
+    "input": {
+      "required": {
+        "pixels": [
+          "IMAGE"
+        ],
+        "vae": [
+          "VAE"
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "pixels",
+        "vae"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "LATENT"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "LATENT"
+    ],
+    "name": "VAEEncode",
+    "display_name": "VAE Encode",
+    "description": "",
+    "python_module": "nodes",
+    "category": "model/latent",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": [
+      "encode",
+      "encode image",
+      "image to latent"
+    ]
+  },
+  "VAELoader": {
+    "input": {
+      "required": {
+        "vae_name": [
+          [
+            "FLUX.1-schnell_ae.safetensors",
+            "VAE-Flux.safetensors",
+            "qwen_image_vae.safetensors",
+            "pixel_space"
+          ]
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "vae_name"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "VAE"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "VAE"
+    ],
+    "name": "VAELoader",
+    "display_name": "Load VAE",
+    "description": "",
+    "python_module": "nodes",
+    "category": "model/loaders",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": []
+  },
+  "CFGNorm": {
+    "input": {
+      "required": {
+        "model": [
+          "MODEL",
+          {}
+        ],
+        "strength": [
+          "FLOAT",
+          {
+            "default": 1,
+            "min": 0,
+            "max": 100,
+            "step": 0.01
+          }
+        ]
+      },
+      "optional": {
+        "pre_cfg": [
+          "BOOLEAN",
+          {
+            "tooltip": "If true, rescale the combined noise BEFORE the sampler's CFG combine, without clamping (can amplify). Matches the norm-scaled CFG used by models like Lens. Default false keeps the original post-CFG x0-space attenuate-only behavior.",
+            "default": false
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "model",
+        "strength"
+      ],
+      "optional": [
+        "pre_cfg"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "MODEL"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "patched_model"
+    ],
+    "output_tooltips": [
+      null
+    ],
+    "output_matchtypes": null,
+    "name": "CFGNorm",
+    "display_name": null,
+    "description": "",
+    "python_module": "comfy_extras.nodes_cfg",
+    "category": "advanced/guidance",
+    "output_node": false,
+    "deprecated": false,
+    "experimental": true,
+    "dev_only": false,
+    "api_node": false,
+    "price_badge": null,
+    "search_aliases": null,
+    "essentials_category": null,
+    "has_intermediate_output": false
+  },
+  "CheckpointLoaderSimple": {
+    "input": {
+      "required": {
+        "ckpt_name": [
+          [
+            "illustrious\\babesIllustriousBy_v55FP16.safetensors"
+          ],
+          {
+            "tooltip": "The name of the checkpoint (model) to load."
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "ckpt_name"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "MODEL",
+      "CLIP",
+      "VAE"
+    ],
+    "output_is_list": [
+      false,
+      false,
+      false
+    ],
+    "output_name": [
+      "MODEL",
+      "CLIP",
+      "VAE"
+    ],
+    "name": "CheckpointLoaderSimple",
+    "display_name": "Load Checkpoint",
+    "description": "Loads a diffusion model checkpoint, diffusion models are used to denoise latents.",
+    "python_module": "nodes",
+    "category": "model/loaders",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "output_tooltips": [
+      "The model used for denoising latents.",
+      "The CLIP model used for encoding text prompts.",
+      "The VAE model used for encoding and decoding images to and from latent space."
+    ],
+    "search_aliases": [
+      "load model",
+      "checkpoint",
+      "model loader",
+      "load checkpoint",
+      "ckpt",
+      "model"
+    ]
+  },
+  "CLIPLoaderGGUF": {
+    "input": {
+      "required": {
+        "clip_name": [
+          [
+            "Qwen_3_4b-Q6_K.gguf",
+            "TE-FluxZimage.safetensors",
+            "TE-Krea.safetensors",
+            "TE-Qwen.safetensors"
+          ]
+        ],
+        "type": [
+          [
+            "stable_diffusion",
+            "stable_cascade",
+            "sd3",
+            "stable_audio",
+            "mochi",
+            "ltxv",
+            "pixart",
+            "cosmos",
+            "lumina2",
+            "wan",
+            "hidream",
+            "chroma",
+            "ace",
+            "omnigen2",
+            "qwen_image",
+            "hunyuan_image",
+            "flux2",
+            "ovis",
+            "longcat_image",
+            "cogvideox",
+            "lens",
+            "pixeldit",
+            "ideogram4",
+            "boogu",
+            "krea2",
+            "joyimage",
+            "mage",
+            "minimax"
+          ]
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "clip_name",
+        "type"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "CLIP"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "CLIP"
+    ],
+    "name": "CLIPLoaderGGUF",
+    "display_name": "CLIPLoader (GGUF)",
+    "description": "",
+    "python_module": "custom_nodes.ComfyUI-GGUF",
+    "category": "bootleg",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": []
+  },
+  "CLIPTextEncode": {
+    "input": {
+      "required": {
+        "text": [
+          "STRING",
+          {
+            "multiline": true,
+            "dynamicPrompts": true,
+            "tooltip": "The text to be encoded."
+          }
+        ],
+        "clip": [
+          "CLIP",
+          {
+            "tooltip": "The CLIP model used for encoding the text."
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "text",
+        "clip"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "CONDITIONING"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "CONDITIONING"
+    ],
+    "name": "CLIPTextEncode",
+    "display_name": "CLIP Text Encode (Prompt)",
+    "description": "Encodes a text prompt using a CLIP model into an embedding that can be used to guide the diffusion model towards generating specific images.",
+    "python_module": "nodes",
+    "category": "model/conditioning",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "output_tooltips": [
+      "A conditioning containing the embedded text used to guide the diffusion model."
+    ],
+    "search_aliases": [
+      "text",
+      "prompt",
+      "text prompt",
+      "positive prompt",
+      "negative prompt",
+      "encode text",
+      "text encoder",
+      "encode prompt"
+    ]
+  },
+  "ConditioningZeroOut": {
+    "input": {
+      "required": {
+        "conditioning": [
+          "CONDITIONING"
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "conditioning"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "CONDITIONING"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "CONDITIONING"
+    ],
+    "name": "ConditioningZeroOut",
+    "display_name": "Conditioning Zero Out",
+    "description": "",
+    "python_module": "nodes",
+    "category": "model/conditioning/transform",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": [
+      "null conditioning",
+      "clear conditioning"
+    ]
+  },
+  "DifferentialDiffusion": {
+    "input": {
+      "required": {
+        "model": [
+          "MODEL",
+          {}
+        ]
+      },
+      "optional": {
+        "strength": [
+          "FLOAT",
+          {
+            "default": 1,
+            "min": 0,
+            "max": 1,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "model"
+      ],
+      "optional": [
+        "strength"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "MODEL"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "MODEL"
+    ],
+    "output_tooltips": [
+      null
+    ],
+    "output_matchtypes": null,
+    "name": "DifferentialDiffusion",
+    "display_name": "Differential Diffusion",
+    "description": "",
+    "python_module": "comfy_extras.nodes_differential_diffusion",
+    "category": "experimental",
+    "output_node": false,
+    "deprecated": false,
+    "experimental": true,
+    "dev_only": false,
+    "api_node": false,
+    "price_badge": null,
+    "search_aliases": [
+      "inpaint gradient",
+      "variable denoise strength"
+    ],
+    "essentials_category": null,
+    "has_intermediate_output": false
+  },
+  "ImageScaleToTotalPixels": {
+    "input": {
+      "required": {
+        "image": [
+          "IMAGE",
+          {}
+        ],
+        "upscale_method": [
+          "COMBO",
+          {
+            "multiselect": false,
+            "options": [
+              "nearest-exact",
+              "bilinear",
+              "area",
+              "bicubic",
+              "lanczos"
+            ]
+          }
+        ],
+        "megapixels": [
+          "FLOAT",
+          {
+            "default": 1,
+            "min": 0.01,
+            "max": 16,
+            "step": 0.01
+          }
+        ],
+        "resolution_steps": [
+          "INT",
+          {
+            "advanced": true,
+            "default": 1,
+            "min": 1,
+            "max": 256
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "image",
+        "upscale_method",
+        "megapixels",
+        "resolution_steps"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "IMAGE"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "IMAGE"
+    ],
+    "output_tooltips": [
+      null
+    ],
+    "output_matchtypes": null,
+    "name": "ImageScaleToTotalPixels",
+    "display_name": "Scale Image to Total Pixels",
+    "description": "",
+    "python_module": "comfy_extras.nodes_post_processing",
+    "category": "image/upscaling",
+    "output_node": false,
+    "deprecated": false,
+    "experimental": false,
+    "dev_only": false,
+    "api_node": false,
+    "price_badge": null,
+    "search_aliases": null,
+    "essentials_category": null,
+    "has_intermediate_output": false
+  },
+  "InpaintCropImproved": {
+    "input": {
+      "required": {
+        "image": [
+          "IMAGE"
+        ],
+        "downscale_algorithm": [
+          [
+            "nearest",
+            "bilinear",
+            "bicubic",
+            "lanczos",
+            "box",
+            "hamming"
+          ],
+          {
+            "default": "bilinear"
+          }
+        ],
+        "upscale_algorithm": [
+          [
+            "nearest",
+            "bilinear",
+            "bicubic",
+            "lanczos",
+            "box",
+            "hamming"
+          ],
+          {
+            "default": "bicubic"
+          }
+        ],
+        "preresize": [
+          "BOOLEAN",
+          {
+            "default": false,
+            "tooltip": "Resize the original image before processing."
+          }
+        ],
+        "preresize_mode": [
+          [
+            "ensure minimum resolution",
+            "ensure maximum resolution",
+            "ensure minimum and maximum resolution"
+          ],
+          {
+            "default": "ensure minimum resolution"
+          }
+        ],
+        "preresize_min_width": [
+          "INT",
+          {
+            "default": 1024,
+            "min": 0,
+            "max": 16384,
+            "step": 1
+          }
+        ],
+        "preresize_min_height": [
+          "INT",
+          {
+            "default": 1024,
+            "min": 0,
+            "max": 16384,
+            "step": 1
+          }
+        ],
+        "preresize_max_width": [
+          "INT",
+          {
+            "default": 16384,
+            "min": 0,
+            "max": 16384,
+            "step": 1
+          }
+        ],
+        "preresize_max_height": [
+          "INT",
+          {
+            "default": 16384,
+            "min": 0,
+            "max": 16384,
+            "step": 1
+          }
+        ],
+        "mask_fill_holes": [
+          "BOOLEAN",
+          {
+            "default": true,
+            "tooltip": "Mark as masked any areas fully enclosed by mask."
+          }
+        ],
+        "mask_expand_pixels": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 16384,
+            "step": 1,
+            "tooltip": "Expand the mask by a certain amount of pixels before processing."
+          }
+        ],
+        "mask_invert": [
+          "BOOLEAN",
+          {
+            "default": false,
+            "tooltip": "Invert mask so that anything masked will be kept."
+          }
+        ],
+        "mask_blend_pixels": [
+          "INT",
+          {
+            "default": 32,
+            "min": 0,
+            "max": 64,
+            "step": 1,
+            "tooltip": "How many pixels to blend into the original image."
+          }
+        ],
+        "mask_hipass_filter": [
+          "FLOAT",
+          {
+            "default": 0.1,
+            "min": 0,
+            "max": 1,
+            "step": 0.01,
+            "tooltip": "Ignore mask values lower than this value."
+          }
+        ],
+        "extend_for_outpainting": [
+          "BOOLEAN",
+          {
+            "default": false,
+            "tooltip": "Extend the image for outpainting."
+          }
+        ],
+        "extend_up_factor": [
+          "FLOAT",
+          {
+            "default": 1,
+            "min": 0.01,
+            "max": 100,
+            "step": 0.01
+          }
+        ],
+        "extend_down_factor": [
+          "FLOAT",
+          {
+            "default": 1,
+            "min": 0.01,
+            "max": 100,
+            "step": 0.01
+          }
+        ],
+        "extend_left_factor": [
+          "FLOAT",
+          {
+            "default": 1,
+            "min": 0.01,
+            "max": 100,
+            "step": 0.01
+          }
+        ],
+        "extend_right_factor": [
+          "FLOAT",
+          {
+            "default": 1,
+            "min": 0.01,
+            "max": 100,
+            "step": 0.01
+          }
+        ],
+        "context_from_mask_extend_factor": [
+          "FLOAT",
+          {
+            "default": 1.2,
+            "min": 1,
+            "max": 100,
+            "step": 0.01,
+            "tooltip": "Grow the context area from the mask by a certain factor in every direction. For example, 1.5 grabs extra 50% up, down, left, and right as context."
+          }
+        ],
+        "output_resize_to_target_size": [
+          "BOOLEAN",
+          {
+            "default": true,
+            "tooltip": "Force a specific resolution for sampling."
+          }
+        ],
+        "output_target_width": [
+          "INT",
+          {
+            "default": 512,
+            "min": 64,
+            "max": 16384,
+            "step": 1
+          }
+        ],
+        "output_target_height": [
+          "INT",
+          {
+            "default": 512,
+            "min": 64,
+            "max": 16384,
+            "step": 1
+          }
+        ],
+        "output_padding": [
+          [
+            "0",
+            "8",
+            "16",
+            "32",
+            "64",
+            "128",
+            "256",
+            "512"
+          ],
+          {
+            "default": "32"
+          }
+        ],
+        "device_mode": [
+          [
+            "cpu (compatible)",
+            "gpu (much faster)"
+          ],
+          {
+            "default": "cpu (compatible)"
+          }
+        ]
+      },
+      "optional": {
+        "mask": [
+          "MASK"
+        ],
+        "optional_context_mask": [
+          "MASK"
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "image",
+        "downscale_algorithm",
+        "upscale_algorithm",
+        "preresize",
+        "preresize_mode",
+        "preresize_min_width",
+        "preresize_min_height",
+        "preresize_max_width",
+        "preresize_max_height",
+        "mask_fill_holes",
+        "mask_expand_pixels",
+        "mask_invert",
+        "mask_blend_pixels",
+        "mask_hipass_filter",
+        "extend_for_outpainting",
+        "extend_up_factor",
+        "extend_down_factor",
+        "extend_left_factor",
+        "extend_right_factor",
+        "context_from_mask_extend_factor",
+        "output_resize_to_target_size",
+        "output_target_width",
+        "output_target_height",
+        "output_padding",
+        "device_mode"
+      ],
+      "optional": [
+        "mask",
+        "optional_context_mask"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "STITCHER",
+      "IMAGE",
+      "MASK"
+    ],
+    "output_is_list": [
+      false,
+      false,
+      false
+    ],
+    "output_name": [
+      "stitcher",
+      "cropped_image",
+      "cropped_mask"
+    ],
+    "name": "InpaintCropImproved",
+    "display_name": "✂️ Inpaint Crop",
+    "description": "Crops an image around a mask for inpainting, the optional context mask defines an extra area to keep for the context.",
+    "python_module": "custom_nodes.comfyui-inpaint-cropandstitch",
+    "category": "inpaint",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": []
+  },
+  "InpaintModelConditioning": {
+    "input": {
+      "required": {
+        "positive": [
+          "CONDITIONING"
+        ],
+        "negative": [
+          "CONDITIONING"
+        ],
+        "vae": [
+          "VAE"
+        ],
+        "pixels": [
+          "IMAGE"
+        ],
+        "mask": [
+          "MASK"
+        ],
+        "noise_mask": [
+          "BOOLEAN",
+          {
+            "default": true,
+            "tooltip": "Add a noise mask to the latent so sampling will only happen within the mask. Might improve results or completely break things depending on the model."
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "positive",
+        "negative",
+        "vae",
+        "pixels",
+        "mask",
+        "noise_mask"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "CONDITIONING",
+      "CONDITIONING",
+      "LATENT"
+    ],
+    "output_is_list": [
+      false,
+      false,
+      false
+    ],
+    "output_name": [
+      "positive",
+      "negative",
+      "latent"
+    ],
+    "name": "InpaintModelConditioning",
+    "display_name": "InpaintModelConditioning",
+    "description": "",
+    "python_module": "nodes",
+    "category": "model/conditioning",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": []
+  },
+  "InpaintStitchImproved": {
+    "input": {
+      "required": {
+        "stitcher": [
+          "STITCHER"
+        ],
+        "inpainted_image": [
+          "IMAGE"
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "stitcher",
+        "inpainted_image"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "IMAGE"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "image"
+    ],
+    "name": "InpaintStitchImproved",
+    "display_name": "✂️ Inpaint Stitch",
+    "description": "Stitches an image cropped with Inpaint Crop back into the original image",
+    "python_module": "custom_nodes.comfyui-inpaint-cropandstitch",
+    "category": "inpaint",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": []
+  },
+  "ModelSamplingAuraFlow": {
+    "input": {
+      "required": {
+        "model": [
+          "MODEL"
+        ],
+        "shift": [
+          "FLOAT",
+          {
+            "default": 1.73,
+            "min": 0,
+            "max": 100,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "model",
+        "shift"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "MODEL"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "MODEL"
+    ],
+    "name": "ModelSamplingAuraFlow",
+    "display_name": "ModelSamplingAuraFlow",
+    "description": "",
+    "python_module": "comfy_extras.nodes_model_advanced",
+    "category": "model/patch",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": []
+  },
+  "NunchakuQwenImageDiTLoader": {
+    "input": {
+      "required": {
+        "model_name": [
+          [
+            "krea2\\Muse-BSY-Krea2-V3.0-pro-C81-Civ-Extended-EDIT-scaled-fp8.safetensors",
+            "nunchaku_qwen_image_edit_2511_ultimate_speed_int4.safetensors",
+            "qwen\\svdq-int4_r32-qwen-image-edit-lightningv1.0-8steps.safetensors"
+          ],
+          {
+            "tooltip": "The Nunchaku Qwen-Image model."
+          }
+        ],
+        "cpu_offload": [
+          [
+            "auto",
+            "enable",
+            "disable"
+          ],
+          {
+            "default": "auto",
+            "tooltip": "Whether to enable CPU offload for the transformer model.auto' will enable it if the GPU memory is less than 15G."
+          }
+        ]
+      },
+      "optional": {
+        "num_blocks_on_gpu": [
+          "INT",
+          {
+            "default": 1,
+            "min": 1,
+            "max": 60,
+            "tooltip": "When CPU offload is enabled, this option determines how many transformer blocks remain on GPU memory. Increasing this value decreases CPU RAM usage but increases GPU memory usage."
+          }
+        ],
+        "use_pin_memory": [
+          [
+            "enable",
+            "disable"
+          ],
+          {
+            "default": "disable",
+            "tooltip": "Enable this to use pinned memory for transformer blocks when CPU offload is enabled. This can improve data transfer speed between CPU and GPU, but may increase system memory usage."
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "model_name",
+        "cpu_offload"
+      ],
+      "optional": [
+        "num_blocks_on_gpu",
+        "use_pin_memory"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "MODEL"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "MODEL"
+    ],
+    "name": "NunchakuQwenImageDiTLoader",
+    "display_name": "Nunchaku Qwen-Image DiT Loader",
+    "description": "",
+    "python_module": "custom_nodes.ComfyUI-nunchaku",
+    "category": "Nunchaku",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": []
+  },
+  "PreviewImage": {
+    "input": {
+      "required": {
+        "images": [
+          "IMAGE"
+        ]
+      },
+      "hidden": {
+        "prompt": "PROMPT",
+        "extra_pnginfo": "EXTRA_PNGINFO"
+      }
+    },
+    "input_order": {
+      "required": [
+        "images"
+      ],
+      "hidden": [
+        "prompt",
+        "extra_pnginfo"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "IMAGE"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "images"
+    ],
+    "name": "PreviewImage",
+    "display_name": "Preview Image",
+    "description": "Preview the images without saving them to the ComfyUI output directory.",
+    "python_module": "nodes",
+    "category": "image",
+    "output_node": true,
+    "has_intermediate_output": false,
+    "search_aliases": [
+      "preview",
+      "preview image",
+      "show image",
+      "view image",
+      "display image",
+      "image viewer"
+    ],
+    "essentials_category": "Basics"
+  },
+  "TextEncodeQwenImageEdit": {
+    "input": {
+      "required": {
+        "clip": [
+          "CLIP",
+          {}
+        ],
+        "prompt": [
+          "STRING",
+          {
+            "multiline": true,
+            "dynamicPrompts": true
+          }
+        ]
+      },
+      "optional": {
+        "vae": [
+          "VAE",
+          {}
+        ],
+        "image": [
+          "IMAGE",
+          {}
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "clip",
+        "prompt"
+      ],
+      "optional": [
+        "vae",
+        "image"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "CONDITIONING"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "CONDITIONING"
+    ],
+    "output_tooltips": [
+      null
+    ],
+    "output_matchtypes": null,
+    "name": "TextEncodeQwenImageEdit",
+    "display_name": null,
+    "description": "",
+    "python_module": "comfy_extras.nodes_qwen",
+    "category": "model/conditioning/qwen image",
+    "output_node": false,
+    "deprecated": false,
+    "experimental": false,
+    "dev_only": false,
+    "api_node": false,
+    "price_badge": null,
+    "search_aliases": null,
+    "essentials_category": null,
+    "has_intermediate_output": false
+  },
+  "UnetLoaderGGUF": {
+    "input": {
+      "required": {
+        "unet_name": [
+          [
+            "Qwen_Image_Edit-Q3_K_S.gguf",
+            "flux\\unstableRevolutionF2K_AlphaF2K4BQ80.gguf",
+            "z-image\\z-image-turbo-q4_k_s.gguf",
+            "z-image\\z_image_turbo-Q4_K.gguf"
+          ]
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "unet_name"
+      ]
+    },
+    "is_input_list": false,
+    "output": [
+      "MODEL"
+    ],
+    "output_is_list": [
+      false
+    ],
+    "output_name": [
+      "MODEL"
+    ],
+    "name": "UnetLoaderGGUF",
+    "display_name": "Unet Loader (GGUF)",
+    "description": "",
+    "python_module": "custom_nodes.ComfyUI-GGUF",
+    "category": "bootleg",
+    "output_node": false,
+    "has_intermediate_output": false,
+    "search_aliases": []
+  }
+}

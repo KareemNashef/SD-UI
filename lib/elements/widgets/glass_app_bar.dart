@@ -150,7 +150,9 @@ class _StatusBorderLine extends StatelessWidget {
     return ValueListenableBuilder<bool>(
       valueListenable: globalServerStatus,
       builder: (context, isOnline, child) {
-        final color = isOnline ? AppTheme.success : AppTheme.error;
+        // Online reflects the active backend's identity color, not a fixed
+        // "success" green - Comfy connected should read violet, not green.
+        final color = isOnline ? AppTheme.accentPrimary : AppTheme.error;
 
         return Container(
           height: 3,

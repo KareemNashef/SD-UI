@@ -3,23 +3,69 @@
 // Flutter imports
 import 'package:flutter/material.dart';
 
+// Local imports - Logic
+import 'package:sd_companion/logic/backend/backend_kind.dart';
+
 // Theme Constants Implementation
 
-/// Design system constants following the glassmorphism theme
-/// Uses accentPrimary (cyan) and accentSecondary (purple) as the main accent colors
+/// Design system constants following the glassmorphism theme.
+///
+/// [accentPrimary]/[accentSecondary]/[accentTertiary] and the background
+/// wash are **mutable** and swapped wholesale by [applyBackend] - every
+/// existing glass widget already reads these statics for its borders,
+/// glows, buttons and icons, so flipping them (plus remounting the widget
+/// tree, see main_page.dart) reskins the entire app for the active backend
+/// without touching each widget individually. [forgeAccentPrimary] and
+/// [comfyAccentPrimary] (etc.) stay fixed so backend-picker UI can show
+/// both identities side by side regardless of which one is active.
 class AppTheme {
-  // ===== Class Variables ===== //
+  // ===== Fixed per-backend palettes ===== //
 
-  // Primary Accent Colors
-  static const Color accentPrimary = Color(0xFF15803D);
-  static const Color accentSecondary = Color(0xFF65A30D);
-  static const Color accentTertiary = Color(0xFFBBF7D0);
+  static const Color forgeAccentPrimary = Color(0xFF15803D);
+  static const Color forgeAccentSecondary = Color(0xFF65A30D);
+  static const Color forgeAccentTertiary = Color(0xFFBBF7D0);
+  static const Color _forgeBackgroundWash = Color(0xFF07130B);
+
+  // ComfyUI identity - deliberately distinct (blue/violet) from Forge's
+  // green so the active backend is never ambiguous at a glance.
+  static const Color comfyAccentPrimary = Color(0xFF6D5EF0);
+  static const Color comfyAccentSecondary = Color(0xFF38BDF8);
+  static const Color comfyAccentTertiary = Color(0xFFD8CFFF);
+  static const Color _comfyBackgroundWash = Color(0xFF0B0A1D);
+
+  // ===== Active (mutable) palette ===== //
+
+  static Color accentPrimary = forgeAccentPrimary;
+  static Color accentSecondary = forgeAccentSecondary;
+  static Color accentTertiary = forgeAccentTertiary;
+  static Color _backgroundWash = _forgeBackgroundWash;
+  static BackendKind _activeKind = BackendKind.forge;
+
+  static BackendKind get activeBackendKind => _activeKind;
+
+  /// Swaps the active palette. Call once at startup and again on every
+  /// backend switch; pair with remounting the widget subtree (a keyed
+  /// widget higher up) so already-built widgets pick up the new colors.
+  static void applyBackend(BackendKind kind) {
+    _activeKind = kind;
+    if (kind == BackendKind.comfy) {
+      accentPrimary = comfyAccentPrimary;
+      accentSecondary = comfyAccentSecondary;
+      accentTertiary = comfyAccentTertiary;
+      _backgroundWash = _comfyBackgroundWash;
+    } else {
+      accentPrimary = forgeAccentPrimary;
+      accentSecondary = forgeAccentSecondary;
+      accentTertiary = forgeAccentTertiary;
+      _backgroundWash = _forgeBackgroundWash;
+    }
+  }
 
   // Semantic Colors
   static const Color success = Color(0xFF4CAF50);
   static const Color warning = Color(0xFFFF9800);
   static const Color error = Color(0xFFE53935);
-  static const Color info = accentPrimary;
+  static Color get info => accentPrimary;
 
   // Glass Surface Colors
   static Color get glassBorder => Colors.white.withValues(alpha: 0.15);
@@ -146,25 +192,49 @@ class AppTheme {
   static const Duration durationSlow = Duration(milliseconds: 400);
 
   // Gradients
-  static LinearGradient get gradientPrimary => const LinearGradient(
+  static LinearGradient get gradientPrimary => LinearGradient(
     colors: [accentPrimary, accentSecondary],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  static LinearGradient get gradientAction => const LinearGradient(
+  static LinearGradient get gradientAction => LinearGradient(
     colors: [accentTertiary, accentPrimary],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
+  /// The full-page background wash. Tinted per active backend (near-black
+  /// green for Forge, near-black violet for Comfy) so even screens with no
+  /// other colored chrome still read as visibly different.
   static LinearGradient get gradientBackground => LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Colors.black, Colors.grey.shade900],
+    colors: [Colors.black, _backgroundWash],
+  );
+
+  static LinearGradient get gradientComfyPrimary => const LinearGradient(
+    colors: [comfyAccentPrimary, comfyAccentSecondary],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static LinearGradient get gradientForgePrimary => const LinearGradient(
+    colors: [forgeAccentPrimary, forgeAccentSecondary],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
   );
 
   // ===== Class Methods ===== //
+
+  /// Fixed backend-specific accent color, for UI that must show a
+  /// particular backend's identity regardless of which one is currently
+  /// active (e.g. the backend picker itself).
+  static Color accentFor(BackendKind kind) =>
+      kind == BackendKind.comfy ? comfyAccentPrimary : forgeAccentPrimary;
+
+  static LinearGradient gradientFor(BackendKind kind) =>
+      kind == BackendKind.comfy ? gradientComfyPrimary : gradientForgePrimary;
 
   static List<BoxShadow> glowPrimary({double intensity = 0.4}) => [
     BoxShadow(

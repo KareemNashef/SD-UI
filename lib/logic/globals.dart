@@ -5,8 +5,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 // Local imports - Logic
-import 'package:sd_companion/logic/backend/a1111_backend.dart';
+import 'package:sd_companion/logic/backend/backend_kind.dart';
+import 'package:sd_companion/logic/backend/backend_manager.dart';
+import 'package:sd_companion/logic/backend/comfy_backend.dart';
+import 'package:sd_companion/logic/backend/forge_backend.dart';
+import 'package:sd_companion/logic/backend/image_backend.dart';
 import 'package:sd_companion/logic/models/checkpoint_data.dart';
+import 'package:sd_companion/logic/models/generation_models.dart';
 import 'package:sd_companion/logic/models/lora_data.dart';
 
 // Local imports - Pages
@@ -16,7 +21,19 @@ import 'package:sd_companion/main_page.dart';
 
 // ===== Backend Variables ===== //
 
-final A1111Backend globalBackend = A1111Backend();
+// Which backend is currently selected. Changing this does not by itself
+// reload profile data - callers should go through BackendManager.switchTo.
+final ValueNotifier<BackendKind> globalActiveBackendKind =
+    ValueNotifier(BackendKind.forge);
+
+/// The active backend, resolved through BackendManager. Generic call sites
+/// (status/generation/progress/interrupt) should use this; Forge-only or
+/// Comfy-only UI should use [globalForgeBackend]/[globalComfyBackend]
+/// directly so it never silently no-ops against the wrong backend.
+ImageBackend get globalBackend => BackendManager.instance.active;
+
+ForgeBackend get globalForgeBackend => BackendManager.instance.forge;
+ComfyBackend get globalComfyBackend => BackendManager.instance.comfy;
 
 // ===== App Variables ===== //
 
@@ -43,11 +60,14 @@ void navigateToSettingsPage() {
 // Server status
 ValueNotifier<bool> globalServerStatus = ValueNotifier(false);
 
-// Server IP
+// Forge server IP/port
 ValueNotifier<String> globalServerIP = ValueNotifier('127.0.0.1');
-
-// Server port
 ValueNotifier<String> globalServerPort = ValueNotifier('7860');
+
+// ComfyUI server IP/port (kept separate so switching backends never
+// clobbers the other one's last-used address)
+ValueNotifier<String> globalComfyServerIP = ValueNotifier('127.0.0.1');
+ValueNotifier<String> globalComfyServerPort = ValueNotifier('8188');
 
 // OpenRouter model for prompt optimization
 ValueNotifier<String> globalRouterModel = ValueNotifier('arcee-ai/trinity-large-preview:free');
@@ -140,13 +160,15 @@ Set<String> globalFavoritePrompts = {};
 
 // ===== Results Variables ===== //
 
-// Global storage for result images
-ValueNotifier<Set<String>> globalResultImages = ValueNotifier({});
+// Generated results, newest last, from either backend.
+ValueNotifier<List<GeneratedImage>> globalResultImages = ValueNotifier([]);
 
 // Global flag to track if image generation is currently in progress
 final ValueNotifier<bool> globalIsGenerating = ValueNotifier<bool>(false);
 
-// Global storage for current progress data from the API
+// Global storage for current Forge progress data (raw A1111 `/progress`
+// shape). ComfyUI progress uses the backend-neutral globalComfyProgress
+// instead - see ComfyProgressService.
 final ValueNotifier<Map<String, dynamic>?> globalProgressData = ValueNotifier<Map<String, dynamic>?>(null);
 
 // Global flag to track if we should show intermediate images

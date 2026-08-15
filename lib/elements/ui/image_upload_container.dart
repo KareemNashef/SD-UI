@@ -23,7 +23,10 @@ import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
 import 'package:sd_companion/logic/api_calls.dart';
-import 'package:sd_companion/logic/backend/a1111_backend.dart';
+import 'package:sd_companion/logic/backend/backend_kind.dart';
+import 'package:sd_companion/logic/comfy/comfy_workflow_service.dart';
+import 'package:sd_companion/logic/comfy/comfy_workflow_type.dart';
+import 'package:sd_companion/logic/comfy/workflow_auto_detector.dart';
 import 'package:sd_companion/logic/drawing/drawing_coordinates.dart';
 import 'package:sd_companion/logic/drawing/mask_generator.dart';
 import 'package:sd_companion/logic/generation_logic.dart';
@@ -88,6 +91,10 @@ class _ImageContainerState extends State<ImageContainer> {
   // Stitch Variables
   final List<File> _stitchImages = [];
 
+  // Comfy additional named image slots, keyed by node id
+  final Map<String, File> _additionalComfyImageFiles = {};
+  Map<String, Uint8List> _additionalComfyImages = {};
+
   // ===== Lifecycle Methods ===== //
 
   @override
@@ -96,6 +103,8 @@ class _ImageContainerState extends State<ImageContainer> {
     globalImageToEdit.addListener(_onEditImageRequest);
     globalSelectedLoras.addListener(_onLoraStateChanged);
     globalSelectedLoraTags.addListener(_onLoraStateChanged);
+    globalActiveBackendKind.addListener(_onBackendChanged);
+    ComfyWorkflowService.instance.activeDetected.addListener(_onBackendChanged);
   }
 
   @override
@@ -105,8 +114,25 @@ class _ImageContainerState extends State<ImageContainer> {
     globalImageToEdit.removeListener(_onEditImageRequest);
     globalSelectedLoras.removeListener(_onLoraStateChanged);
     globalSelectedLoraTags.removeListener(_onLoraStateChanged);
+    globalActiveBackendKind.removeListener(_onBackendChanged);
+    ComfyWorkflowService.instance.activeDetected.removeListener(_onBackendChanged);
     super.dispose();
   }
+
+  void _onBackendChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Null for Forge (always the same inpaint canvas). For Comfy, the
+  /// user-declared type of the active workflow - drives whether the canvas
+  /// needs an input image at all, and whether it needs mask painting.
+  ComfyWorkflowType? get _comfyWorkflowType {
+    if (globalActiveBackendKind.value != BackendKind.comfy) return null;
+    return ComfyWorkflowService.instance.activeRecord?.workflowType;
+  }
+
+  bool get _needsInputImage => _comfyWorkflowType?.needsInputImage ?? true;
+  bool get _needsMaskTools => _comfyWorkflowType?.needsMask ?? true;
 
   void _onLoraStateChanged() {
     if (mounted) setState(() {});
@@ -315,7 +341,7 @@ class _ImageContainerState extends State<ImageContainer> {
   // ===== Generation Logic ===== //
 
   Future<void> generateImage() async {
-    if (_imageFile == null || _decodedImage == null) {
+    if (_needsInputImage && (_imageFile == null || _decodedImage == null)) {
       _showError('Please select an image first');
       return;
     }
@@ -326,14 +352,26 @@ class _ImageContainerState extends State<ImageContainer> {
       return;
     }
 
+    final isComfy = globalActiveBackendKind.value == BackendKind.comfy;
     try {
-      ProgressService().startProgressPolling();
+      // Forge polls /sdapi/v1/progress itself; Comfy's progress comes from
+      // its WebSocket/history flow instead, so just flip the shared flag.
+      if (isComfy) {
+        globalIsGenerating.value = true;
+      } else {
+        ProgressService().startProgressPolling();
+      }
       navigateToResultsPage();
 
-      Uint8List imageBytesToUse;
-      Uint8List maskBytesToUse;
+      Uint8List imageBytesToUse = Uint8List(0);
+      Uint8List? maskBytesToUse;
 
-      if (_isOutpaintingMode) {
+      if (!_needsInputImage) {
+        // Text-to-image: no canvas image at all.
+      } else if (!_needsMaskTools) {
+        // Simple image-to-image: send the picked image, no mask.
+        imageBytesToUse = await _imageFile!.readAsBytes();
+      } else if (_isOutpaintingMode) {
         final data = await _generateOutpaintData();
         if (data.isEmpty) throw Exception("Failed to generate outpaint data");
         imageBytesToUse = data[0];
@@ -366,15 +404,31 @@ class _ImageContainerState extends State<ImageContainer> {
         }
       }
 
-      final newImages = await GenerationLogic.generateImg2Img(prompt: userPrompt.text, imageBytes: imageBytesToUse, maskBytes: maskBytesToUse, loraPromptAdditions: loraStrings, stitchImages: stitchBase64);
+      final outcome = await GenerationLogic.generate(
+        prompt: userPrompt.text,
+        imageBytes: imageBytesToUse,
+        maskBytes: maskBytesToUse,
+        loraPromptAdditions: loraStrings,
+        stitchImages: stitchBase64,
+        namedImages: _additionalComfyImages,
+      );
 
-      final currentImages = Set<String>.from(globalResultImages.value);
-      currentImages.addAll(newImages);
-      globalResultImages.value = currentImages;
+      globalResultImages.value = [
+        ...globalResultImages.value,
+        ...outcome.images,
+      ];
 
-      ProgressService().stopProgressPolling();
+      if (isComfy) {
+        globalIsGenerating.value = false;
+      } else {
+        ProgressService().stopProgressPolling();
+      }
     } catch (e) {
-      ProgressService().stopProgressPolling();
+      if (isComfy) {
+        globalIsGenerating.value = false;
+      } else {
+        ProgressService().stopProgressPolling();
+      }
       if (mounted) _showError('Error generating image: ${e.toString()}');
     }
   }
@@ -798,7 +852,8 @@ class _ImageContainerState extends State<ImageContainer> {
 
   Widget _buildCanvasEditor() {
     final hasImage = _imageFile != null;
-    const accentColor = AppTheme.accentPrimary;
+    final showMaskTools = _needsMaskTools;
+    final accentColor = AppTheme.accentPrimary;
 
     return GestureDetector(
       onTap: hasImage ? null : _pickImage,
@@ -818,12 +873,45 @@ class _ImageContainerState extends State<ImageContainer> {
             fit: StackFit.expand,
             children: [
               // Content
-              hasImage ? (_isOutpaintingMode ? _buildImageWithOutpainting() : _buildImageWithDrawing()) : _buildUploadPrompt(),
+              hasImage
+                  ? (!showMaskTools
+                        ? _buildSimpleImagePreview()
+                        : (_isOutpaintingMode ? _buildImageWithOutpainting() : _buildImageWithDrawing()))
+                  : _buildUploadPrompt(),
 
-              // Floating Toggle (Only show if image exists)
-              if (hasImage) Positioned(top: 16, right: 16, child: _buildModeToggle()),
+              // Floating Toggle (Only show if image exists and mask tools apply)
+              if (hasImage && showMaskTools) Positioned(top: 16, right: 16, child: _buildModeToggle()),
+              if (hasImage && !showMaskTools) Positioned(top: 16, right: 16, child: _buildChangeImageButton()),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Comfy image-to-image workflows: no mask/outpaint tools, just the
+  /// picked image and a way to swap it.
+  Widget _buildSimpleImagePreview() {
+    return Image.file(_imageFile!, fit: BoxFit.contain, gaplessPlayback: true);
+  }
+
+  Widget _buildChangeImageButton() {
+    return GestureDetector(
+      onTap: _pickImage,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 16),
+            SizedBox(width: 6),
+            Text('Change', style: TextStyle(color: Colors.white, fontSize: 12)),
+          ],
         ),
       ),
     );
@@ -917,7 +1005,7 @@ class _ImageContainerState extends State<ImageContainer> {
               // Section Title
               Row(
                 children: [
-                  const Icon(Icons.dashboard_customize_rounded, color: AppTheme.accentPrimary, size: 16),
+                  Icon(Icons.dashboard_customize_rounded, color: AppTheme.accentPrimary, size: 16),
                   const SizedBox(width: 6),
                   Text(
                     "PROMPT",
@@ -953,55 +1041,57 @@ class _ImageContainerState extends State<ImageContainer> {
                       const SizedBox(width: 4),
                     ],
 
-                    // 2. AI Optimize Button (Sleek Pill Style)
-                    Tooltip(
-                      message: "Long press to select model",
-                      child: InkWell(
-                        onLongPress: _showModelSelectionDialog,
-                        onTap: _isOptimizingPrompt
-                            ? null
-                            : () async {
-                                setState(() {
-                                  _isOptimizingPrompt = true;
-                                  _previousPrompt = userPrompt.text;
-                                });
-                                try {
-                                  final optimizeResult = await A1111Backend().optimizePrompt(userPrompt.text, globalCheckpointDataMap[globalCurrentCheckpointName]?.baseModel, openRouterModel: globalRouterModel.value);
-                                  if (mounted) {
-                                    setState(() {
-                                      userPrompt.text = optimizeResult;
-                                      userPrompt.selection = TextSelection.fromPosition(TextPosition(offset: userPrompt.text.length));
-                                    });
+                    // 2. AI Optimize Button (Sleek Pill Style) - Forge only
+                    if (globalBackend.capabilities.promptOptimizer) ...[
+                      Tooltip(
+                        message: "Long press to select model",
+                        child: InkWell(
+                          onLongPress: _showModelSelectionDialog,
+                          onTap: _isOptimizingPrompt
+                              ? null
+                              : () async {
+                                  setState(() {
+                                    _isOptimizingPrompt = true;
+                                    _previousPrompt = userPrompt.text;
+                                  });
+                                  try {
+                                    final optimizeResult = await globalForgeBackend.optimizePrompt(userPrompt.text, globalCheckpointDataMap[globalCurrentCheckpointName]?.baseModel, openRouterModel: globalRouterModel.value);
+                                    if (mounted) {
+                                      setState(() {
+                                        userPrompt.text = optimizeResult;
+                                        userPrompt.selection = TextSelection.fromPosition(TextPosition(offset: userPrompt.text.length));
+                                      });
+                                    }
+                                  } catch (e) {
+                                    if (mounted) _showError("Optimization failed: $e");
+                                  } finally {
+                                    if (mounted) setState(() => _isOptimizingPrompt = false);
                                   }
-                                } catch (e) {
-                                  if (mounted) _showError("Optimization failed: $e");
-                                } finally {
-                                  if (mounted) setState(() => _isOptimizingPrompt = false);
-                                }
-                              },
-                        borderRadius: BorderRadius.circular(20),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppTheme.accentPrimary.withValues(alpha: 0.1),
-                            border: Border.all(color: AppTheme.accentPrimary.withValues(alpha: 0.3), width: 1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              if (_isOptimizingPrompt) const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentPrimary)) else const Icon(Icons.auto_awesome_rounded, size: 14, color: AppTheme.accentPrimary),
-                              const SizedBox(width: 6),
-                              Text(
-                                _isOptimizingPrompt ? "Optimizing..." : "Optimize",
-                                style: const TextStyle(color: AppTheme.accentPrimary, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.3),
-                              ),
-                            ],
+                                },
+                          borderRadius: BorderRadius.circular(20),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentPrimary.withValues(alpha: 0.1),
+                              border: Border.all(color: AppTheme.accentPrimary.withValues(alpha: 0.3), width: 1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              children: [
+                                if (_isOptimizingPrompt) SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentPrimary)) else Icon(Icons.auto_awesome_rounded, size: 14, color: AppTheme.accentPrimary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _isOptimizingPrompt ? "Optimizing..." : "Optimize",
+                                  style: TextStyle(color: AppTheme.accentPrimary, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.3),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
+                      const SizedBox(width: 4),
+                    ],
 
                     // 3. Clear Button (Icon Only)
                     Tooltip(
@@ -1055,7 +1145,7 @@ class _ImageContainerState extends State<ImageContainer> {
             padding: const EdgeInsets.fromLTRB(4.0, 0.0, 4.0, 8.0),
             child: Row(
               children: [
-                const Icon(Icons.auto_awesome_mosaic_rounded, color: AppTheme.accentPrimary, size: 16),
+                Icon(Icons.auto_awesome_mosaic_rounded, color: AppTheme.accentPrimary, size: 16),
                 const SizedBox(width: 6),
                 Text(
                   "IMAGE STITCH",
@@ -1068,7 +1158,7 @@ class _ImageContainerState extends State<ImageContainer> {
                     decoration: BoxDecoration(color: AppTheme.accentPrimary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
                     child: Text(
                       '${_stitchImages.length}',
-                      style: const TextStyle(color: AppTheme.accentPrimary, fontSize: 11, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: AppTheme.accentPrimary, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   ),
               ],
@@ -1173,6 +1263,127 @@ class _ImageContainerState extends State<ImageContainer> {
     );
   }
 
+  // ===== Comfy Additional Image Slots ===== //
+
+  List<DetectedWidget> get _additionalImageSlots =>
+      ComfyWorkflowService.instance.activeDetected.value?.additionalImages ?? const [];
+
+  Future<void> _pickAdditionalComfyImage(String nodeId) async {
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile == null) return;
+    final file = File(pickedFile.path);
+    final bytes = await file.readAsBytes();
+    setState(() {
+      _additionalComfyImageFiles[nodeId] = file;
+      _additionalComfyImages = {
+        ..._additionalComfyImages,
+        nodeId: bytes,
+      };
+    });
+  }
+
+  void _removeAdditionalComfyImage(String nodeId) {
+    setState(() {
+      _additionalComfyImageFiles.remove(nodeId);
+      final updated = Map<String, Uint8List>.from(_additionalComfyImages);
+      updated.remove(nodeId);
+      _additionalComfyImages = updated;
+    });
+  }
+
+  Widget _buildAdditionalComfyImagesSection() {
+    final slots = _additionalImageSlots;
+    if (slots.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4.0, 0.0, 4.0, 8.0),
+          child: Row(
+            children: [
+              Icon(Icons.add_photo_alternate_rounded, color: AppTheme.accentSecondary, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                "ADDITIONAL IMAGES",
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.2),
+              ),
+            ],
+          ),
+        ),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: slots.map((slot) {
+            final nodeId = '${slot.node.id}';
+            final file = _additionalComfyImageFiles[nodeId];
+            final label = slot.label;
+            return GestureDetector(
+              onTap: () => _pickAdditionalComfyImage(nodeId),
+              child: Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: file != null ? AppTheme.accentSecondary.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.12), width: 1.5),
+                  color: Colors.white.withValues(alpha: 0.03),
+                ),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    if (file != null)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(13),
+                        child: Image.file(file, width: 88, height: 88, fit: BoxFit.cover),
+                      )
+                    else
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(6.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add_rounded, color: Colors.white.withValues(alpha: 0.4), size: 22),
+                              const SizedBox(height: 2),
+                              Text(
+                                label,
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 9),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    if (file != null)
+                      Positioned(
+                        top: -6,
+                        right: -6,
+                        child: GestureDetector(
+                          onTap: () => _removeAdditionalComfyImage(nodeId),
+                          child: Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: AppTheme.error,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.black, width: 2),
+                            ),
+                            child: const Icon(Icons.close_rounded, size: 11, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildControlBar() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -1181,38 +1392,42 @@ class _ImageContainerState extends State<ImageContainer> {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            GlassOptionButton(
-              icon: Icons.science_outlined,
-              tooltip: 'Test Lab',
-              onTap: () {
-                FocusScope.of(context).unfocus();
-                showCheckpointTesterModal(context, (mode, items) {
-                  if (mode == TestMode.checkpoints) {
-                    _startCheckpointTesting(items);
-                  } else {
-                    _startSamplerTesting(items, globalCurrentCheckpointName);
-                  }
-                });
-              },
-            ),
-            const SizedBox(width: 4),
-            GlassOptionButton(
-              icon: Icons.auto_awesome_mosaic_outlined,
-              tooltip: 'LoRAs',
-              onTap: () {
-                FocusScope.of(context).unfocus();
-                showLorasModal(
-                  context,
-                  globalSelectedLoras.value,
-                  globalSelectedLoraTags.value,
-                  (newLoras, newTags) {
-                    globalSelectedLoras.value = Map.from(newLoras);
-                    globalSelectedLoraTags.value = Map.from(newTags);
-                  },
-                );
-              },
-            ),
-            const SizedBox(width: 4),
+            if (globalBackend.capabilities.testing) ...[
+              GlassOptionButton(
+                icon: Icons.science_outlined,
+                tooltip: 'Test Lab',
+                onTap: () {
+                  FocusScope.of(context).unfocus();
+                  showCheckpointTesterModal(context, (mode, items) {
+                    if (mode == TestMode.checkpoints) {
+                      _startCheckpointTesting(items);
+                    } else {
+                      _startSamplerTesting(items, globalCurrentCheckpointName);
+                    }
+                  });
+                },
+              ),
+              const SizedBox(width: 4),
+            ],
+            if (globalBackend.capabilities.loras) ...[
+              GlassOptionButton(
+                icon: Icons.auto_awesome_mosaic_outlined,
+                tooltip: 'LoRAs',
+                onTap: () {
+                  FocusScope.of(context).unfocus();
+                  showLorasModal(
+                    context,
+                    globalSelectedLoras.value,
+                    globalSelectedLoraTags.value,
+                    (newLoras, newTags) {
+                      globalSelectedLoras.value = Map.from(newLoras);
+                      globalSelectedLoraTags.value = Map.from(newTags);
+                    },
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
+            ],
             GlassOptionButton(
               icon: Icons.bookmark_border_rounded,
               tooltip: 'Prompt Vault',
@@ -1264,11 +1479,19 @@ class _ImageContainerState extends State<ImageContainer> {
         child: Column(
           children: [
             const SizedBox(height: 16),
-            _buildCanvasEditor(),
-            const SizedBox(height: 24),
+            if (_needsInputImage) ...[
+              _buildCanvasEditor(),
+              const SizedBox(height: 24),
+            ],
             _buildPromptSection(),
-            const SizedBox(height: 16),
-            _buildStitchSection(),
+            if (globalBackend.capabilities.stitching) ...[
+              const SizedBox(height: 16),
+              _buildStitchSection(),
+            ],
+            if (globalActiveBackendKind.value == BackendKind.comfy) ...[
+              const SizedBox(height: 16),
+              _buildAdditionalComfyImagesSection(),
+            ],
             const SizedBox(height: 16),
             _buildControlBar(),
             const SizedBox(height: 16), // Bottom padding

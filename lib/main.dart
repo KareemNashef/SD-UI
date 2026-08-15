@@ -7,12 +7,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 // Local imports - Elements
+import 'package:sd_companion/elements/settings/backend_selector.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 import 'package:sd_companion/elements/widgets/glass_input.dart';
 
 // Local imports - Logic
 import 'package:sd_companion/logic/api_calls.dart';
+import 'package:sd_companion/logic/backend/backend_kind.dart';
 import 'package:sd_companion/logic/globals.dart';
+import 'package:sd_companion/logic/startup/backend_startup.dart';
 import 'package:sd_companion/logic/storage/storage_service.dart';
 
 // Local imports - Pages
@@ -22,6 +25,14 @@ import 'package:sd_companion/main_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Keep the app's palette in sync with the active backend everywhere it's
+  // set - initial load, manual switch from Settings, anything future - so
+  // no call site has to remember to re-theme by hand.
+  AppTheme.applyBackend(globalActiveBackendKind.value);
+  globalActiveBackendKind.addListener(
+    () => AppTheme.applyBackend(globalActiveBackendKind.value),
+  );
 
   // Set system UI style for a modern look
   SystemChrome.setSystemUIOverlayStyle(
@@ -98,6 +109,7 @@ class _LoadingScreenState extends State<LoadingScreen>
     );
 
     _contentController.forward();
+    globalActiveBackendKind.addListener(_onBackendKindChanged);
     _initialize();
   }
 
@@ -107,15 +119,32 @@ class _LoadingScreenState extends State<LoadingScreen>
     _contentController.dispose();
     _ipController.dispose();
     _portController.dispose();
+    globalActiveBackendKind.removeListener(_onBackendKindChanged);
     super.dispose();
+  }
+
+  void _onBackendKindChanged() {
+    if (!mounted) return;
+    setState(_syncAddressControllers);
   }
 
   // ===== Class Methods ===== //
 
+  void _syncAddressControllers() {
+    if (globalActiveBackendKind.value == BackendKind.forge) {
+      _ipController.text = globalServerIP.value;
+      _portController.text = globalServerPort.value;
+    } else {
+      _ipController.text = globalComfyServerIP.value;
+      _portController.text = globalComfyServerPort.value;
+    }
+  }
+
   Future<void> _initialize() async {
+    await StorageService.loadActiveBackendKind();
     await StorageService.loadServerSettings();
-    _ipController.text = globalServerIP.value;
-    _portController.text = globalServerPort.value;
+    await StorageService.loadComfyServerSettings();
+    _syncAddressControllers();
 
     await checkServerStatus();
 
@@ -133,13 +162,22 @@ class _LoadingScreenState extends State<LoadingScreen>
       _isConnecting = true;
     });
 
-    // Save and apply new settings
-    globalServerIP.value = _ipController.text;
-    globalServerPort.value = _portController.text;
-    await StorageService.saveServerSettings(
-      _ipController.text,
-      _portController.text,
-    );
+    // Save and apply new settings for whichever backend is selected
+    if (globalActiveBackendKind.value == BackendKind.forge) {
+      globalServerIP.value = _ipController.text;
+      globalServerPort.value = _portController.text;
+      await StorageService.saveServerSettings(
+        _ipController.text,
+        _portController.text,
+      );
+    } else {
+      globalComfyServerIP.value = _ipController.text;
+      globalComfyServerPort.value = _portController.text;
+      await StorageService.saveComfyServerSettings(
+        _ipController.text,
+        _portController.text,
+      );
+    }
 
     // Small delay for visual feedback
     await Future.delayed(const Duration(milliseconds: 800));
@@ -152,8 +190,10 @@ class _LoadingScreenState extends State<LoadingScreen>
       if (mounted) {
         setState(() => _isConnecting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to connect to server. Check address.'),
+          SnackBar(
+            content: Text(
+              'Unable to connect to ${globalActiveBackendKind.value.displayName}. Check address.',
+            ),
             backgroundColor: AppTheme.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -170,14 +210,11 @@ class _LoadingScreenState extends State<LoadingScreen>
       });
     }
 
-    // Load necessary data and sync
+    // Load shared settings, then branch by active backend.
     try {
-      await StorageService.loadCheckpointDataMap();
-      await StorageService.loadLoraDataMap();
       await StorageService.loadGenerationSettings();
       await StorageService.loadInpaintHistory();
-      await syncCheckpointDataFromServer();
-      await loadLoraDataFromServer();
+      await loadActiveBackendProfile();
     } catch (e) {
       if (kDebugMode) {
         print("Warning during loading: $e");
@@ -238,7 +275,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                     ),
                   ],
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.auto_awesome,
                   color: AppTheme.accentPrimary,
                   size: 64,
@@ -314,12 +351,14 @@ class _LoadingScreenState extends State<LoadingScreen>
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                "Stable Diffusion server is unreachable.",
-                style: TextStyle(color: Colors.white54, fontSize: 16),
+              Text(
+                "${globalActiveBackendKind.value.displayName} is unreachable.",
+                style: const TextStyle(color: Colors.white54, fontSize: 16),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 28),
+              const BackendSelector(),
+              const SizedBox(height: 24),
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.03),

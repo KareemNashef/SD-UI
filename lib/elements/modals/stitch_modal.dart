@@ -16,10 +16,11 @@ import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
+import 'package:sd_companion/logic/models/generation_models.dart';
 
-const _kGreen = Color(0xFF15803D);
-const _kGreenDim = Color(0x2215803D);
-const _kGreenBorder = Color(0x4415803D);
+// Follows the active backend's accent (this modal is Forge-only today via
+// capability gating, but keep it consistent rather than hardcoded).
+Color get _accentColor => AppTheme.accentPrimary;
 const _kRadius = 20.0;
 
 /// Background thread Isolate function to Composite the images together.
@@ -99,7 +100,8 @@ class _StitchModalContentState extends State<_StitchModalContent> {
   }
 
   Future<void> _pickResultImage(bool isBase) async {
-    final availableImages = globalResultImages.value.toList();
+    final availableImages =
+        globalResultImages.value.map((g) => g.imageUrl).toList();
     if (availableImages.isEmpty) {
       _snack('No images available in results', error: true);
       return;
@@ -153,13 +155,10 @@ class _StitchModalContentState extends State<_StitchModalContent> {
 
       final dataUrl = 'data:image/png;base64,${base64Encode(stitchedBytes)}';
 
-      // Update global value notifier
-      final current = Set<String>.from(globalResultImages.value);
-      final wasAdded = current.add(dataUrl);
-      if (!wasAdded) {
-        print('Warning: The stitched image was identical to the base image and was swallowed by the Set deduplication.');
-      }
-      globalResultImages.value = current;
+      globalResultImages.value = [
+        ...globalResultImages.value,
+        GeneratedImage.local(dataUrl, globalActiveBackendKind.value),
+      ];
 
       _snack('Stitched Image Added to Results!');
 
@@ -185,7 +184,7 @@ class _StitchModalContentState extends State<_StitchModalContent> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Column(
         children: [
-          const GlassHeader(title: 'Stitch Image', icon: Icons.layers_rounded, iconColor: _kGreen),
+          GlassHeader(title: 'Stitch Image', icon: Icons.layers_rounded, iconColor: _accentColor),
           Expanded(
             child: Stack(
               fit: StackFit.expand,
@@ -233,7 +232,7 @@ class _StitchModalContentState extends State<_StitchModalContent> {
                       const SizedBox(height: 16),
 
                       // Action Button
-                      _ActionButton(icon: Icons.auto_awesome_mosaic_rounded, label: 'Stitch & Send to Results', color: canStitch ? _kGreen : Colors.grey.withValues(alpha: 0.3), onTap: canStitch ? _stitchAndSend : () {}),
+                      _ActionButton(icon: Icons.auto_awesome_mosaic_rounded, label: 'Stitch & Send to Results', color: canStitch ? _accentColor : Colors.grey.withValues(alpha: 0.3), onTap: canStitch ? _stitchAndSend : () {}),
                     ],
                   ),
                 ),
@@ -249,7 +248,7 @@ class _StitchModalContentState extends State<_StitchModalContent> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const CircularProgressIndicator(color: _kGreen, strokeWidth: 3),
+                                CircularProgressIndicator(color: _accentColor, strokeWidth: 3),
                                 const SizedBox(height: 16),
                                 Text(
                                   _sending ? 'Compositing Image…' : 'Processing…',
@@ -324,7 +323,7 @@ class _StitchModalContentState extends State<_StitchModalContent> {
                       },
                       child: Container(
                         decoration: BoxDecoration(
-                          border: Border.all(color: _kGreen, width: 2),
+                          border: Border.all(color: _accentColor, width: 2),
                           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 15, spreadRadius: -2)],
                         ),
                         child: Image.memory(_overlayBytes!, fit: BoxFit.fill),
@@ -373,7 +372,7 @@ class _ImageSelectorSlot extends StatelessWidget {
                 border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               ),
               child: bytes == null
-                  ? const Center(child: Icon(Icons.add_photo_alternate_rounded, color: _kGreen, size: 28))
+                  ? Center(child: Icon(Icons.add_photo_alternate_rounded, color: _accentColor, size: 28))
                   : ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.memory(bytes!, fit: BoxFit.cover),

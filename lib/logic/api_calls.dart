@@ -8,30 +8,47 @@ import 'package:http/http.dart' as http;
 import 'package:sd_companion/logic/globals.dart';
 
 // API Calls Implementation
+//
+// Generic calls route through the active backend (globalBackend); calls
+// that only make sense for one backend route through that backend's
+// dedicated accessor (globalForgeBackend / globalComfyBackend) so they
+// never silently no-op when the other backend is active.
 
 // Check if the server is online
 Future<void> checkServerStatus() async {
   globalServerStatus.value = await globalBackend.checkStatus();
 }
 
-// Get checkpoint data from the server
+// Get checkpoint data from the server (Forge only)
 Future<void> syncCheckpointDataFromServer({bool force = false}) async {
-  await globalBackend.syncCheckpoints(force: force);
+  await globalForgeBackend.syncCheckpoints(force: force);
 }
 
-// Change the checkpoint
+// Change the checkpoint (Forge only)
 Future<void> setCheckpoint() async {
-  await globalBackend.setCheckpoint(globalCurrentCheckpointName);
+  await globalForgeBackend.setCheckpoint(globalCurrentCheckpointName);
 }
 
-// Load lora data from the server
+// Get the VAE and text-encoder files available to Forge Neo
+Future<List<String>> fetchForgeModules() async {
+  return globalForgeBackend.fetchForgeModules();
+}
+
+// Apply the active checkpoint's VAE and text-encoder selection
+Future<void> applyCheckpointConfiguration() async {
+  await globalForgeBackend.applyCheckpointConfiguration(
+    globalCurrentCheckpointName,
+  );
+}
+
+// Load lora data from the server (Forge only)
 Future<void> loadLoraDataFromServer() async {
-  await globalBackend.loadLoras();
+  await globalForgeBackend.loadLoras();
 }
 
-// Fetch progress data from the server
+// Fetch raw Forge progress data from the server
 Future<Map<String, dynamic>> fetchProgress() async {
-  return await globalBackend.fetchProgress();
+  return await globalForgeBackend.fetchRawProgress();
 }
 
 // Internal helper to fetch image bytes from a URL
@@ -44,12 +61,12 @@ Future<Uint8List> fetchImageBytes(String url) async {
   }
 }
 
-// Fetch PNG info
+// Fetch PNG info (Forge only)
 Future<Map<String, dynamic>> postPngInfo(String base64Image) async {
-  return await globalBackend.getPngInfo(base64Image);
+  return await globalForgeBackend.getPngInfo(base64Image);
 }
 
-// Interrupt generation
+// Interrupt generation on the active backend
 Future<void> interruptGeneration() async {
   await globalBackend.interruptGeneration();
 }

@@ -8,8 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
+import 'package:sd_companion/logic/backend/backend_kind.dart';
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/api_calls.dart';
+import 'package:sd_companion/logic/models/generation_models.dart';
 
 // Progress Overlay Implementation
 
@@ -67,6 +69,10 @@ class ProgressOverlay extends StatelessWidget {
   }
 
   Widget _buildGenerationFlow(Color accentColor) {
+    if (globalActiveBackendKind.value == BackendKind.comfy) {
+      return _buildComfyGenerationFlow();
+    }
+
     return ValueListenableBuilder<bool>(
       valueListenable: globalIsGenerating,
       builder: (context, isGenerating, child) {
@@ -104,6 +110,115 @@ class ProgressOverlay extends StatelessWidget {
         );
       },
     );
+  }
+
+  Widget _buildComfyGenerationFlow() {
+    return ValueListenableBuilder<bool>(
+      valueListenable: globalIsGenerating,
+      builder: (context, isGenerating, child) {
+        if (!isGenerating) return const SizedBox.shrink();
+
+        return ValueListenableBuilder<GenerationProgress>(
+          valueListenable: globalComfyBackend.progressService.notifier,
+          builder: (context, progress, child) {
+            return _GlassHudCard(
+              accentColor: AppTheme.comfyAccentPrimary,
+              child: _buildComfyProgressContent(progress),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildComfyProgressContent(GenerationProgress progress) {
+    const accentColor = AppTheme.comfyAccentPrimary;
+    final fraction = progress.fraction;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.hub_rounded, color: accentColor, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              _comfyStateLabel(progress),
+              style: TextStyle(color: accentColor, fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        if (progress.previewBytes != null) _ScannerPreviewFrame(base64Image: base64Encode(progress.previewBytes!), accentColor: accentColor),
+
+        if (progress.previewBytes != null) const SizedBox(height: 24),
+
+        if (fraction != null) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "PROGRESS",
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                "${(fraction * 100).toInt()}%",
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900, fontFamily: 'monospace'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _NeonProgressBar(progress: fraction, color: accentColor),
+          const SizedBox(height: 24),
+        ],
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            if (progress.stepCurrent != null && progress.stepTotal != null) _StatBadge(label: "STEP", value: "${progress.stepCurrent}/${progress.stepTotal}", icon: Icons.layers),
+            if (progress.currentNodeId != null) _StatBadge(label: "NODE", value: progress.currentNodeId!, icon: Icons.account_tree_outlined),
+            if (progress.queuePosition != null && progress.queuePosition! > 0) _StatBadge(label: "QUEUE", value: "${progress.queuePosition}", icon: Icons.hourglass_bottom, valueColor: accentColor),
+          ],
+        ),
+
+        const SizedBox(height: 24),
+
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              interruptGeneration();
+            },
+            icon: const Icon(Icons.stop_circle_outlined, color: Colors.redAccent, size: 20),
+            label: const Text('INTERRUPT', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.3)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _comfyStateLabel(GenerationProgress progress) {
+    switch (progress.state) {
+      case GenerationState.queued:
+        return progress.queuePosition != null && progress.queuePosition! > 0 ? 'QUEUED' : 'STARTING';
+      case GenerationState.running:
+        return 'GENERATING';
+      case GenerationState.completed:
+        return 'FINISHING';
+      case GenerationState.failed:
+        return 'ERROR';
+      case GenerationState.cancelled:
+        return 'CANCELLED';
+      case GenerationState.idle:
+        return 'INITIALIZING';
+    }
   }
 
   // ==================== Content Builders ==================== //

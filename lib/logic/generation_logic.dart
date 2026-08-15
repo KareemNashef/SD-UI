@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 // Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
+import 'package:sd_companion/logic/models/generation_models.dart';
 
 // Generation Logic Implementation
 
@@ -36,46 +37,26 @@ class GenerationLogic {
     return loraStrings.isEmpty ? '' : ' ${loraStrings.join(' ')}';
   }
 
-  static Future<List<String>> generateImg2Img({
+  /// Backend-neutral entry point: builds a [GenerationRequest] from the
+  /// shared canvas state and delegates to the active backend. Forge reads
+  /// its sampler/cfg/steps/etc from globals internally; ComfyUI reads its
+  /// active workflow/favorites internally. Neither branch lives here.
+  static Future<GenerationOutcome> generate({
     required String prompt,
     required Uint8List imageBytes,
     required Uint8List? maskBytes,
     required String loraPromptAdditions,
     List<String>? stitchImages,
+    Map<String, Uint8List>? namedImages,
   }) async {
-    // Delegate to the current backend
-    return await globalBackend.generateImg2Img(
+    final request = GenerationRequest(
       prompt: prompt,
       imageBytes: imageBytes,
       maskBytes: maskBytes,
       loraPromptAdditions: loraPromptAdditions,
-      positivePrompt: globalPositivePrompt,
-      negativePrompt: globalNegativePrompt,
-      samplerName: globalCurrentSamplingMethod,
-      width: globalCurrentResolutionWidth.toInt(),
-      height: globalCurrentResolutionHeight.toInt(),
-      batchSize: globalBatchSize,
-      steps: globalCurrentSamplingSteps.toInt(),
-      cfgScale: globalCurrentCfgScale,
-      denoiseStrength: globalDenoiseStrength,
-      maskBlur: globalMaskBlur,
-      inpaintingFill: _getInpaintingFillValue(globalMaskFill),
-      stitchImages: stitchImages,
+      stitchImagesBase64: stitchImages,
+      namedImages: namedImages ?? const {},
     );
-  }
-
-  static int _getInpaintingFillValue(String maskFill) {
-    switch (maskFill.toLowerCase()) {
-      case 'fill':
-        return 0;
-      case 'original':
-        return 1;
-      case 'latent noise':
-        return 2;
-      case 'latent nothing':
-        return 3;
-      default:
-        return 0;
-    }
+    return globalBackend.generate(request);
   }
 }

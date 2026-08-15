@@ -15,6 +15,7 @@ import 'package:sd_companion/elements/widgets/theme_constants.dart';
 // Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/api_calls.dart';
+import 'package:sd_companion/logic/models/checkpoint_data.dart';
 import 'package:sd_companion/logic/storage/storage_service.dart';
 
 // Checkpoint Settings Implementation
@@ -30,6 +31,10 @@ class CheckpointSettings extends StatefulWidget {
 class CheckpointSettingsState extends State<CheckpointSettings> {
   // ===== Class Variables ===== //
   bool _isChangingCheckpoint = false;
+  bool _isLoadingModules = true;
+  bool _showModules = false;
+  String? _moduleLoadError;
+  List<String> _availableForgeModules = const [];
 
   // ===== Lifecycle Methods ===== //
 
@@ -37,6 +42,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
   void initState() {
     super.initState();
     syncActiveCheckpointSettings();
+    _loadForgeModules();
   }
 
   // ===== Class Methods ===== //
@@ -71,6 +77,69 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
     }
   }
 
+  Future<void> _loadForgeModules() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingModules = true;
+        _moduleLoadError = null;
+      });
+    }
+
+    try {
+      final modules = await fetchForgeModules();
+      if (!mounted) return;
+      setState(() {
+        _availableForgeModules = modules.where((module) {
+          final normalized = module.trim().toLowerCase();
+          return normalized.isNotEmpty &&
+              normalized != 'automatic' &&
+              normalized != 'use automatic';
+        }).toList();
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _moduleLoadError = error.toString());
+    } finally {
+      if (mounted) setState(() => _isLoadingModules = false);
+    }
+  }
+
+  Future<void> _toggleForgeModule(
+    CheckpointData checkpoint,
+    String module,
+    bool selected,
+  ) async {
+    final modules = Set<String>.from(checkpoint.forgeAdditionalModules);
+    selected ? modules.add(module) : modules.remove(module);
+
+    setState(() {
+      checkpoint.forgeAdditionalModules = modules.toList()
+        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    });
+    await StorageService.saveCheckpointDataMap();
+
+    try {
+      await applyCheckpointConfiguration();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Selection saved. Forge could not apply it yet: $error',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _setImg2ImgMode(
+    CheckpointData checkpoint,
+    Img2ImgMode mode,
+  ) async {
+    setState(() => checkpoint.img2imgMode = mode);
+    await StorageService.saveCheckpointDataMap();
+  }
+
   // ===== Class Widgets ===== //
 
   Widget _buildHeader() {
@@ -81,9 +150,15 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
           decoration: BoxDecoration(
             color: AppTheme.accentPrimary.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.accentPrimary.withValues(alpha: 0.3)),
+            border: Border.all(
+              color: AppTheme.accentPrimary.withValues(alpha: 0.3),
+            ),
           ),
-          child: const Icon(Icons.dns_rounded, color: AppTheme.accentPrimary, size: 22),
+          child: Icon(
+            Icons.dns_rounded,
+            color: AppTheme.accentPrimary,
+            size: 22,
+          ),
         ),
         const SizedBox(width: 14),
         Column(
@@ -91,12 +166,21 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
           children: [
             const Text(
               'CHECKPOINT',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white54, letterSpacing: 1.5),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: Colors.white54,
+                letterSpacing: 1.5,
+              ),
             ),
             const SizedBox(height: 2),
             Text(
               'Model Configuration',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white.withValues(alpha: 0.95)),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white.withValues(alpha: 0.95),
+              ),
             ),
           ],
         ),
@@ -126,7 +210,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.waves, color: AppTheme.accentSecondary, size: 20),
+            Icon(Icons.waves, color: AppTheme.accentSecondary, size: 20),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -134,17 +218,29 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                 children: [
                   Text(
                     "SAMPLING METHOD",
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     globalCurrentSamplingMethod,
-                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 14),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white24,
+              size: 14,
+            ),
           ],
         ),
       ),
@@ -173,7 +269,11 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.schedule, color: AppTheme.accentTertiary, size: 20),
+            Icon(
+              Icons.schedule,
+              color: AppTheme.accentTertiary,
+              size: 20,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -181,17 +281,29 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                 children: [
                   Text(
                     "SCHEDULE METHOD",
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     globalCurrentScheduler,
-                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 14),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white24,
+              size: 14,
+            ),
           ],
         ),
       ),
@@ -260,7 +372,8 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                 accentColor: AppTheme.accentTertiary,
                 onChanged: (val) {
                   setState(() {
-                    globalCurrentResolutionWidth = ((val / 32).round() * 32.0).toInt();
+                    globalCurrentResolutionWidth = ((val / 32).round() * 32.0)
+                        .toInt();
                   });
                 },
                 onChangeEnd: (_) => _saveCurrentSettingsToModel(),
@@ -278,7 +391,8 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                 accentColor: AppTheme.accentTertiary,
                 onChanged: (val) {
                   setState(() {
-                    globalCurrentResolutionHeight = ((val / 32).round() * 32.0).toInt();
+                    globalCurrentResolutionHeight = ((val / 32).round() * 32.0)
+                        .toInt();
                   });
                 },
                 onChangeEnd: (_) => _saveCurrentSettingsToModel(),
@@ -288,6 +402,223 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildModelInputConfiguration(CheckpointData checkpoint) {
+    final selectedModules = checkpoint.forgeAdditionalModules;
+    final modules = <String>{
+      ..._availableForgeModules,
+      ...selectedModules,
+    }.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => _showModules = !_showModules),
+            borderRadius: BorderRadius.circular(18),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.account_tree_outlined,
+                    color: AppTheme.accentSecondary,
+                    size: 21,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'VAE & TEXT ENCODERS',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          selectedModules.isEmpty
+                              ? 'No files selected'
+                              : '${selectedModules.length} file${selectedModules.length == 1 ? '' : 's'} selected',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Refresh VAE and encoders',
+                    onPressed: _isLoadingModules ? null : _loadForgeModules,
+                    icon: _isLoadingModules
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(
+                            Icons.refresh_rounded,
+                            color: Colors.white54,
+                            size: 20,
+                          ),
+                  ),
+                  AnimatedRotation(
+                    turns: _showModules ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    child: const Icon(
+                      Icons.expand_more_rounded,
+                      color: Colors.white38,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            alignment: Alignment.topCenter,
+            child: !_showModules
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+                    child: _moduleLoadError != null && modules.isEmpty
+                        ? Row(
+                            children: [
+                              const Icon(
+                                Icons.cloud_off_rounded,
+                                color: Colors.white38,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 9),
+                              const Expanded(
+                                child: Text(
+                                  'Could not load files from Forge.',
+                                  style: TextStyle(color: Colors.white54),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _loadForgeModules,
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          )
+                        : modules.isEmpty
+                        ? const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Forge did not report any VAE or encoder files.',
+                              style: TextStyle(color: Colors.white54),
+                            ),
+                          )
+                        : Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: modules.map((module) {
+                              return FilterChip(
+                                label: Text(module),
+                                selected: selectedModules.contains(module),
+                                onSelected: (selected) => _toggleForgeModule(
+                                  checkpoint,
+                                  module,
+                                  selected,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                  ),
+          ),
+          Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildImg2ImgModeButton(
+                    label: 'Inpaint',
+                    icon: Icons.gesture_rounded,
+                    selected: checkpoint.img2imgMode == Img2ImgMode.inpaint,
+                    onTap: () =>
+                        _setImg2ImgMode(checkpoint, Img2ImgMode.inpaint),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildImg2ImgModeButton(
+                    label: 'Full image',
+                    icon: Icons.photo_size_select_large_rounded,
+                    selected: checkpoint.img2imgMode == Img2ImgMode.fullImage,
+                    onTap: () =>
+                        _setImg2ImgMode(checkpoint, Img2ImgMode.fullImage),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImg2ImgModeButton({
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: selected
+          ? AppTheme.accentPrimary.withValues(alpha: 0.16)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 46,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected
+                  ? AppTheme.accentPrimary.withValues(alpha: 0.5)
+                  : Colors.white.withValues(alpha: 0.08),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: selected ? AppTheme.accentPrimary : Colors.white54,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected ? Colors.white : Colors.white60,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -344,6 +675,11 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
 
             const SizedBox(height: 24),
 
+            if (currentData != null) ...[
+              _buildModelInputConfiguration(currentData),
+              const SizedBox(height: 24),
+            ],
+
             // Sampler Tile
             _buildSamplerTile(context),
 
@@ -372,13 +708,24 @@ class CheckpointDisplayCard extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onTap;
 
-  const CheckpointDisplayCard({super.key, required this.modelName, this.imageUrl, this.baseModel, this.isLoading = false, required this.onTap});
+  const CheckpointDisplayCard({
+    super.key,
+    required this.modelName,
+    this.imageUrl,
+    this.baseModel,
+    this.isLoading = false,
+    required this.onTap,
+  });
 
   // ===== Class Widgets ===== //
 
   Widget _placeholder() => Container(
     color: AppTheme.surfaceCard,
-    child: Icon(Icons.image_not_supported, color: Colors.white.withValues(alpha: 0.1), size: 40),
+    child: Icon(
+      Icons.image_not_supported,
+      color: Colors.white.withValues(alpha: 0.1),
+      size: 40,
+    ),
   );
 
   // ===== Build Methods ===== //
@@ -394,8 +741,21 @@ class CheckpointDisplayCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.black,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isLoading ? AppTheme.accentPrimary : AppTheme.glassBorderLight, width: isLoading ? 2 : 1),
-          boxShadow: [BoxShadow(color: isLoading ? AppTheme.accentPrimary.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.5), blurRadius: 20, offset: const Offset(0, 8))],
+          border: Border.all(
+            color: isLoading
+                ? AppTheme.accentPrimary
+                : AppTheme.glassBorderLight,
+            width: isLoading ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isLoading
+                  ? AppTheme.accentPrimary.withValues(alpha: 0.2)
+                  : Colors.black.withValues(alpha: 0.5),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(19),
@@ -403,12 +763,30 @@ class CheckpointDisplayCard extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               // Background
-              if (modelName.isNotEmpty) (imageUrl?.startsWith('http') ?? false) ? CachedNetworkImage(imageUrl: imageUrl!, fit: BoxFit.cover, errorWidget: (_, __, ___) => _placeholder()) : _placeholder() else _placeholder(),
+              if (modelName.isNotEmpty)
+                (imageUrl?.startsWith('http') ?? false)
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl!,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => _placeholder(),
+                      )
+                    : _placeholder()
+              else
+                _placeholder(),
 
               // Gradient Overlay
               Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black.withValues(alpha: 0.2), Colors.black.withValues(alpha: 0.9)], stops: const [0.5, 0.7, 1.0]),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.2),
+                      Colors.black.withValues(alpha: 0.9),
+                    ],
+                    stops: const [0.5, 0.7, 1.0],
+                  ),
                 ),
               ),
 
@@ -423,16 +801,31 @@ class CheckpointDisplayCard extends StatelessWidget {
                     if (baseModel?.isNotEmpty == true)
                       Container(
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(color: AppTheme.accentPrimary, borderRadius: BorderRadius.circular(4)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentPrimary,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
                         child: Text(
                           baseModel!.toUpperCase(),
-                          style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w900),
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
                     Text(
                       modelName.isEmpty ? 'Select Model' : modelName,
-                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, height: 1.2),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -444,15 +837,21 @@ class CheckpointDisplayCard extends StatelessWidget {
               if (isLoading)
                 Container(
                   color: Colors.black54,
-                  child: const Center(
+                  child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(color: AppTheme.accentPrimary),
-                        SizedBox(height: 12),
+                        CircularProgressIndicator(
+                          color: AppTheme.accentPrimary,
+                        ),
+                        const SizedBox(height: 12),
                         Text(
                           "LOADING",
-                          style: TextStyle(color: AppTheme.accentPrimary, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                          style: TextStyle(
+                            color: AppTheme.accentPrimary,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
+                          ),
                         ),
                       ],
                     ),

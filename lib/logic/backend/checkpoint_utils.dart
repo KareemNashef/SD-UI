@@ -85,6 +85,10 @@ Future<void> updateCheckpointMetadata({
             existingData?.resolutionWidth ??
             (baseModel == 'SD 1.5' ? 512 : 896),
         baseModel: baseModel,
+        scheduler: existingData?.scheduler ?? 'Automatic',
+        forgeAdditionalModules:
+            existingData?.forgeAdditionalModules ?? const [],
+        img2imgMode: existingData?.img2imgMode ?? Img2ImgMode.inpaint,
       );
     }
   }

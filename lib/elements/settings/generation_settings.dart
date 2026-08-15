@@ -11,6 +11,7 @@ import 'package:sd_companion/elements/widgets/glass_slider.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
+import 'package:sd_companion/logic/backend/backend_kind.dart';
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/storage/storage_service.dart';
 
@@ -54,7 +55,7 @@ class GenerationSettingsState extends State<GenerationSettings> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppTheme.accentSecondary.withValues(alpha: 0.3)),
           ),
-          child: const Icon(Icons.tune_rounded, color: AppTheme.accentSecondary, size: 22),
+          child: Icon(Icons.tune_rounded, color: AppTheme.accentSecondary, size: 22),
         ),
         const SizedBox(width: 14),
         Column(
@@ -92,6 +93,13 @@ class GenerationSettingsState extends State<GenerationSettings> {
 
   @override
   Widget build(BuildContext context) {
+    // Mask blur/fill, batch size, and the standalone positive-prompt prefix
+    // are Forge/A1111-specific concepts with no ComfyUI wiring - Comfy's
+    // batch size (when a workflow has one) lives in its own auto-detected
+    // Workflow Settings instead, and its positive prompt is the canvas
+    // field on the main page, not a separate prefix.
+    final isForge = globalActiveBackendKind.value == BackendKind.forge;
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: GlassContainer(
@@ -107,74 +115,76 @@ class GenerationSettingsState extends State<GenerationSettings> {
             _buildMainHeader(),
             const SizedBox(height: 32),
 
-            // ===== Artistic Controls ===== //
-            GlassSlider(
-              label: 'Mask Blur',
-              value: globalMaskBlur.toDouble(),
-              min: 0,
-              max: 64,
-              accentColor: AppTheme.accentSecondary,
-              onChanged: (value) {
-                setState(() {
-                  globalMaskBlur = value.toInt();
-                });
-              },
-              onChangeEnd: (_) => StorageService.saveMaskBlur(),
-              valueFormatter: (val) => '${val.toInt()}px',
-            ),
+            if (isForge) ...[
+              // ===== Artistic Controls ===== //
+              GlassSlider(
+                label: 'Mask Blur',
+                value: globalMaskBlur.toDouble(),
+                min: 0,
+                max: 64,
+                accentColor: AppTheme.accentSecondary,
+                onChanged: (value) {
+                  setState(() {
+                    globalMaskBlur = value.toInt();
+                  });
+                },
+                onChangeEnd: (_) => StorageService.saveMaskBlur(),
+                valueFormatter: (val) => '${val.toInt()}px',
+              ),
 
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
-            // ===== System Controls ===== //
-            GlassSlider(
-              label: 'Batch Size',
-              value: globalBatchSize.toDouble(),
-              min: 1,
-              max: 8,
-              divisions: 7,
-              accentColor: AppTheme.accentTertiary,
-              onChanged: (value) {
-                setState(() {
-                  globalBatchSize = value.toInt();
-                });
-              },
-              onChangeEnd: (_) => StorageService.saveBatchSize(),
-              valueFormatter: (val) => val.toInt().toString(),
-            ),
+              // ===== System Controls ===== //
+              GlassSlider(
+                label: 'Batch Size',
+                value: globalBatchSize.toDouble(),
+                min: 1,
+                max: 8,
+                divisions: 7,
+                accentColor: AppTheme.accentTertiary,
+                onChanged: (value) {
+                  setState(() {
+                    globalBatchSize = value.toInt();
+                  });
+                },
+                onChangeEnd: (_) => StorageService.saveBatchSize(),
+                valueFormatter: (val) => val.toInt().toString(),
+              ),
 
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
-            // ===== Inpainting Mode ===== //
-            Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.start, children: [_buildMaskOption('Fill', 'fill'), _buildMaskOption('Original', 'original'), _buildMaskOption('Latent Noise', 'latent noise'), _buildMaskOption('Latent Nothing', 'latent nothing')]),
+              // ===== Inpainting Mode ===== //
+              Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.start, children: [_buildMaskOption('Fill', 'fill'), _buildMaskOption('Original', 'original'), _buildMaskOption('Latent Noise', 'latent noise'), _buildMaskOption('Latent Nothing', 'latent nothing')]),
 
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
-            // ===== Positive Prompt ===== //
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'POSITIVE PROMPT',
-                  style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w500, fontSize: 14),
-                ),
-                const SizedBox(height: 12),
-                GlassTextArea(
-                  controller: _positivePromptController,
-                  focusNode: _positiveFocusNode,
-                  hintText: 'cinematic, photo, ultra realistic, detailed...',
-                  minLines: 3,
-                  maxLines: 5,
-                  prefixIcon: Icons.add_circle_outline,
-                  accentColor: AppTheme.accentPrimary,
-                  onChanged: (value) {
-                    globalPositivePrompt = value;
-                    StorageService.savePositivePrompt();
-                  },
-                ),
-              ],
-            ),
+              // ===== Positive Prompt ===== //
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'POSITIVE PROMPT',
+                    style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w500, fontSize: 14),
+                  ),
+                  const SizedBox(height: 12),
+                  GlassTextArea(
+                    controller: _positivePromptController,
+                    focusNode: _positiveFocusNode,
+                    hintText: 'cinematic, photo, ultra realistic, detailed...',
+                    minLines: 3,
+                    maxLines: 5,
+                    prefixIcon: Icons.add_circle_outline,
+                    accentColor: AppTheme.accentPrimary,
+                    onChanged: (value) {
+                      globalPositivePrompt = value;
+                      StorageService.savePositivePrompt();
+                    },
+                  ),
+                ],
+              ),
 
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
+            ],
 
             // ===== Negative Prompt ===== //
             Column(

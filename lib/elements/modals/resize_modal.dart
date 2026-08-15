@@ -15,12 +15,15 @@ import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
+import 'package:sd_companion/logic/models/generation_models.dart';
 
 // Resize Modal Implementation
 
-const _kGreen = Color(0xFF15803D);
-const _kGreenDim = Color(0x2215803D);
-const _kGreenBorder = Color(0x4415803D);
+// Follows the active backend's accent (green for Forge, violet for Comfy)
+// instead of a fixed color, since this modal is reachable from either.
+Color get _accentColor => AppTheme.accentPrimary;
+Color get _accentDim => AppTheme.accentPrimary.withValues(alpha: 0.133);
+Color get _accentBorder => AppTheme.accentPrimary.withValues(alpha: 0.267);
 const _kRadius = 20.0;
 
 Future<img.Image?> _decodeImageIsolate(Uint8List bytes) async {
@@ -192,9 +195,10 @@ class _ResizeModalContentState extends State<_ResizeModalContent> {
     setState(() => _sending = true);
     try {
       final dataUrl = 'data:image/png;base64,${base64Encode(_resizedBytes!)}';
-      final current = Set<String>.from(globalResultImages.value);
-      current.add(dataUrl);
-      globalResultImages.value = current;
+      globalResultImages.value = [
+        ...globalResultImages.value,
+        GeneratedImage.local(dataUrl, globalActiveBackendKind.value),
+      ];
       _snack('Added to Results');
       Navigator.of(context).pop();
       navigateToResultsPage();
@@ -213,10 +217,10 @@ class _ResizeModalContentState extends State<_ResizeModalContent> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Column(
         children: [
-          const GlassHeader(
+          GlassHeader(
             title: 'Resize Image',
             icon: Icons.photo_size_select_large_rounded,
-            iconColor: _kGreen,
+            iconColor: _accentColor,
           ),
           Expanded(
             child: Stack(
@@ -257,8 +261,8 @@ class _ResizeModalContentState extends State<_ResizeModalContent> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const CircularProgressIndicator(
-                                  color: _kGreen,
+                                CircularProgressIndicator(
+                                  color: _accentColor,
                                   strokeWidth: 3,
                                 ),
                                 const SizedBox(height: 16),
@@ -315,8 +319,8 @@ class _ResizeModalContentState extends State<_ResizeModalContent> {
                 _Pill(
                   child: Text(
                     '${scale.toInt()}%',
-                    style: const TextStyle(
-                      color: _kGreen,
+                    style: TextStyle(
+                      color: _accentColor,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
@@ -328,11 +332,11 @@ class _ResizeModalContentState extends State<_ResizeModalContent> {
             SliderTheme(
               data: SliderThemeData(
                 trackHeight: 3,
-                activeTrackColor: _kGreen,
+                activeTrackColor: _accentColor,
                 inactiveTrackColor: Colors.white12,
                 thumbColor: Colors.white,
                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-                overlayColor: _kGreen.withValues(alpha: 0.15),
+                overlayColor: _accentColor.withValues(alpha: 0.15),
                 overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
               ),
               child: Slider(
@@ -394,12 +398,12 @@ class _ResizeModalContentState extends State<_ResizeModalContent> {
                     height: 48,
                     decoration: BoxDecoration(
                       color: comparing
-                          ? _kGreenDim
+                          ? _accentDim
                           : Colors.white.withValues(alpha: 0.04),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: comparing
-                            ? _kGreen
+                            ? _accentColor
                             : Colors.white.withValues(alpha: 0.15),
                       ),
                     ),
@@ -409,14 +413,14 @@ class _ResizeModalContentState extends State<_ResizeModalContent> {
                         children: [
                           Icon(
                             Icons.compare_rounded,
-                            color: comparing ? _kGreen : Colors.white54,
+                            color: comparing ? _accentColor : Colors.white54,
                             size: 18,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             comparing ? 'Showing Original' : 'Hold to compare',
                             style: TextStyle(
-                              color: comparing ? _kGreen : Colors.white70,
+                              color: comparing ? _accentColor : Colors.white70,
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                             ),
@@ -439,7 +443,7 @@ class _ResizeModalContentState extends State<_ResizeModalContent> {
       return _ActionButton(
         icon: Icons.add_photo_alternate_rounded,
         label: 'Select Image',
-        color: _kGreen,
+        color: _accentColor,
         onTap: _pickImage,
       );
     }
@@ -455,7 +459,7 @@ class _ResizeModalContentState extends State<_ResizeModalContent> {
           child: _ActionButton(
             icon: Icons.send_rounded,
             label: 'Send to Results',
-            color: _kGreen,
+            color: _accentColor,
             onTap: _sendToResults,
           ),
         ),
@@ -571,12 +575,12 @@ class _EmptyViewer extends StatelessWidget {
               height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _kGreenDim,
-                border: Border.all(color: _kGreenBorder),
+                color: _accentDim,
+                border: Border.all(color: _accentBorder),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.add_photo_alternate_rounded,
-                color: _kGreen,
+                color: _accentColor,
                 size: 26,
               ),
             ),
@@ -628,8 +632,8 @@ class _Pill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
-        color: _kGreenDim,
-        border: Border.all(color: _kGreenBorder),
+        color: _accentDim,
+        border: Border.all(color: _accentBorder),
       ),
       child: child,
     );
@@ -652,9 +656,9 @@ class _DimChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: accent ? _kGreenDim : Colors.white.withValues(alpha: 0.04),
+        color: accent ? _accentDim : Colors.white.withValues(alpha: 0.04),
         border: Border.all(
-          color: accent ? _kGreenBorder : Colors.white.withValues(alpha: 0.1),
+          color: accent ? _accentBorder : Colors.white.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -668,7 +672,7 @@ class _DimChip extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              color: accent ? _kGreen : Colors.white,
+              color: accent ? _accentColor : Colors.white,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),

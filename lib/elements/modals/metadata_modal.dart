@@ -38,7 +38,7 @@ class _MetadataContent extends StatelessWidget {
 
     return Column(
       children: [
-        const GlassHeader(
+        GlassHeader(
           title: 'Metadata',
           trailing: Icon(
             Icons.data_object,
@@ -60,7 +60,9 @@ class _MetadataContent extends StatelessWidget {
                     title: 'Positive Prompt',
                     content: positivePrompt,
                     icon: Icons.add_circle_outline,
-                    accentColor: AppTheme.success, // Greenish
+                    // Follows the active backend's accent instead of a fixed
+                    // green, since this modal is reachable from either backend.
+                    accentColor: AppTheme.accentPrimary,
                   ),
                   const SizedBox(height: 16),
                 ],

@@ -15,12 +15,15 @@ import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
+import 'package:sd_companion/logic/models/generation_models.dart';
 
 // Crop Modal Implementation
 
-const _kGreen = Color(0xFF15803D);
-const _kGreenDim = Color(0x2215803D);
-const _kGreenBorder = Color(0x4415803D);
+// Follows the active backend's accent (green for Forge, violet for Comfy)
+// instead of a fixed color, since this modal is reachable from either.
+Color get _accentColor => AppTheme.accentPrimary;
+Color get _accentDim => AppTheme.accentPrimary.withValues(alpha: 0.133);
+Color get _accentBorder => AppTheme.accentPrimary.withValues(alpha: 0.267);
 const _kRadius = 20.0;
 
 Future<img.Image?> _decodeImageIsolate(Uint8List bytes) async {
@@ -200,9 +203,10 @@ class _CropModalContentState extends State<_CropModalContent> {
       globalLastCropY = _lastCropY;
 
       final dataUrl = 'data:image/png;base64,${base64Encode(_croppedBytes!)}';
-      final current = Set<String>.from(globalResultImages.value);
-      current.add(dataUrl);
-      globalResultImages.value = current;
+      globalResultImages.value = [
+        ...globalResultImages.value,
+        GeneratedImage.local(dataUrl, globalActiveBackendKind.value),
+      ];
       _snack('Added to Results');
       Navigator.of(context).pop();
       // navigateToResultsPage(); // Called if you need it
@@ -222,7 +226,7 @@ class _CropModalContentState extends State<_CropModalContent> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Column(
         children: [
-          const GlassHeader(title: 'Crop Image', icon: Icons.crop_rounded, iconColor: _kGreen),
+          GlassHeader(title: 'Crop Image', icon: Icons.crop_rounded, iconColor: _accentColor),
           Expanded(
             child: Stack(
               fit: StackFit.expand,
@@ -252,7 +256,7 @@ class _CropModalContentState extends State<_CropModalContent> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const CircularProgressIndicator(color: _kGreen, strokeWidth: 3),
+                                CircularProgressIndicator(color: _accentColor, strokeWidth: 3),
                                 const SizedBox(height: 16),
                                 Text(
                                   _sending ? 'Adding to Results…' : 'Processing…',
@@ -274,14 +278,14 @@ class _CropModalContentState extends State<_CropModalContent> {
 
   Widget _buildActions(bool hasImage) {
     if (!hasImage) {
-      return _ActionButton(icon: Icons.add_photo_alternate_rounded, label: 'Select Image', color: _kGreen, onTap: _pickImage);
+      return _ActionButton(icon: Icons.add_photo_alternate_rounded, label: 'Select Image', color: _accentColor, onTap: _pickImage);
     }
     return Row(
       children: [
         _IconBtn(icon: Icons.photo_library_outlined, color: Colors.white70, onTap: _pickImage),
         const SizedBox(width: 12),
         Expanded(
-          child: _ActionButton(icon: Icons.send_rounded, label: 'Send to Results', color: _kGreen, onTap: _sendToResults),
+          child: _ActionButton(icon: Icons.send_rounded, label: 'Send to Results', color: _accentColor, onTap: _sendToResults),
         ),
       ],
     );
@@ -369,10 +373,10 @@ class _EmptyViewer extends StatelessWidget {
               height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _kGreenDim,
-                border: Border.all(color: _kGreenBorder),
+                color: _accentDim,
+                border: Border.all(color: _accentBorder),
               ),
-              child: const Icon(Icons.add_photo_alternate_rounded, color: _kGreen, size: 26),
+              child: Icon(Icons.add_photo_alternate_rounded, color: _accentColor, size: 26),
             ),
             const SizedBox(height: 14),
             const Text(
@@ -589,9 +593,9 @@ class _CropCanvasState extends State<_CropCanvas> {
                             height: rh,
                             child: Container(
                               decoration: BoxDecoration(
-                                border: Border.all(color: _kGreen, width: 2),
+                                border: Border.all(color: _accentColor, width: 2),
                                 color: Colors.transparent,
-                                boxShadow: [BoxShadow(color: _kGreen.withValues(alpha: 0.15), blurRadius: 10, spreadRadius: 2)],
+                                boxShadow: [BoxShadow(color: _accentColor.withValues(alpha: 0.15), blurRadius: 10, spreadRadius: 2)],
                               ),
                               child: const Center(child: Icon(Icons.open_with_rounded, color: Colors.white70, size: 24)),
                             ),
@@ -646,7 +650,7 @@ class _CropCanvasState extends State<_CropCanvas> {
           width: size,
           height: size,
           child: CustomPaint(
-            painter: _CornerPainter(color: _kGreen, strokeWidth: w, top: borderTop, left: borderLeft, right: borderRight, bottom: borderBottom, drawnSize: 12.0),
+            painter: _CornerPainter(color: _accentColor, strokeWidth: w, top: borderTop, left: borderLeft, right: borderRight, bottom: borderBottom, drawnSize: 12.0),
           ),
         ),
       ),

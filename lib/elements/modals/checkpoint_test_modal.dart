@@ -170,7 +170,7 @@ class _CheckpointTesterModalContentState
                 ),
                 child: Text(
                   _selectionCount == _totalCount ? 'None' : 'All',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppTheme.accentPrimary,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,

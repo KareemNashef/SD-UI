@@ -5,7 +5,12 @@
     <application
         android:label="SD Companion"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:usesCleartextTraffic="true">
+        <!-- Both backends are local/self-hosted servers reached over plain
+             http(s)/ws(s) with no authentication (see plan scope); Android 9+
+             blocks cleartext traffic by default, so it must be explicitly
+             allowed here for either backend's connection to work at all. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

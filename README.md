@@ -2,13 +2,15 @@
 
 <p align="center">
   <b>Professional mobile UI for Stable Diffusion image generation and inpainting</b><br>
-  Control your local Stable Diffusion instance from your phone
+  Control your local Forge Neo or ComfyUI instance from your phone
 </p>
 
 ---
 
 ## 📱 About
 A Flutter mobile interface that allows remote access to a locally-hosted Stable Diffusion instance. Designed for workflow optimization, this app turns your phone into a full-featured AI image generation and editing tool.
+
+The app supports exactly one active backend at a time - **Forge Neo** (A1111-compatible) or **ComfyUI** - selected from Settings. The active backend is always shown with its own color, icon, and label throughout the connection, settings, and progress screens, so it's never ambiguous which server you're talking to.
 
 ---
 
@@ -85,22 +87,34 @@ Generated Images → Mobile Device
 
 ## 📋 Requirements
 
-### Server
-- Stable Diffusion WebUI installed locally  
-- API enabled (`--api` flag)  
-- Network accessible (`--listen` flag)  
+### Forge Neo server
+- Forge Neo (A1111-compatible WebUI) installed locally
+- API enabled (`--api` flag)
+- Network accessible (`--listen` flag)
+
+### ComfyUI server
+- A local/self-hosted ComfyUI instance (no authentication - Comfy Cloud and
+  auth are out of scope)
+- Reachable on your network at its default port (8188) or a custom one
 
 ### Mobile
-- Same local network as SD server (or VPN/port forwarding)  
+- Same local network as the server (or VPN/port forwarding)
 
 ---
 
 ## 🔧 Setup
 
-1. **Launch Stable Diffusion Server**
+1. **Launch your server**
+
+Forge Neo:
 ```bash
 python launch.py --api --listen
-````
+```
+
+ComfyUI:
+```bash
+python main.py --listen
+```
 
 2. **Build Mobile App**
 
@@ -113,9 +127,28 @@ flutter run
 
 3. **Connect**
 
-* Enter local IP and port in the app
+* On first launch, pick Forge Neo or ComfyUI in the connection screen
+* Enter the server's local IP and port
 * Test connection
-* Start generating
+
+4a. **Forge Neo**: select a checkpoint, set your sampler/steps/CFG in
+Settings, and start generating from the Inpaint tab as usual.
+
+4b. **ComfyUI**: in Settings → Workflows, import the editor-format workflow
+JSON you exported from the ComfyUI web UI (the same file, no separate
+"API format" export needed, no favoriting required in ComfyUI first). On
+import, tell the app whether the workflow is **Text to Image**, **Image to
+Image**, or **Inpainting** - this decides what the Inpaint tab shows (no
+canvas at all for text-to-image, a plain image picker for image-to-image,
+full mask painting for inpainting).
+
+The app then analyzes the workflow's graph itself: it walks back from the
+sampler node to find the diffusion model, CLIP, and VAE loaders, the
+sampler's own seed/steps/cfg/sampler/scheduler/denoise widgets, and (when
+present) the empty-latent width/height/batch-size - all shown under
+"Workflow Settings". The prompt, negative prompt, and input image are
+detected the same way and bound straight into the existing prompt/negative-
+prompt/image canvas, so nothing needs to be marked or favorited by hand.
 
 ---
 
