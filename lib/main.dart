@@ -1,70 +1,79 @@
 // ==================== Aperture ==================== //
 //
-// TEMPORARY SHELL - placeholder only.
-//
-// The UI is being rebuilt from scratch (see DESIGN.md). This file exists
-// solely so the project stays compilable and testable while the new
-// interface is built feature by feature against the logic layer in
-// lib/logic/. It will be replaced wholesale by the real app shell.
+// The real Stage is not built yet (see DESIGN.md build order). Until it is,
+// debug builds boot into the dev harness, which exercises the new framework
+// and the glass material on a real device.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import 'package:sd_companion/logic/backend/backend_kind.dart';
-import 'package:sd_companion/logic/globals.dart';
-import 'package:sd_companion/logic/storage/storage_service.dart';
+import 'package:sd_companion/runtime/aperture_runtime.dart';
+import 'package:sd_companion/runtime/runtime_scope.dart';
+import 'package:sd_companion/ui/dev/dev_harness.dart';
+import 'package:sd_companion/ui/glass/glass_shader.dart';
+import 'package:sd_companion/ui/glass/glass_tokens.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Boot the logic layer so the placeholder can report real state.
-  await StorageService.loadActiveBackendKind();
-  await StorageService.loadServerSettings();
-  await StorageService.loadComfyServerSettings();
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarIconBrightness: Brightness.light,
+  ));
 
-  runApp(const ApertureApp());
+  // Compile/load the glass program once, before the first frame, so panes
+  // never flash through their fallback on startup.
+  await GlassShader.load();
+
+  final runtime = await ApertureRuntime.boot();
+
+  runApp(ApertureApp(runtime: runtime));
 }
 
 class ApertureApp extends StatelessWidget {
-  const ApertureApp({super.key});
+  final ApertureRuntime runtime;
+
+  const ApertureApp({super.key, required this.runtime});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Aperture',
-      theme: ThemeData.dark(),
-      home: const _RebuildPlaceholder(),
+    return RuntimeScope(
+      runtime: runtime,
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Aperture',
+        theme: ThemeData.dark().copyWith(
+          scaffoldBackgroundColor: Palette.void_,
+          textTheme: ThemeData.dark().textTheme.apply(fontFamily: 'Geist'),
+        ),
+        home: kDebugMode ? const DevHarness() : const _ComingSoon(),
+      ),
     );
   }
 }
 
-class _RebuildPlaceholder extends StatelessWidget {
-  const _RebuildPlaceholder();
+/// Release builds have nothing to show yet. Deliberately blunt rather than
+/// shipping the dev harness to a real user.
+class _ComingSoon extends StatelessWidget {
+  const _ComingSoon();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A10),
+      backgroundColor: Palette.void_,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.blur_circular_rounded, size: 56, color: Color(0xFFB9C4F0)),
-            const SizedBox(height: 20),
-            const Text(
-              'Aperture',
-              style: TextStyle(color: Color(0xFFF3F1F7), fontSize: 24, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'UI rebuild in progress',
-              style: TextStyle(color: const Color(0xFFF3F1F7).withValues(alpha: 0.5), fontSize: 13),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Logic layer online · engine: ${globalActiveBackendKind.value.displayName}',
-              style: TextStyle(color: const Color(0xFFF3F1F7).withValues(alpha: 0.3), fontSize: 11),
-            ),
+            const Icon(Icons.blur_circular_rounded, size: 48, color: Palette.chalk40),
+            const SizedBox(height: Space.lg),
+            Text('Aperture', style: Type.stageTitle),
+            const SizedBox(height: Space.sm),
+            Text('Interface under construction', style: Type.body.copyWith(color: Palette.chalk40)),
           ],
         ),
       ),
