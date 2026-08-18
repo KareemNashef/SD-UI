@@ -285,6 +285,14 @@ to the frame, not lying on the desk.
 - The tray is **capability-gated**: it holds only the tools the active engine
   actually supports, read from `EngineCapabilities` — never from an
   `if (isComfy)`. A missing tool leaves no gap; the tray is shorter.
+- The tray is also **context-gated**, on top of capability-gating. Which
+  tools appear depends on what's on the sheet right now: typing a fresh
+  text2img prompt calls for workflow/checkpoint and LoRAs; an image loaded
+  for img2img calls for the mask brush and the outpaint toggle; viewing a
+  past result calls for upscale, save, compare-to-source, and send-back-to-
+  source. The tray widget itself stays dumb — it just renders whatever tool
+  list it's handed — the front page decides the list from
+  `(engine, sessionMode, viewingResult)`.
 
 ### 7.5 Card — the loaded model
 

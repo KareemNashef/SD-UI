@@ -30,6 +30,14 @@ class _DeskLabState extends State<DeskLab> {
   String _sampler = 'euler';
   String _mode = 'inpaint';
   int _tool = 0;
+  String _selectedPrint = 'run_b';
+
+  static const _demoPrints = [
+    ('run_a', [Color(0xFFFFE2A8), Color(0xFF241030)]),
+    ('run_b', [Color(0xFF7FE3C6), Color(0xFF1D5148)]),
+    ('run_c', [Color(0xFFF0C46A), Color(0xFF6E4A18)]),
+    ('run_d', [Color(0xFF8FB4E8), Color(0xFF233B63)]),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -80,19 +88,16 @@ class _DeskLabState extends State<DeskLab> {
         // ===== Prints ===== //
         _Section(
           title: 'PRINT SHELF',
-          note: 'Angles come from the image id, so they never jitter.',
+          note: 'Drag through the deck — the nearest print rises to meet '
+              'your finger, then snaps to centre on release.',
           child: PrintShelf(
-            stamp: '×4',
-            prints: [
-              for (final entry in const [
-                ('run_a', [Color(0xFFFFE2A8), Color(0xFF241030)]),
-                ('run_b', [Color(0xFF7FE3C6), Color(0xFF1D5148)]),
-                ('run_c', [Color(0xFFF0C46A), Color(0xFF6E4A18)]),
-                ('run_d', [Color(0xFF8FB4E8), Color(0xFF233B63)]),
-              ])
-                Print(
+            stamp: '×${_demoPrints.length}',
+            selectedId: _selectedPrint,
+            onSelect: (id) => setState(() => _selectedPrint = id),
+            entries: [
+              for (final entry in _demoPrints)
+                PrintEntry(
                   id: entry.$1,
-                  selected: entry.$1 == 'run_b',
                   image: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(

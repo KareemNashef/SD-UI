@@ -32,7 +32,26 @@ mixin _Pressable<T extends StatefulWidget> on State<T>
   double get pressT => pressCtl.value;
 
   void pressDown() => pressCtl.forward();
-  void pressUp() => pressCtl.reverse();
+
+  /// A held press releases immediately. A completed tap does not: it waits
+  /// for the press-in to finish landing before springing back out. Without
+  /// that wait, a fast tap fires `onTapUp` before the 90ms press-in animation
+  /// reaches 1.0, cutting the dip short - so a quick single tap looked like
+  /// it barely moved, and only holding the press showed the full travel.
+  Future<void> pressUpFull() async {
+    if (pressCtl.status == AnimationStatus.forward) {
+      try {
+        await pressCtl.forward().orCancel;
+      } catch (_) {
+        return; // disposed or superseded mid-flight
+      }
+    }
+    if (mounted) pressCtl.reverse();
+  }
+
+  /// An aborted press (the finger dragged away) snaps back immediately -
+  /// only a genuine completed tap earns the forced full-travel wait above.
+  void pressUpCancelled() => pressCtl.reverse();
 
   @override
   void dispose() {
@@ -50,8 +69,8 @@ mixin _Pressable<T extends StatefulWidget> on State<T>
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: enabled ? (_) => pressDown() : null,
-      onTapUp: enabled ? (_) => pressUp() : null,
-      onTapCancel: enabled ? pressUp : null,
+      onTapUp: enabled ? (_) => pressUpFull() : null,
+      onTapCancel: enabled ? pressUpCancelled : null,
       onTap: enabled ? onTap : null,
       child: AnimatedBuilder(
         animation: pressCtl,
@@ -379,8 +398,17 @@ class _DeskRulerState extends State<DeskRuler> {
                           border:
                               Border.all(color: p.ink, width: Stroke.standard),
                         ),
+                        // Insets the fill inside the ink line. Without this,
+                        // the fill's ClipRRect used the *outer* radius while
+                        // sitting flush against the border - Flutter deflates
+                        // a rounded border's visible curve by half its stroke
+                        // width, so the two curves didn't coincide and a
+                        // sliver of paperEdge showed through in the corners.
+                        padding: const EdgeInsets.all(Stroke.standard),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(Corner.photo),
+                          borderRadius: BorderRadius.circular(
+                              (Corner.photo - Stroke.standard)
+                                  .clamp(0, Corner.photo)),
                           child: CustomPaint(
                             painter: _RulerPainter(
                               fraction: _t,
@@ -403,8 +431,14 @@ class _DeskRulerState extends State<DeskRuler> {
                           borderRadius: BorderRadius.circular(Corner.photo),
                           border:
                               Border.all(color: p.ink, width: Stroke.standard),
+                          // `lifted` (offset 6,8) is scaled for objects the
+                          // size of a print or a whole card - on a thumb this
+                          // thin it read as a stray dark rectangle trailing
+                          // behind rather than a shadow attached to it.
+                          // `raised` keeps the same "picked up" cue at a
+                          // proportionate scale.
                           boxShadow: (_dragging
-                                  ? Elevation.lifted
+                                  ? Elevation.raised
                                   : Elevation.rest)
                               .shadows(p.ink),
                         ),
@@ -607,6 +641,15 @@ class DeskTool {
 ///
 /// It holds only the tools the active engine supports. A missing tool leaves
 /// no gap - the tray is simply shorter.
+///
+/// TODO(front page): the tray's *contents* also need to change with context,
+/// not just with the engine's capability flags. What belongs in it while
+/// typing a text2img prompt (workflow/checkpoint, LoRAs) is not what belongs
+/// in it once an image is loaded for img2img (mask brush, outpaint handles
+/// toggle) or while viewing a past result (upscale, save, compare, send back
+/// to source). The caller passes `tools` fresh per rebuild already, so the
+/// fix is at the call site - build the list from `(engine, sessionMode,
+/// viewingResult)` rather than a fixed list - not in this widget.
 class DeskToolTray extends StatelessWidget {
   final List<DeskTool> tools;
   final int activeIndex;
@@ -746,8 +789,13 @@ class _DeskProgressState extends State<DeskProgress>
             borderRadius: BorderRadius.circular(Corner.photo),
             border: Border.all(color: p.ink, width: Stroke.standard),
           ),
+          // Same inset as the ruler track, and for the same reason: without
+          // it the fill's corner clip and the border's corner curve don't
+          // coincide, and paperEdge shows through the gap.
+          padding: const EdgeInsets.all(Stroke.standard),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(Corner.photo),
+            borderRadius: BorderRadius.circular(
+                (Corner.photo - Stroke.standard).clamp(0, Corner.photo)),
             child: AnimatedBuilder(
               animation: _c,
               builder: (context, _) => CustomPaint(

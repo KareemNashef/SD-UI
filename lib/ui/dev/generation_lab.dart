@@ -333,14 +333,11 @@ class _GenerationLabState extends State<GenerationLab> {
               }
               return PrintShelf(
                 stamp: '×${lib.count}',
-                prints: [
+                selectedId: lib.selectedId,
+                onSelect: _rt.library.select,
+                entries: [
                   for (final image in lib.images)
-                    Print(
-                      id: image.id,
-                      selected: image.id == lib.selectedId,
-                      onTap: () => _rt.library.select(image.id),
-                      image: _preview(image),
-                    ),
+                    PrintEntry(id: image.id, image: _preview(image)),
                 ],
               );
             },

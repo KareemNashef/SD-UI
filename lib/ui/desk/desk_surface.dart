@@ -237,10 +237,16 @@ enum _Corner {
 /// Its resting angle comes from [id] rather than from `Random()`, so it never
 /// jitters when the list rebuilds. A print that is still generating shows
 /// [paperEdge] and fills in as preview frames arrive.
+///
+/// [lift] (0..1) is how far it has risen off the shelf - 1.0 is fully picked
+/// out of the deck, 0.0 is flat. [PrintShelf] drives this continuously as the
+/// shelf scrolls; a caller using a bare [Print] outside a shelf can ignore it
+/// and just pass [selected] for the same sensible resting state.
 class Print extends StatelessWidget {
   final String id;
   final Widget? image;
   final bool selected;
+  final double? lift;
   final VoidCallback? onTap;
   final double width;
 
@@ -249,6 +255,7 @@ class Print extends StatelessWidget {
     required this.id,
     this.image,
     this.selected = false,
+    this.lift,
     this.onTap,
     this.width = 74,
   });
@@ -256,26 +263,35 @@ class Print extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = DeskTheme.of(context);
-    return Transform.rotate(
-      angle: restAngleFor(id),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: width,
-          decoration: BoxDecoration(
-            color: p.paper,
-            border: selected
-                ? Border.all(color: p.ink, width: Stroke.standard)
-                : null,
-            boxShadow:
-                (selected ? Elevation.raised : Elevation.rest).shadows(p.ink),
-          ),
-          padding: const EdgeInsets.fromLTRB(5, 5, 5, 14),
-          child: AspectRatio(
-            aspectRatio: 1,
-            child: ColoredBox(
-              color: p.paperEdge,
-              child: image,
+    final t = (lift ?? (selected ? 1.0 : 0.0)).clamp(0.0, 1.0);
+    final elevation = Elevation.lerp(Elevation.rest, Elevation.lifted, t);
+    final flat = selected || t > 0.5;
+
+    return Transform.translate(
+      // A card picked out of a deck rises, it doesn't slide sideways.
+      offset: Offset(0, -16 * t),
+      child: Transform.rotate(
+        // It also straightens as it comes up - by the time it's fully
+        // risen it reads as squared to the shelf, not tilted like the rest.
+        angle: restAngleFor(id) * (1 - t),
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: width,
+            decoration: BoxDecoration(
+              color: p.paper,
+              border: flat
+                  ? Border.all(color: p.ink, width: Stroke.standard)
+                  : null,
+              boxShadow: elevation.shadows(p.ink),
+            ),
+            padding: const EdgeInsets.fromLTRB(5, 5, 5, 14),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: ColoredBox(
+                color: p.paperEdge,
+                child: image,
+              ),
             ),
           ),
         ),
@@ -284,42 +300,185 @@ class Print extends StatelessWidget {
   }
 }
 
+/// One entry on the shelf: an identity plus what it shows. [PrintShelf] needs
+/// the identity itself (not just a pre-built [Print] widget) so it can own
+/// the lift animation and report which entry the shelf has settled on.
+class PrintEntry {
+  final String id;
+  final Widget? image;
+  const PrintEntry({required this.id, this.image});
+}
+
 /// The horizontal band of results. Scrolls within itself; never scrolls the
 /// page, because comparing a result to the source is the app's core act and
 /// both must stay visible.
-class PrintShelf extends StatelessWidget {
-  final List<Widget> prints;
+///
+/// This is a coverflow, not a plain list: whichever print sits nearest the
+/// shelf's centre rises continuously as you drag, exactly tracking your
+/// finger rather than animating on a delay, and settles there - like riffling
+/// a deck until one card is held out. Releasing snaps that card to centre and
+/// reports it through [onSelect].
+class PrintShelf extends StatefulWidget {
+  final List<PrintEntry> entries;
+  final String? selectedId;
+  final ValueChanged<String>? onSelect;
   final String? stamp;
 
-  const PrintShelf({super.key, required this.prints, this.stamp});
+  const PrintShelf({
+    super.key,
+    required this.entries,
+    this.selectedId,
+    this.onSelect,
+    this.stamp,
+  });
+
+  @override
+  State<PrintShelf> createState() => _PrintShelfState();
+}
+
+class _PrintShelfState extends State<PrintShelf> {
+  static const _itemWidth = 74.0;
+  static const _overlap = 18.0;
+  static const _pitch = _itemWidth - _overlap; // visual spacing, post-overlap
+  static const _liftThreshold = _pitch * 1.6;
+
+  final _scroll = ScrollController();
+  bool _snapping = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToSelected());
+  }
+
+  @override
+  void didUpdateWidget(PrintShelf old) {
+    super.didUpdateWidget(old);
+    // A new print arriving elsewhere (e.g. a fresh generation landing in the
+    // library) changes `selectedId` out from under the shelf - follow it, the
+    // same way a physical deck follows the card you just added to it.
+    if (widget.selectedId != old.selectedId && widget.selectedId != null) {
+      _animateToSelected();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  int? get _selectedIndex {
+    final id = widget.selectedId;
+    if (id == null) return null;
+    final i = widget.entries.indexWhere((e) => e.id == id);
+    return i < 0 ? null : i;
+  }
+
+  double _centerFor(int index) => index * _pitch + _itemWidth / 2;
+
+  void _jumpToSelected() {
+    final i = _selectedIndex;
+    if (i == null || !_scroll.hasClients) return;
+    _scroll.jumpTo(_targetOffsetFor(i));
+  }
+
+  void _animateToSelected() {
+    final i = _selectedIndex;
+    if (i == null || !_scroll.hasClients) return;
+    _snapping = true;
+    _scroll
+        .animateTo(_targetOffsetFor(i),
+            duration: Motion.arrival, curve: Motion.settle)
+        .whenComplete(() => _snapping = false);
+  }
+
+  double _targetOffsetFor(int index) {
+    if (!_scroll.hasClients) return 0;
+    final viewport = _scroll.position.viewportDimension;
+    final target = _centerFor(index) - viewport / 2;
+    return target.clamp(0.0, _scroll.position.maxScrollExtent);
+  }
+
+  int _nearestToCenter() {
+    final viewport = _scroll.hasClients ? _scroll.position.viewportDimension : 0.0;
+    final centerLine = _scroll.offset + viewport / 2;
+    var best = 0;
+    var bestDist = double.infinity;
+    for (var i = 0; i < widget.entries.length; i++) {
+      final d = (_centerFor(i) - centerLine).abs();
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  double _liftForIndex(int index) {
+    if (!_scroll.hasClients) return widget.entries[index].id == widget.selectedId ? 1 : 0;
+    final viewport = _scroll.position.viewportDimension;
+    final centerLine = _scroll.offset + viewport / 2;
+    final distance = (_centerFor(index) - centerLine).abs();
+    final t = (1 - distance / _liftThreshold).clamp(0.0, 1.0);
+    return t * t * (3 - 2 * t); // smoothstep - a gentle falloff, not a cliff
+  }
+
+  bool _onScrollEnd(ScrollEndNotification notification) {
+    if (_snapping || widget.entries.isEmpty) return false;
+    final nearest = _nearestToCenter();
+    final id = widget.entries[nearest].id;
+    if (id != widget.selectedId) widget.onSelect?.call(id);
+    _animateToSelected();
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = DeskTheme.of(context);
     return SizedBox(
-      height: 110,
+      height: 118,
       child: Row(
         children: [
-          if (stamp != null) ...[
+          if (widget.stamp != null) ...[
             RotatedBox(
               quarterTurns: 3,
-              child: Text(stamp!, style: Type.micro.copyWith(color: p.inkMuted)),
+              child: Text(widget.stamp!,
+                  style: Type.micro.copyWith(color: p.inkMuted)),
             ),
             const SizedBox(width: Space.xs),
           ],
           Expanded(
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              clipBehavior: Clip.none,
-              padding: const EdgeInsets.symmetric(vertical: Space.sm),
-              itemCount: prints.length,
-              // Prints overlap by about a third of their width. `Padding`
-              // rejects negative insets outright, so the overlap is a
-              // transform - shifting each print left into its predecessor
-              // rather than shrinking the gap between them.
-              itemBuilder: (context, i) => Transform.translate(
-                offset: Offset(i == 0 ? 0 : -18.0 * i, 0),
-                child: prints[i],
+            child: NotificationListener<ScrollEndNotification>(
+              onNotification: _onScrollEnd,
+              child: AnimatedBuilder(
+                animation: _scroll,
+                builder: (context, _) => ListView.builder(
+                  controller: _scroll,
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(vertical: Space.sm),
+                  itemCount: widget.entries.length,
+                  // Prints overlap by about a third of their width. `Padding`
+                  // rejects negative insets outright, so the overlap is a
+                  // transform - shifting each print left into its
+                  // predecessor rather than shrinking the gap between them.
+                  itemBuilder: (context, i) {
+                    final entry = widget.entries[i];
+                    return Transform.translate(
+                      offset: Offset(i == 0 ? 0 : -_overlap * i, 0),
+                      child: Print(
+                        id: entry.id,
+                        image: entry.image,
+                        selected: entry.id == widget.selectedId,
+                        lift: _liftForIndex(i),
+                        width: _itemWidth,
+                        onTap: () => widget.onSelect?.call(entry.id),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ),
