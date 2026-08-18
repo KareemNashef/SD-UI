@@ -90,7 +90,7 @@ class _StitchModalContentState extends State<_StitchModalContent> {
       ..clearSnackBars()
       ..showSnackBar(
         SnackBar(
-          content: Text(msg, style: const TextStyle(color: Colors.white)),
+          content: Text(msg, style: const TextStyle(color: AppTheme.mist)),
           backgroundColor: error ? const Color(0xFFB00020) : const Color(0xFF1B6B49),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -252,7 +252,7 @@ class _StitchModalContentState extends State<_StitchModalContent> {
                                 const SizedBox(height: 16),
                                 Text(
                                   _sending ? 'Compositing Image…' : 'Processing…',
-                                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                                  style: const TextStyle(color: AppTheme.mist, fontSize: 14, fontWeight: FontWeight.w500),
                                 ),
                               ],
                             ),
@@ -271,13 +271,13 @@ class _StitchModalContentState extends State<_StitchModalContent> {
   Widget _buildEmptyPreview() {
     return Container(
       width: double.infinity,
-      color: Colors.white.withValues(alpha: 0.02),
+      color: AppTheme.mist.withValues(alpha: 0.02),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.image_search_rounded, color: Colors.white.withValues(alpha: 0.2), size: 48),
+          Icon(Icons.image_search_rounded, color: AppTheme.mist.withValues(alpha: 0.2), size: 48),
           const SizedBox(height: 12),
-          Text('Select a base image to see preview', style: TextStyle(color: Colors.white.withValues(alpha: 0.4))),
+          Text('Select a base image to see preview', style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.4))),
         ],
       ),
     );
@@ -369,7 +369,7 @@ class _ImageSelectorSlot extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: Colors.black.withValues(alpha: 0.3),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                border: Border.all(color: AppTheme.mist.withValues(alpha: 0.1)),
               ),
               child: bytes == null
                   ? Center(child: Icon(Icons.add_photo_alternate_rounded, color: _accentColor, size: 28))
@@ -409,7 +409,7 @@ class _CoordField extends StatelessWidget {
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               onChanged: onChanged,
-              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+              style: const TextStyle(color: AppTheme.mist, fontSize: 15, fontWeight: FontWeight.bold),
               decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
             ),
           ),
@@ -443,7 +443,7 @@ class _ResultsPickerSheet extends StatelessWidget {
             const SizedBox(height: 16),
             const Text(
               'Select Image from Results',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: AppTheme.mist, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Expanded(
@@ -459,7 +459,7 @@ class _ResultsPickerSheet extends StatelessWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                        border: Border.all(color: AppTheme.mist.withValues(alpha: 0.15)),
                         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4, offset: const Offset(0, 2))],
                       ),
                       child: ClipRRect(
@@ -516,11 +516,11 @@ class _ActionButton extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 20, color: Colors.white),
+                Icon(icon, size: 20, color: AppTheme.mist),
                 const SizedBox(width: 8),
                 Text(
                   label,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: 0.3),
+                  style: const TextStyle(color: AppTheme.mist, fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: 0.3),
                 ),
               ],
             ),

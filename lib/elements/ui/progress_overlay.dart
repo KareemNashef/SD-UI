@@ -161,11 +161,11 @@ class ProgressOverlay extends StatelessWidget {
             children: [
               Text(
                 "PROGRESS",
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
+                style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
               ),
               Text(
                 "${(fraction * 100).toInt()}%",
-                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900, fontFamily: 'monospace'),
+                style: const TextStyle(color: AppTheme.mist, fontSize: 14, fontWeight: FontWeight.w900, fontFamily: 'monospace'),
               ),
             ],
           ),
@@ -234,14 +234,14 @@ class ProgressOverlay extends StatelessWidget {
             alignment: Alignment.center,
             children: [
               CircularProgressIndicator(color: accentColor, strokeWidth: 2.5),
-              Icon(Icons.auto_awesome, color: Colors.white.withValues(alpha: 0.8), size: 24),
+              Icon(Icons.auto_awesome, color: AppTheme.mist.withValues(alpha: 0.8), size: 24),
             ],
           ),
         ),
         const SizedBox(height: 24),
         Text(
           message,
-          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+          style: const TextStyle(color: AppTheme.mist, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5),
         ),
       ],
     );
@@ -272,19 +272,19 @@ class ProgressOverlay extends StatelessWidget {
         const SizedBox(height: 24),
         const Text(
           'Switching Model',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppTheme.mist, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
+            color: AppTheme.mist.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            border: Border.all(color: AppTheme.mist.withValues(alpha: 0.1)),
           ),
           child: Text(
             label,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12, fontFamily: 'monospace'),
+            style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.7), fontSize: 12, fontFamily: 'monospace'),
             textAlign: TextAlign.center,
           ),
         ),
@@ -336,11 +336,11 @@ class ProgressOverlay extends StatelessWidget {
           children: [
             Text(
               "PROGRESS",
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
+              style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
             ),
             Text(
               "${(progress * 100).toInt()}%",
-              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900, fontFamily: 'monospace'),
+              style: const TextStyle(color: AppTheme.mist, fontSize: 14, fontWeight: FontWeight.w900, fontFamily: 'monospace'),
             ),
           ],
         ),
@@ -497,7 +497,7 @@ class _NeonProgressBar extends StatelessWidget {
     return Container(
       height: 6,
       width: double.infinity,
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3)),
+      decoration: BoxDecoration(color: AppTheme.mist.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3)),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth * progress;

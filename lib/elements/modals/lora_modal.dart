@@ -251,7 +251,7 @@ class __LorasContentState extends State<_LorasContent> with TickerProviderStateM
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white10),
-            color: Colors.white.withValues(alpha: 0.05),
+            color: AppTheme.mist.withValues(alpha: 0.05),
           ),
           child: AnimatedRotation(
             turns: _refreshTurns,
@@ -418,7 +418,7 @@ class _OptimizedLoraTileState extends State<_OptimizedLoraTile> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             // Only rebuild border color
-            border: Border.all(color: _isSelected ? widget.accentColor : Colors.white.withValues(alpha: 0.1), width: _isSelected ? 2 : 1),
+            border: Border.all(color: _isSelected ? widget.accentColor : AppTheme.mist.withValues(alpha: 0.1), width: _isSelected ? 2 : 1),
             // Only rebuild shadow
             boxShadow: _isSelected ? [BoxShadow(color: widget.accentColor.withValues(alpha: 0.2), blurRadius: 8)] : null,
           ),
@@ -498,7 +498,7 @@ class _StaticTileContent extends StatelessWidget {
             child: Text(
               lora.displayName,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppTheme.mist,
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
                 shadows: [Shadow(color: Colors.black, blurRadius: 4)],
@@ -567,7 +567,7 @@ class _TileControls extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: isActive ? accentColor.withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.1),
+                        color: isActive ? accentColor.withValues(alpha: 0.8) : AppTheme.mist.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(color: isActive ? accentColor : Colors.white24, width: 1),
                       ),

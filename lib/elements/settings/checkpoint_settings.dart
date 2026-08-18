@@ -179,7 +179,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.white.withValues(alpha: 0.95),
+                color: AppTheme.mist.withValues(alpha: 0.95),
               ),
             ),
           ],
@@ -204,9 +204,9 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: AppTheme.mist.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          border: Border.all(color: AppTheme.mist.withValues(alpha: 0.08)),
         ),
         child: Row(
           children: [
@@ -219,7 +219,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                   Text(
                     "SAMPLING METHOD",
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.4),
+                      color: AppTheme.mist.withValues(alpha: 0.4),
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
@@ -228,7 +228,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                   Text(
                     globalCurrentSamplingMethod,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.mist,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -263,9 +263,9 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: AppTheme.mist.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          border: Border.all(color: AppTheme.mist.withValues(alpha: 0.08)),
         ),
         child: Row(
           children: [
@@ -282,7 +282,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                   Text(
                     "SCHEDULE METHOD",
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.4),
+                      color: AppTheme.mist.withValues(alpha: 0.4),
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
@@ -291,7 +291,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                   Text(
                     globalCurrentScheduler,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.mist,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -414,9 +414,9 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: AppTheme.mist.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppTheme.mist.withValues(alpha: 0.08)),
       ),
       child: Column(
         children: [
@@ -440,7 +440,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                         Text(
                           'VAE & TEXT ENCODERS',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.45),
+                            color: AppTheme.mist.withValues(alpha: 0.45),
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.6,
@@ -452,7 +452,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                               ? 'No files selected'
                               : '${selectedModules.length} file${selectedModules.length == 1 ? '' : 's'} selected',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: AppTheme.mist,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -540,7 +540,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
                           ),
                   ),
           ),
-          Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
+          Divider(height: 1, color: AppTheme.mist.withValues(alpha: 0.08)),
           Padding(
             padding: const EdgeInsets.all(10),
             child: Row(
@@ -593,7 +593,7 @@ class CheckpointSettingsState extends State<CheckpointSettings> {
             border: Border.all(
               color: selected
                   ? AppTheme.accentPrimary.withValues(alpha: 0.5)
-                  : Colors.white.withValues(alpha: 0.08),
+                  : AppTheme.mist.withValues(alpha: 0.08),
             ),
           ),
           child: Row(
@@ -723,7 +723,7 @@ class CheckpointDisplayCard extends StatelessWidget {
     color: AppTheme.surfaceCard,
     child: Icon(
       Icons.image_not_supported,
-      color: Colors.white.withValues(alpha: 0.1),
+      color: AppTheme.mist.withValues(alpha: 0.1),
       size: 40,
     ),
   );
@@ -821,7 +821,7 @@ class CheckpointDisplayCard extends StatelessWidget {
                     Text(
                       modelName.isEmpty ? 'Select Model' : modelName,
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.mist,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         height: 1.2,

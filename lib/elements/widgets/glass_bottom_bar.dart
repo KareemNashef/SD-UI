@@ -1,6 +1,7 @@
 // ==================== Glass Bottom Bar ==================== //
 
 // Flutter imports
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 // Local imports - Elements
@@ -37,14 +38,16 @@ class GlassBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Pre-calculate decoration to avoid rebuilding
-    // Use const where possible
-    return Container(
+    // A single persistent, non-repeated bar - real backdrop blur here is
+    // cheap (one instance) and this is exactly the kind of chrome the
+    // Liquid Glass material is built for.
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: AppTheme.glassBlurRegular, sigmaY: AppTheme.glassBlurRegular),
+        child: Container(
       padding: padding ?? const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        color: const Color(
-          0x4D000000,
-        ), // 30% opacity black (0.3 * 255 = 76.5 ≈ 0x4D)
+        color: AppTheme.ink.withValues(alpha: 0.55),
         border: Border(top: BorderSide(color: AppTheme.glassBorder, width: 1)),
       ),
       child: SafeArea(
@@ -70,6 +73,8 @@ class GlassBottomBar extends StatelessWidget {
                 accentColor: primaryAccentColor,
               ),
           ],
+        ),
+      ),
         ),
       ),
     );

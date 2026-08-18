@@ -128,14 +128,14 @@ class ServerSettingsState extends State<ServerSettings>
             height: 20,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              color: Colors.white.withValues(alpha: 0.9),
+              color: AppTheme.mist.withValues(alpha: 0.9),
             ),
           ),
           const SizedBox(width: 10),
           const Text(
             'Ping...',
             style: TextStyle(
-              color: Colors.white,
+              color: AppTheme.mist,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -149,12 +149,12 @@ class ServerSettingsState extends State<ServerSettings>
         mainAxisAlignment: MainAxisAlignment.center,
         key: ValueKey('online'),
         children: [
-          Icon(Icons.link, color: Colors.white, size: 22),
+          Icon(Icons.link, color: AppTheme.mist, size: 22),
           SizedBox(width: 10),
           Text(
             'Connected',
             style: TextStyle(
-              color: Colors.white,
+              color: AppTheme.mist,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -167,12 +167,12 @@ class ServerSettingsState extends State<ServerSettings>
       mainAxisAlignment: MainAxisAlignment.center,
       key: ValueKey('offline'),
       children: [
-        Icon(Icons.wifi_find, color: Colors.white, size: 22),
+        Icon(Icons.wifi_find, color: AppTheme.mist, size: 22),
         SizedBox(width: 10),
         Text(
           'Update Connection',
           style: TextStyle(
-            color: Colors.white,
+            color: AppTheme.mist,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -237,7 +237,7 @@ class ServerSettingsState extends State<ServerSettings>
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white.withValues(alpha: 0.95),
+                            color: AppTheme.mist.withValues(alpha: 0.95),
                             letterSpacing: 0.5,
                           ),
                         ),

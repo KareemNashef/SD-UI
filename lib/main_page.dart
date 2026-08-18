@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 // Local imports - Elements
+import 'package:sd_companion/elements/widgets/ambient_field.dart';
 import 'package:sd_companion/elements/widgets/glass_navigation_bar.dart';
-import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
 import 'package:sd_companion/logic/globals.dart';
@@ -28,6 +28,7 @@ class MainPage extends StatefulWidget {
 class MainPageState extends State<MainPage> {
   // ===== Controller ===== //
   late PageController _pageController;
+  int _currentIndex = 0;
 
   // ===== Pages ===== //
   final List<Widget> _pages = const [
@@ -77,6 +78,7 @@ class MainPageState extends State<MainPage> {
         curve: Curves.easeOutQuart,
       );
     }
+    if (mounted) setState(() => _currentIndex = index);
   }
 
   // ===== Build Methods ===== //
@@ -90,56 +92,46 @@ class MainPageState extends State<MainPage> {
       child: Scaffold(
         resizeToAvoidBottomInset: false,
         backgroundColor: Colors.black,
-        body: Container(
-          // 1. GLOBAL BACKGROUND
-          decoration: BoxDecoration(gradient: AppTheme.gradientBackground),
-          // Keyed by active backend: a plain setState() wouldn't re-theme
-          // already-built descendants (they read AppTheme statics once at
-          // build time, not through a listenable), so force the whole tab
-          // subtree to remount from scratch on every switch instead.
-          child: KeyedSubtree(
-            key: ValueKey(globalActiveBackendKind.value),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // 2. PAGE CONTENT
-                PageView(
-                  controller: _pageController,
-                  physics: const BouncingScrollPhysics(),
-                  children: _pages,
-                ),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. AMBIENT BACKDROP - the drifting color field every glass
+            // panel in the app sits above.
+            const AmbientField(),
 
-                // 3. FLOATING NAVIGATION BAR
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOutCubic,
-                  left: 0,
-                  right: 0,
-                  bottom: isKeyboardOpen ? -100 : 20,
-                  child: GlassNavigationBar(
+            // Keyed by active backend: a plain setState() wouldn't re-theme
+            // already-built descendants (they read AppTheme statics once at
+            // build time, not through a listenable), so force the whole tab
+            // subtree to remount from scratch on every switch instead.
+            KeyedSubtree(
+              key: ValueKey(globalActiveBackendKind.value),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // 2. PAGE CONTENT
+                  PageView(
                     controller: _pageController,
-                    items: const [
-                      GlassNavigationBarItem(
-                        icon: Icons.brush_rounded,
-                        title: 'Inpaint',
-                      ),
-                      GlassNavigationBarItem(
-                        icon: Icons.perm_media_rounded,
-                        title: 'Results',
-                      ),
-                      GlassNavigationBarItem(
-                        icon: Icons.tune_rounded,
-                        title: 'Settings',
-                      ),
-                    ],
-                    onTabSelected: (i) {
-                      switchToPage(i); // Use the unified method
-                    },
+                    physics: const NeverScrollableScrollPhysics(),
+                    onPageChanged: (i) => setState(() => _currentIndex = i),
+                    children: _pages,
                   ),
-                ),
-              ],
+
+                  // 3. FLOATING DOCK
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOutCubic,
+                    left: 20,
+                    right: 20,
+                    bottom: isKeyboardOpen ? -100 : 20,
+                    child: GlassNavigationBar(
+                      currentIndex: _currentIndex,
+                      onTabSelected: switchToPage,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

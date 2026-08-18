@@ -36,12 +36,12 @@ class GlassTabBar extends StatelessWidget {
         padding: padding ?? const EdgeInsets.symmetric(horizontal: 16),
         physics: const BouncingScrollPhysics(),
         indicator: BoxDecoration(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(999),
           color: AppTheme.accentPrimary,
         ),
         dividerColor: Colors.transparent,
-        labelColor: Colors.black,
-        unselectedLabelColor: Colors.white60,
+        labelColor: AppTheme.ink,
+        unselectedLabelColor: AppTheme.mist55,
         labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
         tabs: tabs.map((label) {
           return Tab(

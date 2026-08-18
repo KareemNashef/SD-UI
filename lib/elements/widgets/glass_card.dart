@@ -78,25 +78,23 @@ class _GlassCardState extends State<GlassCard>
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             border: Border.all(
-              color: widget.isSelected
-                  ? effectiveAccent
-                  : Colors.white.withValues(alpha: 0.1),
+              color: widget.isSelected ? effectiveAccent : AppTheme.mist10,
               width: widget.isSelected ? 2 : 1,
             ),
             boxShadow: widget.isSelected
                 ? [
                     BoxShadow(
                       color: effectiveAccent.withValues(alpha: 0.3),
-                      blurRadius: 10,
+                      blurRadius: 14,
                       spreadRadius: 1,
                     ),
                   ]
                 : [],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium - 2),
             child: AspectRatio(
               aspectRatio: widget.aspectRatio ?? 0.75,
               child: Stack(

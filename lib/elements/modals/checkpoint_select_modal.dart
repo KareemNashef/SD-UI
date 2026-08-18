@@ -84,13 +84,13 @@ class _CheckpointSelectModalState extends State<CheckpointSelectModal> {
           Icon(
             Icons.dns_outlined,
             size: 48,
-            color: Colors.white.withValues(alpha: 0.2),
+            color: AppTheme.mist.withValues(alpha: 0.2),
           ),
           const SizedBox(height: 16),
           Text(
             "No models found",
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
+              color: AppTheme.mist.withValues(alpha: 0.5),
               fontSize: 16,
             ),
           ),
@@ -167,7 +167,7 @@ class _CheckpointSelectModalState extends State<CheckpointSelectModal> {
                               Expanded(
                                 child: Container(
                                   height: 1,
-                                  color: Colors.white.withValues(alpha: 0.1),
+                                  color: AppTheme.mist.withValues(alpha: 0.1),
                                 ),
                               ),
                             ],

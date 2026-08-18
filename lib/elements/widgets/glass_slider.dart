@@ -105,10 +105,9 @@ class _ModernCapsuleTrackShape extends SliderTrackShape {
 
     final Radius radius = Radius.circular(trackRect.height / 2);
 
-    // 1. Inactive Track (Subtle Grey/Dark background)
+    // 1. Inactive Track (subtle mist wash, no borders)
     final Paint inactivePaint = Paint()
-      ..color = Colors.grey
-          .withValues(alpha: 0.15) // Clean grey, no borders
+      ..color = AppTheme.mist.withValues(alpha: 0.12)
       ..style = PaintingStyle.fill;
 
     canvas.drawRRect(RRect.fromRectAndRadius(trackRect, radius), inactivePaint);

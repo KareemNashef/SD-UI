@@ -54,7 +54,17 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(),
+      // Manrope as the app-wide default: every TextStyle that doesn't set
+      // its own fontFamily (the overwhelming majority of them) picks this
+      // up for free through Theme's inherited DefaultTextStyle, which is
+      // most of what makes the whole app read as Aperture rather than
+      // stock Material - only the handful of deliberate Fraunces display
+      // moments (AppTheme.display/titleLarge) override it explicitly.
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: AppTheme.ink,
+        textTheme: ThemeData.dark().textTheme.apply(fontFamily: AppTheme.fontUI),
+        primaryTextTheme: ThemeData.dark().primaryTextTheme.apply(fontFamily: AppTheme.fontUI),
+      ),
       home: const LoadingScreen(),
     );
   }
@@ -276,25 +286,20 @@ class _LoadingScreenState extends State<LoadingScreen>
                   ],
                 ),
                 child: Icon(
-                  Icons.auto_awesome,
+                  Icons.blur_circular_rounded,
                   color: AppTheme.accentPrimary,
                   size: 64,
                 ),
               ),
             ),
             const SizedBox(height: 48),
-            const Text(
-              "Initializing Workspace",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
+            Text(
+              "Aperture",
+              style: AppTheme.display.copyWith(fontSize: 28),
             ),
             const SizedBox(height: 12),
             Text(
-              "Preparing your creative environment...",
+              "Focusing the workspace...",
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.5),
                 fontSize: 14,

@@ -122,7 +122,7 @@ class _ResizeModalContentState extends State<_ResizeModalContent> {
     //   ..clearSnackBars()
     //   ..showSnackBar(
     //     SnackBar(
-    //       content: Text(msg, style: const TextStyle(color: Colors.white)),
+    //       content: Text(msg, style: const TextStyle(color: AppTheme.mist)),
     //       backgroundColor: error
     //           ? const Color(0xFFB00020)
     //           : const Color(0xFF1B6B49),
@@ -271,7 +271,7 @@ class _ResizeModalContentState extends State<_ResizeModalContent> {
                                       ? 'Adding to Results…'
                                       : 'Processing…',
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: AppTheme.mist,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -399,12 +399,12 @@ class _ResizeModalContentState extends State<_ResizeModalContent> {
                     decoration: BoxDecoration(
                       color: comparing
                           ? _accentDim
-                          : Colors.white.withValues(alpha: 0.04),
+                          : AppTheme.mist.withValues(alpha: 0.04),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: comparing
                             ? _accentColor
-                            : Colors.white.withValues(alpha: 0.15),
+                            : AppTheme.mist.withValues(alpha: 0.15),
                       ),
                     ),
                     child: Center(
@@ -560,8 +560,8 @@ class _EmptyViewer extends StatelessWidget {
           borderRadius: BorderRadius.circular(_kRadius),
           gradient: LinearGradient(
             colors: [
-              Colors.white.withValues(alpha: 0.06),
-              Colors.white.withValues(alpha: 0.02),
+              AppTheme.mist.withValues(alpha: 0.06),
+              AppTheme.mist.withValues(alpha: 0.02),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -656,9 +656,9 @@ class _DimChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: accent ? _accentDim : Colors.white.withValues(alpha: 0.04),
+        color: accent ? _accentDim : AppTheme.mist.withValues(alpha: 0.04),
         border: Border.all(
-          color: accent ? _accentBorder : Colors.white.withValues(alpha: 0.1),
+          color: accent ? _accentBorder : AppTheme.mist.withValues(alpha: 0.1),
         ),
       ),
       child: Column(

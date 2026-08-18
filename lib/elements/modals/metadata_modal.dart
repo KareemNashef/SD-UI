@@ -85,7 +85,7 @@ class _MetadataContent extends StatelessWidget {
                     child: Text(
                       'PARAMETERS',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
+                        color: AppTheme.mist.withValues(alpha: 0.5),
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.5,
@@ -207,7 +207,7 @@ class _GlassSection extends StatelessWidget {
             child: Text(
               content,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppTheme.mist,
                 fontSize: 14,
                 height: 1.4,
               ),
@@ -233,9 +233,9 @@ class _ParameterChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.mist.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.mist.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,7 +244,7 @@ class _ParameterChip extends StatelessWidget {
           Text(
             label.toUpperCase().replaceAll('_', ' '),
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
+              color: AppTheme.mist.withValues(alpha: 0.5),
               fontSize: 10,
               fontWeight: FontWeight.w600,
             ),

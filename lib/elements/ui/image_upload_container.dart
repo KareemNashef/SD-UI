@@ -196,13 +196,13 @@ class _ImageContainerState extends State<ImageContainer> {
           ),
           title: const Text(
             "OpenRouter Model",
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(color: AppTheme.mist, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Enter the model ID from OpenRouter", style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+              Text("Enter the model ID from OpenRouter", style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.6), fontSize: 13)),
               const SizedBox(height: 16),
               GlassInput(controller: modelController, hintText: "arcee-ai/trinity-large-preview:free", prefixIcon: Icons.model_training),
             ],
@@ -210,7 +210,7 @@ class _ImageContainerState extends State<ImageContainer> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text("Cancel", style: TextStyle(color: Colors.white.withValues(alpha: 0.6))),
+              child: Text("Cancel", style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.6))),
             ),
             ElevatedButton(
               onPressed: () {
@@ -473,7 +473,7 @@ class _ImageContainerState extends State<ImageContainer> {
           const SizedBox(height: 24),
           Text(
             'Tap to Upload Image',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.95), fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.95), fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -606,7 +606,7 @@ class _ImageContainerState extends State<ImageContainer> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)),
-                    child: Text("${totalW.toInt()} x ${totalH.toInt()}", style: const TextStyle(color: Colors.white, fontSize: 10)),
+                    child: Text("${totalW.toInt()} x ${totalH.toInt()}", style: const TextStyle(color: AppTheme.mist, fontSize: 10)),
                   ),
                 ),
               ],
@@ -750,7 +750,7 @@ class _ImageContainerState extends State<ImageContainer> {
           decoration: BoxDecoration(
             color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            border: Border.all(color: AppTheme.mist.withValues(alpha: 0.1)),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 16, offset: const Offset(0, 4))],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -780,7 +780,7 @@ class _ImageContainerState extends State<ImageContainer> {
                   Container(
                     width: 32,
                     height: 32,
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), shape: BoxShape.circle),
+                    decoration: BoxDecoration(color: AppTheme.mist.withValues(alpha: 0.05), shape: BoxShape.circle),
                     child: Icon(Icons.circle, size: _strokeWidth.clamp(4, 20).toDouble(), color: AppTheme.accentPrimary),
                   ),
                   const SizedBox(width: 12),
@@ -788,7 +788,7 @@ class _ImageContainerState extends State<ImageContainer> {
                     child: SizedBox(
                       height: 20,
                       child: SliderTheme(
-                        data: SliderTheme.of(context).copyWith(activeTrackColor: AppTheme.accentPrimary, inactiveTrackColor: Colors.white.withValues(alpha: 0.1), thumbColor: Colors.white, trackHeight: 4, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8, elevation: 2), overlayShape: const RoundSliderOverlayShape(overlayRadius: 16)),
+                        data: SliderTheme.of(context).copyWith(activeTrackColor: AppTheme.accentPrimary, inactiveTrackColor: AppTheme.mist.withValues(alpha: 0.1), thumbColor: Colors.white, trackHeight: 4, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8, elevation: 2), overlayShape: const RoundSliderOverlayShape(overlayRadius: 16)),
                         child: Slider(value: _strokeWidth, min: 1.0, max: 100.0, onChanged: (value) => setState(() => _strokeWidth = value)),
                       ),
                     ),
@@ -796,7 +796,7 @@ class _ImageContainerState extends State<ImageContainer> {
                   const SizedBox(width: 12),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                    decoration: BoxDecoration(color: AppTheme.mist.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                     child: Text(
                       "${_strokeWidth.round()}px",
                       style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
@@ -842,8 +842,8 @@ class _ImageContainerState extends State<ImageContainer> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: isDestructive && !isDisabled ? Colors.redAccent.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.03),
-              border: Border.all(color: isDestructive && !isDisabled ? AppTheme.error.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.05)),
+              color: isDestructive && !isDisabled ? Colors.redAccent.withValues(alpha: 0.1) : AppTheme.mist.withValues(alpha: 0.03),
+              border: Border.all(color: isDestructive && !isDisabled ? AppTheme.error.withValues(alpha: 0.1) : AppTheme.mist.withValues(alpha: 0.05)),
             ),
             child: Icon(icon, size: 18, color: isDestructive && !isDisabled ? AppTheme.error : Colors.white70),
           ),
@@ -905,14 +905,14 @@ class _ImageContainerState extends State<ImageContainer> {
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          border: Border.all(color: AppTheme.mist.withValues(alpha: 0.2)),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 16),
+            Icon(Icons.swap_horiz_rounded, color: AppTheme.mist, size: 16),
             SizedBox(width: 6),
-            Text('Change', style: TextStyle(color: Colors.white, fontSize: 12)),
+            Text('Change', style: TextStyle(color: AppTheme.mist, fontSize: 12)),
           ],
         ),
       ),
@@ -935,7 +935,7 @@ class _ImageContainerState extends State<ImageContainer> {
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          border: Border.all(color: AppTheme.mist.withValues(alpha: 0.2)),
         ),
         child: Stack(
           children: [
@@ -982,7 +982,7 @@ class _ImageContainerState extends State<ImageContainer> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               // Icon color transitions: Black when Active (on pill), White when Inactive
-              child: Icon(icon, size: 20, color: isActive ? Colors.black : Colors.white.withValues(alpha: 0.7)),
+              child: Icon(icon, size: 20, color: isActive ? Colors.black : AppTheme.mist.withValues(alpha: 0.7)),
             ),
           ),
         ),
@@ -1059,12 +1059,9 @@ class _ImageContainerState extends State<ImageContainer> {
               // Section Title
               Row(
                 children: [
-                  Icon(Icons.dashboard_customize_rounded, color: AppTheme.accentPrimary, size: 16),
+                  Icon(Icons.dashboard_customize_rounded, color: AppTheme.accentPrimary, size: 15),
                   const SizedBox(width: 6),
-                  Text(
-                    "PROMPT",
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.2),
-                  ),
+                  Text("PROMPT", style: AppTheme.eyebrow),
                 ],
               ),
 
@@ -1088,7 +1085,7 @@ class _ImageContainerState extends State<ImageContainer> {
                           borderRadius: BorderRadius.circular(20),
                           child: Padding(
                             padding: const EdgeInsets.all(6.0),
-                            child: Icon(Icons.undo_rounded, size: 16, color: Colors.white.withValues(alpha: 0.6)),
+                            child: Icon(Icons.undo_rounded, size: 16, color: AppTheme.mist.withValues(alpha: 0.6)),
                           ),
                         ),
                       ),
@@ -1189,7 +1186,7 @@ class _ImageContainerState extends State<ImageContainer> {
                           borderRadius: BorderRadius.circular(20),
                           child: Padding(
                             padding: const EdgeInsets.all(6.0),
-                            child: Icon(Icons.close_rounded, size: 16, color: Colors.white.withValues(alpha: 0.6)),
+                            child: Icon(Icons.close_rounded, size: 16, color: AppTheme.mist.withValues(alpha: 0.6)),
                           ),
                         ),
                       ),
@@ -1237,7 +1234,7 @@ class _ImageContainerState extends State<ImageContainer> {
                 const SizedBox(width: 6),
                 Text(
                   "IMAGE STITCH",
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.2),
+                  style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.7), fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.2),
                 ),
                 const Spacer(),
                 if (_stitchImages.isNotEmpty)
@@ -1269,19 +1266,19 @@ class _ImageContainerState extends State<ImageContainer> {
                     child: Container(
                       height: 72,
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
+                        border: Border.all(color: AppTheme.mist.withValues(alpha: 0.1), width: 1.5),
                         borderRadius: BorderRadius.circular(14),
-                        color: Colors.white.withValues(alpha: 0.03),
+                        color: AppTheme.mist.withValues(alpha: 0.03),
                       ),
                       child: Center(
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.add_photo_alternate_outlined, color: Colors.white.withValues(alpha: 0.4), size: 22),
+                            Icon(Icons.add_photo_alternate_outlined, color: AppTheme.mist.withValues(alpha: 0.4), size: 22),
                             const SizedBox(width: 8),
                             Text(
                               "Add images to stitch",
-                              style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13, fontWeight: FontWeight.w500),
+                              style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.4), fontSize: 13, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -1304,11 +1301,11 @@ class _ImageContainerState extends State<ImageContainer> {
                               width: 72,
                               height: 72,
                               decoration: BoxDecoration(
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 1.5),
+                                border: Border.all(color: AppTheme.mist.withValues(alpha: 0.12), width: 1.5),
                                 borderRadius: BorderRadius.circular(14),
-                                color: Colors.white.withValues(alpha: 0.03),
+                                color: AppTheme.mist.withValues(alpha: 0.03),
                               ),
-                              child: Icon(Icons.add_rounded, color: Colors.white.withValues(alpha: 0.4), size: 28),
+                              child: Icon(Icons.add_rounded, color: AppTheme.mist.withValues(alpha: 0.4), size: 28),
                             ),
                           );
                         }
@@ -1336,7 +1333,7 @@ class _ImageContainerState extends State<ImageContainer> {
                                     border: Border.all(color: Colors.black, width: 2),
                                     boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 4)],
                                   ),
-                                  child: const Icon(Icons.close_rounded, size: 12, color: Colors.white),
+                                  child: const Icon(Icons.close_rounded, size: 12, color: AppTheme.mist),
                                 ),
                               ),
                             ),
@@ -1394,7 +1391,7 @@ class _ImageContainerState extends State<ImageContainer> {
               const SizedBox(width: 6),
               Text(
                 "ADDITIONAL IMAGES",
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.2),
+                style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.7), fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.2),
               ),
             ],
           ),
@@ -1413,8 +1410,8 @@ class _ImageContainerState extends State<ImageContainer> {
                 height: 88,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: file != null ? AppTheme.accentSecondary.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.12), width: 1.5),
-                  color: Colors.white.withValues(alpha: 0.03),
+                  border: Border.all(color: file != null ? AppTheme.accentSecondary.withValues(alpha: 0.4) : AppTheme.mist.withValues(alpha: 0.12), width: 1.5),
+                  color: AppTheme.mist.withValues(alpha: 0.03),
                 ),
                 child: Stack(
                   clipBehavior: Clip.none,
@@ -1431,14 +1428,14 @@ class _ImageContainerState extends State<ImageContainer> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.add_rounded, color: Colors.white.withValues(alpha: 0.4), size: 22),
+                              Icon(Icons.add_rounded, color: AppTheme.mist.withValues(alpha: 0.4), size: 22),
                               const SizedBox(height: 2),
                               Text(
                                 label,
                                 textAlign: TextAlign.center,
                                 overflow: TextOverflow.ellipsis,
                                 maxLines: 2,
-                                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 9),
+                                style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.4), fontSize: 9),
                               ),
                             ],
                           ),
@@ -1458,7 +1455,7 @@ class _ImageContainerState extends State<ImageContainer> {
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.black, width: 2),
                             ),
-                            child: const Icon(Icons.close_rounded, size: 11, color: Colors.white),
+                            child: const Icon(Icons.close_rounded, size: 11, color: AppTheme.mist),
                           ),
                         ),
                       ),
@@ -1557,24 +1554,25 @@ class _ImageContainerState extends State<ImageContainer> {
           ],
         ),
 
-        const SizedBox(width: 12),
+        const Spacer(),
 
-        // Main Generate Button
-        Expanded(
-          child: GlassGenButton(
-            onTap: () {
-              FocusScope.of(context).unfocus();
-              if (userPrompt.text.isNotEmpty) {
-                setState(() {
-                  globalInpaintHistory.add(userPrompt.text);
-                  StorageService.saveInpaintHistory();
-                });
-                generateImage();
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text("Please enter a prompt first"), backgroundColor: AppTheme.glassBackgroundDark, behavior: SnackBarBehavior.floating));
-              }
-            },
-          ),
+        // Main Generate Button - a fixed-size circle now (see
+        // GlassGenButton), so it sits at the row's end rather than
+        // stretching to fill it.
+        GlassGenButton(
+          isLoading: false,
+          onTap: () {
+            FocusScope.of(context).unfocus();
+            if (userPrompt.text.isNotEmpty) {
+              setState(() {
+                globalInpaintHistory.add(userPrompt.text);
+                StorageService.saveInpaintHistory();
+              });
+              generateImage();
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text("Please enter a prompt first"), backgroundColor: AppTheme.glassBackgroundDark, behavior: SnackBarBehavior.floating));
+            }
+          },
         ),
       ],
     );

@@ -3,6 +3,9 @@
 // Flutter imports
 import 'package:flutter/material.dart';
 
+// Local imports - Elements
+import 'package:sd_companion/elements/widgets/theme_constants.dart';
+
 // Local imports - Logic
 import 'package:sd_companion/logic/models/drawing_models.dart';
 
@@ -59,7 +62,7 @@ class MaskPainter extends CustomPainter {
         ..style = PaintingStyle.stroke;
 
       if (path.mode == DrawingMode.draw) {
-        paint.color = Colors.white.withValues(alpha: 0.6);
+        paint.color = AppTheme.mist.withValues(alpha: 0.6);
         paint.blendMode = BlendMode.src;
       } else {
         paint.color = Colors.transparent;

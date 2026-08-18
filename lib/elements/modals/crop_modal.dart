@@ -111,7 +111,7 @@ class _CropModalContentState extends State<_CropModalContent> {
       ..clearSnackBars()
       ..showSnackBar(
         SnackBar(
-          content: Text(msg, style: const TextStyle(color: Colors.white)),
+          content: Text(msg, style: const TextStyle(color: AppTheme.mist)),
           backgroundColor: error ? const Color(0xFFB00020) : const Color(0xFF1B6B49),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -260,7 +260,7 @@ class _CropModalContentState extends State<_CropModalContent> {
                                 const SizedBox(height: 16),
                                 Text(
                                   _sending ? 'Adding to Results…' : 'Processing…',
-                                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                                  style: const TextStyle(color: AppTheme.mist, fontSize: 14, fontWeight: FontWeight.w500),
                                 ),
                               ],
                             ),
@@ -333,11 +333,11 @@ class _ViewerCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.7),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                            border: Border.all(color: AppTheme.mist.withValues(alpha: 0.15)),
                           ),
                           child: Text(
                             '9:20 Ratio  •  ${croppedW ?? '?'} × ${croppedH ?? '?'}',
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+                            style: const TextStyle(color: AppTheme.mist, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5),
                           ),
                         ),
                       ),
@@ -363,7 +363,7 @@ class _EmptyViewer extends StatelessWidget {
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(_kRadius),
-          gradient: LinearGradient(colors: [Colors.white.withValues(alpha: 0.06), Colors.white.withValues(alpha: 0.02)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          gradient: LinearGradient(colors: [AppTheme.mist.withValues(alpha: 0.06), AppTheme.mist.withValues(alpha: 0.02)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

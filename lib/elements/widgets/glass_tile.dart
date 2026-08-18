@@ -49,15 +49,11 @@ class GlassTile extends StatelessWidget {
     return Container(
       margin: margin ?? const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: isSelected
-            ? effectiveAccent.withValues(alpha: 0.15)
-            : const Color(0x0DFFFFFF),
-        borderRadius: BorderRadius.circular(16),
+        color: isSelected ? effectiveAccent.withValues(alpha: 0.15) : AppTheme.mist.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(
-          color: isSelected
-              ? effectiveAccent.withValues(alpha: 0.5)
-              : const Color(0x14FFFFFF),
-          width: isSelected ? 2 : 1,
+          color: isSelected ? effectiveAccent.withValues(alpha: 0.5) : AppTheme.mist10,
+          width: isSelected ? 1.5 : 1,
         ),
       ),
       child: Material(
@@ -65,7 +61,7 @@ class GlassTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           onLongPress: onLongPress,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           child: Padding(
             padding: padding ?? const EdgeInsets.all(12.0),
             child: Row(
@@ -75,12 +71,10 @@ class GlassTile extends StatelessWidget {
                     padding: const EdgeInsets.only(right: 12.0),
                     child: Icon(
                       showCheckbox
-                          ? (isSelected
-                                ? (selectedIcon ?? Icons.check_circle)
-                                : (unselectedIcon ?? Icons.circle_outlined))
+                          ? (isSelected ? (selectedIcon ?? Icons.check_circle) : (unselectedIcon ?? Icons.circle_outlined))
                           : leadingIcon,
-                      color: isSelected ? effectiveAccent : Colors.white24,
-                      size: 24,
+                      color: isSelected ? effectiveAccent : AppTheme.mist35,
+                      size: 22,
                     ),
                   ),
                 Expanded(
@@ -91,26 +85,16 @@ class GlassTile extends StatelessWidget {
                       Text(
                         label,
                         style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : const Color(0xCCFFFFFF),
+                          color: isSelected ? AppTheme.mist : AppTheme.mist80,
                           fontSize: 14,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.w500,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (subtitle != null) ...[
                         const SizedBox(height: 4),
-                        Text(
-                          subtitle!,
-                          style: const TextStyle(
-                            color: Colors.white38,
-                            fontSize: 11,
-                          ),
-                        ),
+                        Text(subtitle!, style: TextStyle(color: AppTheme.mist35, fontSize: 11)),
                       ],
                     ],
                   ),

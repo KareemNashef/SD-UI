@@ -146,7 +146,7 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
             children: [
               ListTile(
                 leading: const Icon(Icons.drive_file_rename_outline, color: Colors.white70),
-                title: const Text('Rename', style: TextStyle(color: Colors.white)),
+                title: const Text('Rename', style: TextStyle(color: AppTheme.mist)),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   _renameWorkflow(record);
@@ -154,7 +154,7 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
               ),
               ListTile(
                 leading: const Icon(Icons.tune_rounded, color: Colors.white70),
-                title: const Text('Change type', style: TextStyle(color: Colors.white)),
+                title: const Text('Change type', style: TextStyle(color: AppTheme.mist)),
                 subtitle: Text(record.workflowType.displayName, style: const TextStyle(color: Colors.white38)),
                 onTap: () async {
                   Navigator.of(ctx).pop();
@@ -166,7 +166,7 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
               ),
               ListTile(
                 leading: const Icon(Icons.copy_rounded, color: Colors.white70),
-                title: const Text('Duplicate', style: TextStyle(color: Colors.white)),
+                title: const Text('Duplicate', style: TextStyle(color: AppTheme.mist)),
                 onTap: () async {
                   Navigator.of(ctx).pop();
                   await ComfyWorkflowService.instance.duplicateWorkflow(record.id);
@@ -193,11 +193,11 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surfaceCard,
-        title: const Text('Rename workflow', style: TextStyle(color: Colors.white)),
+        title: const Text('Rename workflow', style: TextStyle(color: AppTheme.mist)),
         content: TextField(
           controller: controller,
           autofocus: true,
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: AppTheme.mist),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
@@ -239,7 +239,7 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
               const SizedBox(height: 2),
               Text(
                 'Workflows',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white.withValues(alpha: 0.95)),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.mist.withValues(alpha: 0.95)),
               ),
             ],
           ),
@@ -264,9 +264,9 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.03),
+          color: AppTheme.mist.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          border: Border.all(color: AppTheme.mist.withValues(alpha: 0.08)),
         ),
         child: const Row(
           children: [
@@ -289,9 +289,9 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: AppTheme.mist.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          border: Border.all(color: AppTheme.mist.withValues(alpha: 0.08)),
         ),
         child: Row(
           children: [
@@ -303,18 +303,18 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
                 children: [
                   Text(
                     'ACTIVE WORKFLOW',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     active?.name ?? 'Select a workflow',
-                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                    style: const TextStyle(color: AppTheme.mist, fontSize: 15, fontWeight: FontWeight.w600),
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (active != null)
                     Text(
                       '${active.workflowType.displayName} · ${workflows.length} saved',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 11),
+                      style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.35), fontSize: 11),
                     ),
                 ],
               ),
@@ -343,7 +343,7 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: isActive ? AppTheme.comfyAccentPrimary.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.03),
+        color: isActive ? AppTheme.comfyAccentPrimary.withValues(alpha: 0.12) : AppTheme.mist.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
@@ -376,7 +376,7 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
                       ),
                       Text(
                         record.workflowType.displayName,
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 11),
+                        style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.35), fontSize: 11),
                       ),
                     ],
                   ),
@@ -408,7 +408,7 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
               const SizedBox(width: 6),
               Text(
                 title.toUpperCase(),
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2),
               ),
             ],
           ),
@@ -459,9 +459,9 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: AppTheme.mist.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          border: Border.all(color: AppTheme.mist.withValues(alpha: 0.08)),
         ),
         child: Row(
           children: [
@@ -473,12 +473,12 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
                 children: [
                   Text(
                     _friendlyLabel(widget.input.name).toUpperCase(),
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     current,
-                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                    style: const TextStyle(color: AppTheme.mist, fontSize: 15, fontWeight: FontWeight.w600),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -586,7 +586,7 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
           flex: 2,
           child: Text(
             label,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500),
+            style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500),
           ),
         ),
         const SizedBox(width: 12),
@@ -604,7 +604,7 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
           flex: 2,
           child: Text(
             _friendlyLabel(widget.input.name),
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500),
+            style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500),
           ),
         ),
         const SizedBox(width: 12),
@@ -646,7 +646,7 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
       children: [
         Text(
           _friendlyLabel(widget.input.name),
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500),
+          style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 8),
         Row(
@@ -700,7 +700,7 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? AppTheme.comfyAccentPrimary.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.08),
+              color: selected ? AppTheme.comfyAccentPrimary.withValues(alpha: 0.5) : AppTheme.mist.withValues(alpha: 0.08),
             ),
           ),
           child: Row(
@@ -726,9 +726,9 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: AppTheme.mist.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        border: Border.all(color: AppTheme.mist.withValues(alpha: 0.06)),
       ),
       child: Row(
         children: [
@@ -815,7 +815,7 @@ class _WorkflowTypeDialogState extends State<_WorkflowTypeDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: AppTheme.surfaceCard,
-      title: const Text('Workflow type', style: TextStyle(color: Colors.white)),
+      title: const Text('Workflow type', style: TextStyle(color: AppTheme.mist)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -831,7 +831,7 @@ class _WorkflowTypeDialogState extends State<_WorkflowTypeDialog> {
               groupValue: _selected,
               activeColor: AppTheme.comfyAccentPrimary,
               onChanged: (value) => setState(() => _selected = value!),
-              title: Text(type.displayName, style: const TextStyle(color: Colors.white)),
+              title: Text(type.displayName, style: const TextStyle(color: AppTheme.mist)),
               subtitle: Text(type.description, style: const TextStyle(color: Colors.white38, fontSize: 11)),
               contentPadding: EdgeInsets.zero,
             ),
@@ -842,7 +842,7 @@ class _WorkflowTypeDialogState extends State<_WorkflowTypeDialog> {
         ElevatedButton(
           onPressed: () => Navigator.pop(context, _selected),
           style: ElevatedButton.styleFrom(backgroundColor: AppTheme.comfyAccentPrimary),
-          child: const Text('Continue', style: TextStyle(color: Colors.white)),
+          child: const Text('Continue', style: TextStyle(color: AppTheme.mist)),
         ),
       ],
     );

@@ -36,12 +36,11 @@ class GlassSelectionChip extends StatelessWidget {
         padding:
             padding ?? const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
         decoration: BoxDecoration(
-          color: isSelected ? effectiveAccent : const Color(0x0DFFFFFF),
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? effectiveAccent : AppTheme.mist.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
           border: Border.all(
-            color: isSelected ? effectiveAccent : const Color(0x1AFFFFFF),
+            color: isSelected ? effectiveAccent : AppTheme.mist10,
           ),
-          // Simplified shadow
           boxShadow: isSelected
               ? [
                   BoxShadow(
@@ -55,8 +54,8 @@ class GlassSelectionChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.white60,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? AppTheme.ink : AppTheme.mist55,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
             fontSize: 12,
           ),
         ),

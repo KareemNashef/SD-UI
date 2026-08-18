@@ -248,7 +248,7 @@ class _ComfyServerLibraryModalState extends State<_ComfyServerLibraryModal> {
             const SizedBox(height: 12),
             Text(
               image.filename,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              style: const TextStyle(color: AppTheme.mist, fontSize: 13),
               textAlign: TextAlign.center,
             ),
             if (details.isNotEmpty) ...[
@@ -280,8 +280,8 @@ class _ComfyServerLibraryModalState extends State<_ComfyServerLibraryModal> {
                     );
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: AppTheme.comfyAccentPrimary),
-                  icon: const Icon(Icons.add_photo_alternate_rounded, color: Colors.white, size: 18),
-                  label: const Text('Add to Results', style: TextStyle(color: Colors.white)),
+                  icon: const Icon(Icons.add_photo_alternate_rounded, color: AppTheme.mist, size: 18),
+                  label: const Text('Add to Results', style: TextStyle(color: AppTheme.mist)),
                 ),
               ],
             ),
@@ -314,10 +314,10 @@ class _ComfyServerLibraryModalState extends State<_ComfyServerLibraryModal> {
         children: [
           Text(
             _dayLabel(row.day),
-            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+            style: const TextStyle(color: AppTheme.mist, fontSize: 14, fontWeight: FontWeight.w700),
           ),
           const SizedBox(width: 10),
-          Expanded(child: Container(height: 1, color: Colors.white.withValues(alpha: 0.08))),
+          Expanded(child: Container(height: 1, color: AppTheme.mist.withValues(alpha: 0.08))),
           const SizedBox(width: 10),
           Text('${row.count}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
         ],
@@ -382,9 +382,9 @@ class _ComfyServerLibraryModalState extends State<_ComfyServerLibraryModal> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: selected ? AppTheme.comfyAccentPrimary : Colors.black.withValues(alpha: 0.5),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1),
+                  border: Border.all(color: AppTheme.mist.withValues(alpha: 0.6), width: 1),
                 ),
-                child: selected ? const Icon(Icons.check_rounded, color: Colors.white, size: 14) : null,
+                child: selected ? const Icon(Icons.check_rounded, color: AppTheme.mist, size: 14) : null,
               ),
             ),
           ],
@@ -419,8 +419,8 @@ class _ComfyServerLibraryModalState extends State<_ComfyServerLibraryModal> {
             ElevatedButton.icon(
               onPressed: _bringBackSelected,
               style: ElevatedButton.styleFrom(backgroundColor: AppTheme.comfyAccentPrimary),
-              icon: const Icon(Icons.add_photo_alternate_rounded, color: Colors.white, size: 18),
-              label: Text('Add ${_selectedKeys.length} to Results', style: const TextStyle(color: Colors.white)),
+              icon: const Icon(Icons.add_photo_alternate_rounded, color: AppTheme.mist, size: 18),
+              label: Text('Add ${_selectedKeys.length} to Results', style: const TextStyle(color: AppTheme.mist)),
             ),
           ],
         ),
@@ -516,11 +516,11 @@ class _ComfyServerLibraryModalState extends State<_ComfyServerLibraryModal> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.photo_library_outlined, size: 48, color: Colors.white.withValues(alpha: 0.15)),
+            Icon(Icons.photo_library_outlined, size: 48, color: AppTheme.mist.withValues(alpha: 0.15)),
             const SizedBox(height: 12),
             Text(
               _isSearching ? 'No images match "$_search"' : 'No generated images found on the server yet',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
+              style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.4), fontSize: 13),
             ),
           ],
         ),

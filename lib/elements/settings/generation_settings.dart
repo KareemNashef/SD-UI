@@ -68,7 +68,7 @@ class GenerationSettingsState extends State<GenerationSettings> {
             const SizedBox(height: 2),
             Text(
               'Parameters',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white.withValues(alpha: 0.95)),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.mist.withValues(alpha: 0.95)),
             ),
           ],
         ),

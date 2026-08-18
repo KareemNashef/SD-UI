@@ -1,6 +1,7 @@
 // ==================== Glass Modal ==================== //
 
 // Flutter imports
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 // Local imports - Elements
@@ -9,6 +10,9 @@ import 'package:sd_companion/elements/widgets/glass_drag_handle.dart';
 
 // Glass Modal Implementation
 
+/// The sheet surface every modal in the app opens onto - "thick" glass,
+/// the heaviest weight in the material scale, with real backdrop blur
+/// since a sheet is always a single, non-repeated surface.
 class GlassModal extends StatelessWidget {
   final Widget child;
   final double heightFactor;
@@ -43,7 +47,7 @@ class GlassModal extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.6),
+      barrierColor: AppTheme.ink.withValues(alpha: 0.65),
       builder: (ctx) => GlassModal(
         heightFactor: heightFactor,
         showDragHandle: showDragHandle,
@@ -65,6 +69,7 @@ class GlassModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final radius = const BorderRadius.vertical(top: Radius.circular(AppTheme.modalBorderRadius));
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) {
@@ -75,25 +80,30 @@ class GlassModal extends StatelessWidget {
       },
       child: FractionallySizedBox(
         heightFactor: heightFactor,
-        child: Container(
-          decoration: BoxDecoration(
-            color: (backgroundColor ?? AppTheme.glassBackgroundLight)
-                .withValues(alpha: 0.95),
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(AppTheme.modalBorderRadius),
-            ),
-            border: Border(
-              top: BorderSide(
-                color: borderColor ?? AppTheme.glassBorder,
-                width: 1,
+        child: ClipRRect(
+          borderRadius: radius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: AppTheme.glassBlurThick, sigmaY: AppTheme.glassBlurThick),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    (backgroundColor ?? AppTheme.ink2).withValues(alpha: 0.86),
+                    (backgroundColor ?? AppTheme.ink).withValues(alpha: 0.94),
+                  ],
+                ),
+                borderRadius: radius,
+                border: Border(top: BorderSide(color: borderColor ?? AppTheme.glassBorder, width: 1)),
+              ),
+              child: Column(
+                children: [
+                  if (showDragHandle) const GlassDragHandle(),
+                  Expanded(child: child),
+                ],
               ),
             ),
-          ),
-          child: Column(
-            children: [
-              if (showDragHandle) const GlassDragHandle(),
-              Expanded(child: child),
-            ],
           ),
         ),
       ),

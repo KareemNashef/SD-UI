@@ -133,7 +133,7 @@ class _CheckpointEditorModalState extends State<CheckpointEditorModal> {
         Expanded(
           child: Container(
             height: 1,
-            color: Colors.white.withValues(alpha: 0.1),
+            color: AppTheme.mist.withValues(alpha: 0.1),
           ),
         ),
       ],
@@ -163,7 +163,7 @@ class _CheckpointEditorModalState extends State<CheckpointEditorModal> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
+            color: AppTheme.mist.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppTheme.glassBorderLight),
           ),
@@ -179,7 +179,7 @@ class _CheckpointEditorModalState extends State<CheckpointEditorModal> {
                 color: Colors.white54,
               ),
               style: const TextStyle(
-                color: Colors.white,
+                color: AppTheme.mist,
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
               ),
@@ -326,7 +326,7 @@ class _CheckpointEditorModalState extends State<CheckpointEditorModal> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             border: Border(
-              top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+              top: BorderSide(color: AppTheme.mist.withValues(alpha: 0.1)),
             ),
           ),
           child: SafeArea(

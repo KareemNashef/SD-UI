@@ -42,7 +42,7 @@ class SettingsPageState extends State<SettingsPage>
         extendBody: true,
         extendBodyBehindAppBar: true,
         appBar: const GlassAppBar(
-          title: 'SYSTEM',
+          title: 'Settings',
           actions: [
             Padding(
               padding: EdgeInsets.only(right: 16),

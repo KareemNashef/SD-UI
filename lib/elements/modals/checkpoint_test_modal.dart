@@ -145,7 +145,7 @@ class _CheckpointTesterModalContentState
               '$_selectionCount selected',
               key: ValueKey("sel_$_selectionCount"),
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
+                color: AppTheme.mist.withValues(alpha: 0.5),
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -211,7 +211,7 @@ class _CheckpointTesterModalContentState
                   const SizedBox(width: 12),
                   Expanded(
                     child: Divider(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: AppTheme.mist.withValues(alpha: 0.1),
                       thickness: 1,
                     ),
                   ),

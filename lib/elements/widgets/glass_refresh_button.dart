@@ -37,14 +37,14 @@ class GlassRefreshButton extends StatelessWidget {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white10),
-            color: const Color(0x0DFFFFFF),
+            border: Border.all(color: AppTheme.mist10),
+            color: AppTheme.mist.withValues(alpha: 0.05),
           ),
           child: Transform.rotate(
             angle: turns * 6.28318, // 2π radians per turn
             child: Icon(
               Icons.refresh_rounded,
-              color: isRefreshing ? effectiveAccent : Colors.white70,
+              color: isRefreshing ? effectiveAccent : AppTheme.mist80,
               size: 20,
             ),
           ),

@@ -40,7 +40,7 @@ class ResultsPageState extends State<ResultsPage>
         extendBody: true,
         extendBodyBehindAppBar: true,
         appBar: GlassAppBar(
-          title: 'LIBRARY',
+          title: 'Gallery',
           actions: [
             // Only Comfy currently has a real server-side endpoint this can
             // be built against - see BackendCapabilities.serverLibrary.

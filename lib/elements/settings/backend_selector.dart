@@ -1,8 +1,13 @@
 // ==================== Backend Selector ==================== //
 //
-// Lets the user pick Forge Neo or ComfyUI as the active backend. Switching
-// clears the previous backend's connection status (so a stale "connected"
-// badge never survives a switch) and reloads the appropriate profile data.
+// Lets the user pick Forge Neo or ComfyUI as the active backend. Rather
+// than flooding the whole app with a flat accent color, the active
+// backend's identity lives in the glass itself here: each option is a
+// pane of GlassContainer tinted toward its own color (see [GlassContainer]
+// tint), the way real tinted glass would read under different light.
+// Switching clears the previous backend's connection status (so a stale
+// "connected" badge never survives a switch) and reloads the appropriate
+// profile data.
 
 import 'package:flutter/material.dart';
 
@@ -43,23 +48,13 @@ class _BackendSelectorState extends State<BackendSelector> {
       valueListenable: globalActiveBackendKind,
       builder: (context, active, child) {
         return GlassContainer(
-          backgroundColor: AppTheme.surfaceCard,
-          borderColor: AppTheme.glassBorder,
           borderRadius: AppTheme.radiusLarge,
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'ACTIVE BACKEND',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white54,
-                  letterSpacing: 1.4,
-                ),
-              ),
+              Text('ENGINE', style: AppTheme.eyebrow),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -111,38 +106,28 @@ class _BackendOption extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = AppTheme.accentFor(kind);
     return Material(
-      color: isActive ? accent.withValues(alpha: 0.14) : Colors.white.withValues(alpha: 0.03),
-      borderRadius: BorderRadius.circular(16),
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
       child: InkWell(
         onTap: isBusy ? null : onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        child: GlassContainer(
+          borderRadius: AppTheme.radiusMedium,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isActive ? accent.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.08),
-              width: isActive ? 1.5 : 1,
-            ),
-          ),
+          tint: isActive ? accent : null,
+          backgroundColor: isActive ? null : AppTheme.mist.withValues(alpha: 0.03),
+          borderColor: isActive ? accent.withValues(alpha: 0.55) : AppTheme.mist10,
           child: Column(
             children: [
-              Icon(icon, color: isActive ? accent : Colors.white38, size: 26),
+              Icon(icon, color: isActive ? accent : AppTheme.mist35, size: 26),
               const SizedBox(height: 8),
               Text(
                 kind.displayName,
-                style: TextStyle(
-                  color: isActive ? Colors.white : Colors.white54,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: isActive ? AppTheme.mist : AppTheme.mist55, fontWeight: FontWeight.bold, fontSize: 13),
               ),
               if (isActive) ...[
                 const SizedBox(height: 4),
-                Text(
-                  'ACTIVE',
-                  style: TextStyle(color: accent, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1),
-                ),
+                Text('ACTIVE', style: TextStyle(color: accent, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1)),
               ],
             ],
           ),
@@ -169,7 +154,7 @@ class BackendIdentityBadge extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12, vertical: compact ? 4 : 6),
           decoration: BoxDecoration(
             color: accent.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(999),
             border: Border.all(color: accent.withValues(alpha: 0.4)),
           ),
           child: Row(
@@ -183,12 +168,7 @@ class BackendIdentityBadge extends StatelessWidget {
               SizedBox(width: compact ? 4 : 6),
               Text(
                 kind.displayName,
-                style: TextStyle(
-                  color: accent,
-                  fontSize: compact ? 10 : 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.4,
-                ),
+                style: TextStyle(color: accent, fontSize: compact ? 10 : 12, fontWeight: FontWeight.bold, letterSpacing: 0.4),
               ),
             ],
           ),

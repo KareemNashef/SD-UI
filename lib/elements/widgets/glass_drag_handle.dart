@@ -3,6 +3,9 @@
 // Flutter imports
 import 'package:flutter/material.dart';
 
+// Local imports - Elements
+import 'package:sd_companion/elements/widgets/theme_constants.dart';
+
 // Glass Drag Handle Implementation
 
 class GlassDragHandle extends StatelessWidget {
@@ -16,12 +19,12 @@ class GlassDragHandle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Container(
-        margin: margin ?? const EdgeInsets.only(top: 12, bottom: 4),
-        width: 40,
+        margin: margin ?? const EdgeInsets.only(top: 14, bottom: 4),
+        width: 38,
         height: 4,
         decoration: BoxDecoration(
-          color: Colors.white24,
-          borderRadius: BorderRadius.circular(2),
+          color: AppTheme.mist35,
+          borderRadius: BorderRadius.circular(999),
         ),
       ),
     );

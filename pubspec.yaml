@@ -1,5 +1,5 @@
 name: sd_companion
-description: "A new Flutter project."
+description: "Aperture — a Liquid Glass interface for Forge Neo and ComfyUI generation."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -34,3 +34,25 @@ flutter:
     - assets/icon/
     - assets/placeholders/
     - assets/comfy/
+
+  fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 600
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 700
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 800
+    - family: Fraunces
+      fonts:
+        - asset: assets/fonts/Fraunces-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/Fraunces-Variable.ttf
+          weight: 600
+        - asset: assets/fonts/Fraunces-Variable.ttf
+          weight: 700

@@ -1,6 +1,7 @@
 // ==================== Glass App Bar ==================== //
 
 // Flutter imports
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -41,99 +42,59 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        color: const Color(0xE6000000), // 90% opacity black
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white.withValues(alpha: 0.1),
-            width: 1,
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: AppTheme.glassBlurRegular, sigmaY: AppTheme.glassBlurRegular),
+        child: Container(
+          height: height,
+          decoration: BoxDecoration(
+            color: AppTheme.ink.withValues(alpha: 0.75),
+            border: Border(bottom: BorderSide(color: AppTheme.glassBorder, width: 1)),
           ),
-        ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
-            AppBar(
-              toolbarHeight: height,
-              centerTitle: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              systemOverlayStyle: SystemUiOverlayStyle.light,
-              leading: leading,
-              actions: actions,
-              title: GestureDetector(
-                onTap: onTitleTap,
-                behavior: HitTestBehavior.opaque,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2.0,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black,
-                            offset: Offset(0, 2),
-                            blurRadius: 4,
+          child: SafeArea(
+            bottom: false,
+            child: Stack(
+              children: [
+                AppBar(
+                  toolbarHeight: height,
+                  centerTitle: true,
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  systemOverlayStyle: SystemUiOverlayStyle.light,
+                  leading: leading,
+                  actions: actions,
+                  title: GestureDetector(
+                    onTap: onTitleTap,
+                    behavior: HitTestBehavior.opaque,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(title, style: AppTheme.titleLarge),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 5),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.mist.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: AppTheme.mist18, width: 1),
+                            ),
+                            child: Text(subtitle!, style: AppTheme.subtitleMedium),
                           ),
                         ],
-                      ),
+                      ],
                     ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0x0DFFFFFF),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: const Color(0x26FFFFFF),
-                            width: 1,
-                          ),
-                        ),
-                        child: Text(
-                          subtitle!,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontFamily: 'monospace',
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
-                            color: AppTheme.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
-              ),
+                if (showStatusIndicator)
+                  const Positioned(bottom: 0, left: 0, right: 0, child: _StatusBorderLine())
+                else
+                  Positioned(bottom: 0, left: 0, right: 0, child: Container(height: 1, color: AppTheme.mist10)),
+              ],
             ),
-            if (showStatusIndicator)
-              const Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: _StatusBorderLine(),
-              )
-            else
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(height: 1, color: const Color(0x1AFFFFFF)),
-              ),
-          ],
+          ),
         ),
       ),
     );
@@ -150,21 +111,15 @@ class _StatusBorderLine extends StatelessWidget {
     return ValueListenableBuilder<bool>(
       valueListenable: globalServerStatus,
       builder: (context, isOnline, child) {
-        // Online reflects the active backend's identity color, not a fixed
+        // Online reflects the active backend's identity tint, not a fixed
         // "success" green - Comfy connected should read violet, not green.
         final color = isOnline ? AppTheme.accentPrimary : AppTheme.error;
 
         return Container(
-          height: 3,
+          height: 2.5,
           decoration: BoxDecoration(
             color: color,
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.6),
-                blurRadius: 10,
-                spreadRadius: 1,
-              ),
-            ],
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.6), blurRadius: 10, spreadRadius: 1)],
           ),
         );
       },

@@ -54,40 +54,33 @@ class GlassInput extends StatelessWidget {
       onChanged: onChanged,
       enabled: enabled,
       onTapOutside: (event) => FocusScope.of(context).unfocus(),
-      style: const TextStyle(color: Colors.white, fontSize: 14),
+      style: TextStyle(color: AppTheme.mist, fontSize: 14, fontFamily: AppTheme.fontUI),
+      cursorColor: effectiveAccent,
       decoration: InputDecoration(
         hintText: hintText,
         labelText: labelText,
-        prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon, color: const Color(0x4DFFFFFF), size: 20)
-            : null,
-        hintStyle: const TextStyle(color: Color(0x4DFFFFFF), fontSize: 14),
-        labelStyle: const TextStyle(color: Color(0x99FFFFFF), fontSize: 14),
+        prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: AppTheme.mist35, size: 20) : null,
+        hintStyle: TextStyle(color: AppTheme.mist35, fontSize: 14, fontFamily: AppTheme.fontUI),
+        labelStyle: TextStyle(color: AppTheme.mist55, fontSize: 14, fontFamily: AppTheme.fontUI),
         filled: true,
-        fillColor: const Color(0x33000000),
+        fillColor: AppTheme.ink.withValues(alpha: 0.35),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-          borderSide: const BorderSide(color: Color(0x0DFFFFFF)),
+          borderSide: BorderSide(color: AppTheme.mist10),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-          borderSide: BorderSide(
-            color: effectiveAccent.withValues(alpha: 0.5),
-            width: 1.5,
-          ),
+          borderSide: BorderSide(color: effectiveAccent.withValues(alpha: 0.55), width: 1.5),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-          borderSide: const BorderSide(color: Color(0x0DFFFFFF)),
+          borderSide: BorderSide(color: AppTheme.mist10),
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }

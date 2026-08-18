@@ -93,7 +93,7 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
     //   ..clearSnackBars()
     //   ..showSnackBar(
     //     SnackBar(
-    //       content: Text(msg, style: const TextStyle(color: Colors.white)),
+    //       content: Text(msg, style: const TextStyle(color: AppTheme.mist)),
     //       backgroundColor: error
     //           ? const Color(0xFFB00020)
     //           : const Color(0xFF1B6B49),
@@ -258,7 +258,7 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
                                   Text(
                                     _statusText?.toUpperCase() ?? (_sending ? 'UPSCALE IN PROGRESS' : 'PREPARING...'),
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                                    style: const TextStyle(color: AppTheme.mist, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1.5),
                                   ),
                                   if (_progress != null) ...[
                                     const SizedBox(height: 10),
@@ -271,7 +271,7 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
                                     const SizedBox(height: 10),
                                     Text(
                                       'Enhancing details & resolution',
-                                      style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11, fontWeight: FontWeight.w500),
+                                      style: TextStyle(color: AppTheme.mist.withValues(alpha: 0.5), fontSize: 11, fontWeight: FontWeight.w500),
                                     ),
                                   ],
                                 ],
@@ -362,9 +362,9 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
               duration: const Duration(milliseconds: 200),
               height: 44,
               decoration: BoxDecoration(
-                color: isSelected ? _accentColor : Colors.white.withValues(alpha: 0.05),
+                color: isSelected ? _accentColor : AppTheme.mist.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: isSelected ? _accentColor : Colors.white.withValues(alpha: 0.1)),
+                border: Border.all(color: isSelected ? _accentColor : AppTheme.mist.withValues(alpha: 0.1)),
               ),
               child: Center(
                 child: Text(
@@ -440,7 +440,7 @@ class _EmptyViewer extends StatelessWidget {
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(_kRadius),
-          gradient: LinearGradient(colors: [Colors.white.withValues(alpha: 0.06), Colors.white.withValues(alpha: 0.02)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          gradient: LinearGradient(colors: [AppTheme.mist.withValues(alpha: 0.06), AppTheme.mist.withValues(alpha: 0.02)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -510,8 +510,8 @@ class _DimChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: accent ? _accentDim : Colors.white.withValues(alpha: 0.04),
-        border: Border.all(color: accent ? _accentBorder : Colors.white.withValues(alpha: 0.1)),
+        color: accent ? _accentDim : AppTheme.mist.withValues(alpha: 0.04),
+        border: Border.all(color: accent ? _accentBorder : AppTheme.mist.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

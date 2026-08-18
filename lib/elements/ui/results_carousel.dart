@@ -13,6 +13,7 @@ import 'package:sd_companion/elements/modals/crop_modal.dart';
 import 'package:sd_companion/elements/modals/metadata_modal.dart';
 import 'package:sd_companion/elements/modals/resize_modal.dart';
 import 'package:sd_companion/elements/modals/upscale_modal.dart';
+import 'package:sd_companion/elements/widgets/glass_container.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
@@ -366,12 +367,9 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(height: 60, width: 60, child: CircularProgressIndicator(strokeWidth: 3, color: AppTheme.accentPrimary)),
+                SizedBox(height: 56, width: 56, child: CircularProgressIndicator(strokeWidth: 3, color: AppTheme.accentPrimary)),
                 const SizedBox(height: 24),
-                Text(
-                  'Generating...',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 18, fontWeight: FontWeight.w500),
-                ),
+                Text('Generating...', style: TextStyle(color: AppTheme.mist80, fontSize: 17, fontWeight: FontWeight.w600)),
               ],
             ),
           );
@@ -380,9 +378,15 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.photo_library_outlined, size: 64, color: Colors.white.withValues(alpha: 0.1)),
-              const SizedBox(height: 16),
-              Text('Gallery is empty', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 16)),
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: AppTheme.mist.withValues(alpha: 0.04), border: Border.all(color: AppTheme.mist10)),
+                child: Icon(Icons.blur_circular_rounded, size: 40, color: AppTheme.mist18),
+              ),
+              const SizedBox(height: 18),
+              Text('Nothing here yet', style: TextStyle(color: AppTheme.mist35, fontSize: 15, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text('Generated images will appear here', style: TextStyle(color: AppTheme.mist18, fontSize: 12)),
             ],
           ),
         );
@@ -392,7 +396,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
 
   Widget _buildMainImage() {
     final selected = _selectedImage;
-    if (selected == null) return const Expanded(child: Center());
+    if (selected == null) return const SizedBox.expand();
 
     // LOGIC: Check if we are comparing and have a valid input file
     final File? inputFile = globalInputImage.value;
@@ -401,8 +405,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
     // The key ensures the widget rebuilds with animation when switching sources
     final imageKey = showInput ? 'input_image' : selected.id;
 
-    return Expanded(
-      child: SizedBox(
+    return SizedBox(
         key: ValueKey<String>(imageKey),
         width: double.infinity,
         child: Stack(
@@ -426,15 +429,15 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                   decoration: BoxDecoration(
                     color: showInput ? AppTheme.warning.withValues(alpha: 0.9) : (selected.backend == BackendKind.comfy ? AppTheme.accentSecondary.withValues(alpha: 0.85) : AppTheme.accentPrimary.withValues(alpha: 0.8)),
                     borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 8)],
+                    boxShadow: [BoxShadow(color: AppTheme.ink.withValues(alpha: 0.5), blurRadius: 8)],
                   ),
                   child: Row(
                     children: [
-                      Icon(showInput ? Icons.input : Icons.image, color: Colors.white, size: 14),
+                      Icon(showInput ? Icons.input : Icons.image, color: AppTheme.ink, size: 14),
                       const SizedBox(width: 6),
                       Text(
                         showInput ? 'INPUT SOURCE' : (selected.backend == BackendKind.comfy ? 'COMFYUI' : 'GENERATED RESULT'),
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                        style: TextStyle(color: AppTheme.ink, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
                       ),
                     ],
                   ),
@@ -443,8 +446,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildResultImageWidget(String url) {
@@ -468,48 +470,60 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
     }
   }
 
-  Widget _buildImageThumbnails(List<GeneratedImage> imageList) {
-    return Container(
-      height: 80,
-      margin: const EdgeInsets.only(top: 16),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-      ),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        itemCount: imageList.length,
-        itemBuilder: (context, index) {
-          final image = imageList[index];
-          final isSelected = image.id == _selectedImageId;
-          return GestureDetector(
-            onTap: () => setState(() => _selectedImageId = image.id),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.only(right: 8),
-              width: isSelected ? 56 : 48,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: isSelected ? AppTheme.accentPrimary : AppTheme.glassBorderLight, width: isSelected ? 2 : 1),
-                boxShadow: isSelected ? AppTheme.glowPrimary(intensity: 0.3) : null,
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppTheme.radiusSmall * 0.5),
-                child: _isBase64DataUrl(image.imageUrl)
-                    ? (_imageCache[image.imageUrl] != null
-                          ? Image.memory(
-                              _imageCache[image.imageUrl]!,
-                              fit: BoxFit.cover,
-                              gaplessPlayback: true,
-                              cacheWidth: 112, // 2x 56
-                            )
-                          : Container(color: Colors.grey.shade900))
-                    : CachedNetworkImage(imageUrl: image.imageUrl, fit: BoxFit.cover, memCacheWidth: 112),
-              ),
+  /// The full result set as a glass grid below the hero - tapping a cell
+  /// just changes what the hero shows, it doesn't navigate anywhere.
+  Widget _buildImageGrid(List<GeneratedImage> imageList) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
+            child: Row(
+              children: [
+                Text('ALL RESULTS', style: AppTheme.eyebrow),
+                const SizedBox(width: 8),
+                Text('${imageList.length}', style: TextStyle(color: AppTheme.mist35, fontSize: 11, fontWeight: FontWeight.w700)),
+              ],
             ),
-          );
-        },
+          ),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1,
+            ),
+            itemCount: imageList.length,
+            itemBuilder: (context, index) {
+              final image = imageList[index];
+              final isSelected = image.id == _selectedImageId;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedImageId = image.id),
+                child: AnimatedContainer(
+                  duration: AppTheme.durationFast,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                    border: Border.all(color: isSelected ? AppTheme.accentPrimary : AppTheme.glassBorderLight, width: isSelected ? 2 : 1),
+                    boxShadow: isSelected ? AppTheme.glowPrimary(intensity: 0.3) : null,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall - 1),
+                    child: _isBase64DataUrl(image.imageUrl)
+                        ? (_imageCache[image.imageUrl] != null
+                              ? Image.memory(_imageCache[image.imageUrl]!, fit: BoxFit.cover, gaplessPlayback: true, cacheWidth: 220)
+                              : Container(color: AppTheme.ink3))
+                        : CachedNetworkImage(imageUrl: image.imageUrl, fit: BoxFit.cover, memCacheWidth: 220),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -520,15 +534,11 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
     final hasImage = selected != null;
     final hasInput = globalInputImage.value != null; // Check global variable
 
-    return Container(
-      margin: const EdgeInsets.only(top: 16, bottom: 8),
+    return GlassContainer(
+      margin: const EdgeInsets.only(top: 16, bottom: 16),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppTheme.glassBackground,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        border: Border.all(color: AppTheme.glassBorder),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 16, offset: const Offset(0, 4))],
-      ),
+      borderRadius: AppTheme.radiusLarge,
+      blurred: true,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -538,7 +548,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             child: Container(
               height: 50,
               decoration: BoxDecoration(
-                gradient: hasImage ? AppTheme.gradientPrimary : LinearGradient(colors: [Colors.grey.shade800, Colors.grey.shade700]),
+                gradient: hasImage ? AppTheme.gradientPrimary : LinearGradient(colors: [AppTheme.ink3, AppTheme.ink2]),
                 borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                 boxShadow: hasImage ? AppTheme.glowPrimary(intensity: 0.3) : [],
               ),
@@ -550,11 +560,11 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (_isSaving) const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) else const Icon(Icons.download_rounded, color: Colors.white, size: 22),
+                      if (_isSaving) SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: AppTheme.ink, strokeWidth: 2)) else Icon(Icons.download_rounded, color: AppTheme.ink, size: 22),
                       const SizedBox(width: 8),
                       Text(
                         _isSaving ? 'Saving' : 'Save',
-                        style: TextStyle(color: hasImage ? Colors.white : Colors.white38, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(color: hasImage ? AppTheme.ink : AppTheme.mist35, fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ],
                   ),
@@ -565,7 +575,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
 
           const SizedBox(width: 8),
 
-          // [NEW] Compare Button with Hold Interaction
+          // Compare Button with Hold Interaction
           Expanded(
             child: Listener(
               // Trigger compare state on press down
@@ -583,15 +593,14 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
                     height: 50,
                     decoration: _isComparing
                         ? BoxDecoration(
-                            color: Colors.amber.withValues(alpha: 0.15),
+                            color: AppTheme.warning.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                            border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                            border: Border.all(color: AppTheme.warning.withValues(alpha: 0.5)),
                           )
                         : null,
                     child: Icon(
                       Icons.compare,
-                      // If holding, turn Amber. If disabled, turn gray.
-                      color: (hasImage && hasInput) ? (_isComparing ? Colors.amber : Colors.white) : Colors.white12,
+                      color: (hasImage && hasInput) ? (_isComparing ? AppTheme.warning : AppTheme.mist) : AppTheme.mist10,
                       size: 24,
                     ),
                   ),
@@ -600,7 +609,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             ),
           ),
 
-          Container(width: 1, height: 24, color: Colors.white10, margin: const EdgeInsets.symmetric(horizontal: 4)),
+          Container(width: 1, height: 24, color: AppTheme.mist10, margin: const EdgeInsets.symmetric(horizontal: 4)),
 
           // Edit Button (tap = inpaint, long-press = choose Crop or Resize)
           _buildIconAction(Icons.auto_fix_high, 'Edit', hasImage ? _editSelectedImage : null, onLongPress: hasImage ? _showEditDestinationMenu : null),
@@ -617,7 +626,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
 
   Widget _buildIconAction(IconData icon, String tooltip, VoidCallback? onTap, {VoidCallback? onLongPress, bool isLoading = false, bool isDestructive = false}) {
     final isEnabled = onTap != null || onLongPress != null;
-    final color = isDestructive ? Colors.red.shade400 : Colors.white;
+    final color = isDestructive ? AppTheme.error : AppTheme.mist;
 
     return Expanded(
       child: Tooltip(
@@ -631,7 +640,7 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
             child: SizedBox(
               height: 50,
               child: Center(
-                child: isLoading ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: color)) : Icon(icon, color: isEnabled ? color : Colors.white12, size: 24),
+                child: isLoading ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: color)) : Icon(icon, color: isEnabled ? color : AppTheme.mist10, size: 24),
               ),
             ),
           ),
@@ -649,23 +658,27 @@ class _ResultsCarouselState extends State<ResultsCarousel> {
 
         return Column(
           children: [
-            const SizedBox(height: 16), // Increased top spacing
-            // Main Image Card
+            const SizedBox(height: 16),
+            // Hero card - the selected image, full height, glass-framed.
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              height: 470,
+              height: 420,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: AppTheme.surfaceCard,
                 borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
                 border: Border.all(color: imageList.isNotEmpty ? AppTheme.accentPrimary.withValues(alpha: 0.3) : AppTheme.glassBorder, width: 1.5),
-                boxShadow: imageList.isNotEmpty ? [BoxShadow(color: AppTheme.accentPrimary.withValues(alpha: 0.15), blurRadius: 20)] : [],
+                boxShadow: imageList.isNotEmpty ? [BoxShadow(color: AppTheme.accentPrimary.withValues(alpha: 0.15), blurRadius: 24)] : [],
               ),
-              child: imageList.isEmpty ? _buildEmptyState() : Column(children: [_buildMainImage(), _buildImageThumbnails(imageList)]),
+              padding: const EdgeInsets.all(10),
+              child: imageList.isEmpty ? _buildEmptyState() : _buildMainImage(),
             ),
 
             // Action Dock
             if (imageList.isNotEmpty) _buildActionButtons(),
+
+            // Full result set, as a grid
+            if (imageList.isNotEmpty) _buildImageGrid(imageList),
 
             // Bottom Padding for scrolling
             const SizedBox(height: 16),

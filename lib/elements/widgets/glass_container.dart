@@ -1,6 +1,7 @@
 // ==================== Glass Container ==================== //
 
 // Flutter imports
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 // Local imports - Elements
@@ -8,8 +9,17 @@ import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Glass Container Implementation
 
-/// A reusable glassmorphism container
-/// OPTIMIZED: Blur removed by default, simplified decoration
+/// Aperture's base material: a translucent panel with a soft top-left
+/// highlight (simulating light catching curved glass) and an optional
+/// [tint] that pulls the border/glow toward a backend or semantic color.
+///
+/// [blurred] defaults to false - real backdrop blur is genuinely expensive
+/// when there are many instances on screen at once (a grid of thumbnails,
+/// a long settings list), so it's reserved for the handful of persistent,
+/// non-repeated chrome surfaces (the dock, the context strip, the prompt
+/// capsule, modal sheets) that opt in explicitly. Everywhere else gets the
+/// same gradient/highlight/border treatment without the blur pass - still
+/// reads as glass, costs nothing extra to scroll past.
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final Color? backgroundColor;
@@ -18,6 +28,8 @@ class GlassContainer extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
   final List<BoxShadow>? boxShadow;
+  final bool blurred;
+  final Color? tint;
 
   const GlassContainer({
     super.key,
@@ -28,28 +40,77 @@ class GlassContainer extends StatelessWidget {
     this.padding,
     this.margin,
     this.boxShadow,
+    this.blurred = false,
+    this.tint,
   });
-
-  // ===== Build Methods ===== //
 
   @override
   Widget build(BuildContext context) {
-    final decoration = BoxDecoration(
-      color: backgroundColor ?? AppTheme.glassBackground,
-      borderRadius: BorderRadius.circular(borderRadius),
-      border: borderColor != null
-          ? Border.all(color: borderColor!, width: 1)
-          : null,
-      boxShadow: boxShadow,
+    final radius = BorderRadius.circular(borderRadius);
+    final base = backgroundColor ?? AppTheme.glassBackground;
+    final border = borderColor ?? (tint != null ? tint!.withValues(alpha: 0.4) : AppTheme.glassBorder);
+
+    Widget surface = Container(
+      decoration: BoxDecoration(
+        color: base,
+        borderRadius: radius,
+        border: Border.all(color: border, width: 1),
+      ),
+      child: Stack(
+        children: [
+          // Top-left highlight + bottom-right falloff - the static stand-in
+          // for a specular reflection, cheap enough to run everywhere.
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppTheme.mist.withValues(alpha: 0.10),
+                    AppTheme.mist.withValues(alpha: 0.0),
+                    Colors.black.withValues(alpha: 0.06),
+                  ],
+                  stops: const [0.0, 0.5, 1.0],
+                ),
+              ),
+            ),
+          ),
+          if (tint != null)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: radius,
+                  gradient: RadialGradient(
+                    center: Alignment.topLeft,
+                    radius: 1.3,
+                    colors: [tint!.withValues(alpha: 0.14), Colors.transparent],
+                  ),
+                ),
+              ),
+            ),
+          Padding(padding: padding ?? EdgeInsets.zero, child: child),
+        ],
+      ),
     );
 
-    Widget content = Container(
-      decoration: decoration,
-      padding: padding,
+    if (blurred) {
+      surface = ClipRRect(
+        borderRadius: radius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: AppTheme.glassBlurRegular, sigmaY: AppTheme.glassBlurRegular),
+          child: surface,
+        ),
+      );
+    }
+
+    return Container(
       margin: margin,
-      child: child,
+      decoration: boxShadow != null
+          ? BoxDecoration(borderRadius: radius, boxShadow: boxShadow)
+          : null,
+      child: surface,
     );
-
-    return content;
   }
 }

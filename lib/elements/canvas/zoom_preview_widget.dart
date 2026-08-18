@@ -5,6 +5,9 @@ import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
+// Local imports - Elements
+import 'package:sd_companion/elements/widgets/theme_constants.dart';
+
 // Local imports - Logic
 import 'package:sd_companion/logic/models/drawing_models.dart';
 
@@ -76,7 +79,7 @@ class ZoomPreviewWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black, // Dark background behind the image
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.3),
+          color: AppTheme.mist.withValues(alpha: 0.3),
           width: 2,
         ),
         borderRadius: BorderRadius.circular(previewSize.width),
@@ -168,7 +171,7 @@ class _ZoomViewPainter extends CustomPainter {
       paint.strokeWidth = path.strokeWidth * zoomFactor;
 
       if (path.mode == DrawingMode.draw) {
-        paint.color = Colors.white.withValues(alpha: 0.6);
+        paint.color = AppTheme.mist.withValues(alpha: 0.6);
         paint.blendMode = BlendMode.src;
       } else {
         paint.color = Colors.transparent;

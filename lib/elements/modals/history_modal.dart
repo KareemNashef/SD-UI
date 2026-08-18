@@ -193,7 +193,7 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
                         child: Text(
                           'Select elements below...',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.3),
+                            color: AppTheme.mist.withValues(alpha: 0.3),
                             fontStyle: FontStyle.italic,
                             fontSize: 13,
                           ),
@@ -226,7 +226,7 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
                                 Text(
                                   buildingPrompt[index],
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: AppTheme.mist,
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -275,7 +275,7 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
                   child: Text(
                     'No elements found',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.3),
+                      color: AppTheme.mist.withValues(alpha: 0.3),
                     ),
                   ),
                 )
@@ -302,7 +302,7 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
                         decoration: BoxDecoration(
                           color: isInBuild
                               ? AppTheme.accentPrimary.withValues(alpha: 0.1)
-                              : Colors.white.withValues(alpha: 0.05),
+                              : AppTheme.mist.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: isInBuild
@@ -326,7 +326,7 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
                               child: Text(
                                 element,
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: AppTheme.mist,
                                   fontSize: 14,
                                 ),
                               ),
@@ -481,7 +481,7 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: _deleteSelectedPrompts,
-                  icon: const Icon(Icons.delete_outline, color: Colors.white),
+                  icon: const Icon(Icons.delete_outline, color: AppTheme.mist),
                   label: Text('Delete ${selectedForDeletion.length} Selected'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.shade900.withValues(alpha: 0.8),
@@ -500,7 +500,7 @@ class _PromptIntelligenceSheetState extends State<_PromptIntelligenceSheet>
                     child: Text(
                       'Cancel',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: AppTheme.mist.withValues(alpha: 0.6),
                       ),
                     ),
                   ),
