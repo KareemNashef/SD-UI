@@ -1,7 +1,10 @@
-// Smoke test: the app must boot into either the offline/connect screen (no
-// server reachable in the test sandbox) or straight into the main shell,
-// without throwing, and it must default to Forge Neo as the active backend
-// on a fresh install with no saved preference.
+// Smoke test: the app must boot without throwing, and it must default to
+// Forge Neo as the active backend on a fresh install with no saved
+// preference.
+//
+// The UI is being rebuilt from scratch, so this deliberately asserts only
+// on boot-safety and logic-layer state - never on any particular widget -
+// so it keeps guarding the app while the interface is replaced.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,14 +20,11 @@ void main() {
   ) async {
     SharedPreferences.setMockInitialValues({});
 
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const ApertureApp());
     await tester.pump(const Duration(seconds: 1));
 
     expect(tester.takeException(), isNull);
     expect(globalActiveBackendKind.value, BackendKind.forge);
-
-    // Either the offline/connect screen or the main shell should be
-    // showing - never a bare error widget.
     expect(find.byType(ErrorWidget), findsNothing);
   });
 }

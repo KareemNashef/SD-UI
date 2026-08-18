@@ -14,6 +14,9 @@ import 'package:sd_companion/logic/models/checkpoint_data.dart';
 import 'package:sd_companion/logic/models/generation_models.dart';
 import 'package:sd_companion/logic/models/lora_data.dart';
 
+// Local imports - Pages
+import 'package:sd_companion/main_page.dart';
+
 // Global Variables Implementation
 
 // ===== Backend Variables ===== //
@@ -33,11 +36,24 @@ ForgeBackend get globalForgeBackend => BackendManager.instance.forge;
 ComfyBackend get globalComfyBackend => BackendManager.instance.comfy;
 
 // ===== App Variables ===== //
-//
-// Navigation used to live here as a GlobalKey pointed at a concrete page.
-// It now goes through AppNavigation (logic/app_navigation.dart), which
-// publishes intents the UI shell subscribes to - so nothing in this layer
-// has to know what the UI is built out of.
+
+// MainPageState key
+final GlobalKey<MainPageState> mainPageKey = GlobalKey<MainPageState>();
+
+// Function to navigate to inpaint page
+void navigateToInpaintPage() {
+  mainPageKey.currentState?.switchToPage(0);
+}
+
+// Function to navigate to results page
+void navigateToResultsPage() {
+  mainPageKey.currentState?.switchToPage(1);
+}
+
+// Function to navigate to settings page
+void navigateToSettingsPage() {
+  mainPageKey.currentState?.switchToPage(2);
+}
 
 // ===== Server Variables ===== //
 

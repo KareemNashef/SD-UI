@@ -2,7 +2,6 @@
 
 // Local imports - Logic
 import 'package:sd_companion/logic/api_calls.dart';
-import 'package:sd_companion/logic/app_navigation.dart';
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/models/checkpoint_data.dart';
 
@@ -39,7 +38,7 @@ class CheckpointTestingService {
     _isTesting = true;
     globalIsCheckpointTesting.value = true;
     globalTotalCheckpointsToTest.value = checkpoints.length;
-    AppNavigation.goToGallery();
+    navigateToResultsPage();
 
     for (int i = 0; i < checkpoints.length; i++) {
       if (!_isTesting) break;
@@ -76,7 +75,7 @@ class CheckpointTestingService {
     _isTesting = true;
     globalIsCheckpointTesting.value = true;
     globalTotalCheckpointsToTest.value = samplers.length;
-    AppNavigation.goToGallery();
+    navigateToResultsPage();
 
     try {
       // 2. Switch to the target checkpoint ONCE

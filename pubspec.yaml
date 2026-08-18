@@ -30,29 +30,35 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  shaders:
+    - shaders/liquid_glass.frag
+
   assets:
     - assets/icon/
     - assets/placeholders/
     - assets/comfy/
 
   fonts:
-    - family: Manrope
+    # Geist for UI, Geist Mono for every number the app shows (steps, CFG,
+    # seeds, resolutions, percentages) - tabular figures keep parameter
+    # columns aligned and stop live counters from jittering as they tick.
+    - family: Geist
       fonts:
-        - asset: assets/fonts/Manrope-Variable.ttf
+        - asset: assets/fonts/Geist-Variable.ttf
           weight: 400
-        - asset: assets/fonts/Manrope-Variable.ttf
+        - asset: assets/fonts/Geist-Variable.ttf
           weight: 500
-        - asset: assets/fonts/Manrope-Variable.ttf
+        - asset: assets/fonts/Geist-Variable.ttf
           weight: 600
-        - asset: assets/fonts/Manrope-Variable.ttf
+        - asset: assets/fonts/Geist-Variable.ttf
           weight: 700
-        - asset: assets/fonts/Manrope-Variable.ttf
+        - asset: assets/fonts/Geist-Variable.ttf
           weight: 800
-    - family: Fraunces
+    - family: GeistMono
       fonts:
-        - asset: assets/fonts/Fraunces-Variable.ttf
+        - asset: assets/fonts/GeistMono-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/GeistMono-Variable.ttf
           weight: 500
-        - asset: assets/fonts/Fraunces-Variable.ttf
-          weight: 600
-        - asset: assets/fonts/Fraunces-Variable.ttf
+        - asset: assets/fonts/GeistMono-Variable.ttf
           weight: 700

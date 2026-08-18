@@ -10,6 +10,12 @@
 
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    # The pre-rebuild app, kept for reference while the new UI is built
+    # against the extracted logic layer in lib/. Not compiled, not shipped.
+    - lib_OLD/**
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`
