@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sd_companion/logic/comfy/comfy_workflow.dart';
+import 'package:sd_companion/data/engines/comfy/comfy_workflow.dart';
 
 Map<String, dynamic> _loadFixture(String name) {
   final file = File('test/fixtures/$name');

@@ -16,6 +16,11 @@ import 'package:sd_companion/domain/generation/sampling_params.dart';
 class Checkpoint {
   final String name;
 
+  /// A1111's own identifier, e.g. `model.safetensors [a1b2c3]`. This is what
+  /// `sd_model_checkpoint` must be set to; the bare [name] is rejected by
+  /// some Forge builds. Falls back to [name] when the server didn't say.
+  final String? title;
+
   /// Preview image URL, if the user attached one.
   final String? previewUrl;
 
@@ -34,6 +39,7 @@ class Checkpoint {
 
   const Checkpoint({
     required this.name,
+    this.title,
     this.previewUrl,
     this.baseModel,
     this.defaults = const SamplingParams(),
@@ -41,7 +47,10 @@ class Checkpoint {
     this.inpaintMasked = true,
   });
 
+  String get selector => title ?? name;
+
   Checkpoint copyWith({
+    String? title,
     String? previewUrl,
     String? baseModel,
     SamplingParams? defaults,
@@ -50,6 +59,7 @@ class Checkpoint {
   }) =>
       Checkpoint(
         name: name,
+        title: title ?? this.title,
         previewUrl: previewUrl ?? this.previewUrl,
         baseModel: baseModel ?? this.baseModel,
         defaults: defaults ?? this.defaults,
@@ -59,6 +69,7 @@ class Checkpoint {
 
   Map<String, dynamic> toJson() => {
         'name': name,
+        'title': title,
         'previewUrl': previewUrl,
         'baseModel': baseModel,
         'defaults': defaults.toJson(),
@@ -68,6 +79,7 @@ class Checkpoint {
 
   factory Checkpoint.fromJson(Map<String, dynamic> json) => Checkpoint(
         name: json['name'] as String,
+        title: json['title'] as String?,
         previewUrl: json['previewUrl'] as String?,
         baseModel: json['baseModel'] as String?,
         defaults: json['defaults'] == null

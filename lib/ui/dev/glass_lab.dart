@@ -2,122 +2,197 @@
 
 import 'package:flutter/material.dart';
 
-import 'package:sd_companion/ui/glass/glass_shader.dart';
+import 'package:sd_companion/ui/glass/glass_controls.dart';
 import 'package:sd_companion/ui/glass/glass_tokens.dart';
 import 'package:sd_companion/ui/glass/liquid_glass.dart';
 
-/// Puts every weight of the material on screen at once, over live moving
-/// colour, so the refraction can be judged on real hardware rather than
-/// inferred from a screenshot.
+/// The material and its controls, on live moving colour.
+///
+/// Built on `liquid_glass_renderer`, so these panes do genuine per-pixel
+/// refraction rather than the blur-with-a-border the first attempt shipped.
 ///
 /// What to look for:
-///  * the background should *bend* at each pane's rim and stay straight
-///    through its middle - that edge-only distortion is the whole point;
-///  * a faint colour fringe at the rim on Prism (chromatic dispersion);
-///  * the highlight on the interactive pane should follow your finger.
-class GlassLab extends StatelessWidget {
+///  * the three weights should be *obviously* different - Prism visibly
+///    lenses and colour-fringes the background, Vapor barely touches it;
+///  * every control should flex under a finger, because pressing animates
+///    the glass optics rather than swapping an opacity;
+///  * the specular highlight should swing toward where you touch.
+class GlassLab extends StatefulWidget {
   const GlassLab({super.key});
+
+  @override
+  State<GlassLab> createState() => _GlassLabState();
+}
+
+class _GlassLabState extends State<GlassLab> {
+  double _steps = 28;
+  double _cfg = 4.5;
+  bool _randomSeed = true;
+  bool _hires = false;
+  String _mode = 'txt2img';
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
       children: [
-        const _Note(),
-        const SizedBox(height: Space.lg),
-
-        _Sample(
-          title: 'Vapor',
-          note: 'Blur only. Safe to repeat in lists.',
-          child: LiquidGlass(
-            weight: GlassWeight.vapor,
-            radius: Radii.well,
-            padding: const EdgeInsets.all(Space.lg),
-            child: _Filler(label: 'vapor'),
-          ),
+        // ===== The three weights, side by side ===== //
+        Text('WEIGHTS', style: Type.micro),
+        const SizedBox(height: 2),
+        Text(
+          'These must look clearly different from each other.',
+          style: Type.body.copyWith(fontSize: 12.5, color: Palette.chalk40),
         ),
-
-        _Sample(
-          title: 'Lens',
-          note: 'Blur + edge refraction + specular. The persistent chrome.',
-          child: LiquidGlass(
-            weight: GlassWeight.lens,
-            radius: Radii.pane,
-            padding: const EdgeInsets.all(Space.lg),
-            child: _Filler(label: 'lens'),
-          ),
-        ),
-
-        _Sample(
-          title: 'Prism',
-          note: 'Adds chromatic dispersion. Sheets only, one at a time.',
-          child: LiquidGlass(
-            weight: GlassWeight.prism,
-            radius: Radii.sheet,
-            padding: const EdgeInsets.all(Space.lg),
-            child: _Filler(label: 'prism'),
-          ),
-        ),
-
-        _Sample(
-          title: 'Interactive',
-          note: 'Press and drag - the specular highlight tracks your finger.',
-          child: LiquidGlass(
-            weight: GlassWeight.prism,
-            radius: Radii.sheet,
-            interactive: true,
-            padding: const EdgeInsets.all(Space.xl),
-            child: SizedBox(
-              height: 90,
-              child: Center(
-                child: Text('touch me', style: Type.body),
-              ),
-            ),
-          ),
-        ),
-
-        _Sample(
-          title: 'Engine tint',
-          note: 'Identity enters through the glass, not as a flat accent.',
+        const SizedBox(height: Space.md),
+        SizedBox(
+          height: 108,
           child: Row(
             children: [
-              Expanded(
-                child: LiquidGlass(
-                  weight: GlassWeight.lens,
-                  radius: Radii.pane,
-                  tint: Palette.ember,
-                  padding: const EdgeInsets.all(Space.lg),
-                  child: _Filler(label: 'Forge', color: Palette.ember),
-                ),
-              ),
+              Expanded(child: _WeightSample(weight: GlassWeight.vapor, name: 'Vapor')),
               const SizedBox(width: Space.md),
-              Expanded(
-                child: LiquidGlass(
-                  weight: GlassWeight.lens,
-                  radius: Radii.pane,
-                  tint: Palette.iris,
-                  padding: const EdgeInsets.all(Space.lg),
-                  child: _Filler(label: 'Comfy', color: Palette.iris),
-                ),
+              Expanded(child: _WeightSample(weight: GlassWeight.lens, name: 'Lens')),
+              const SizedBox(width: Space.md),
+              Expanded(child: _WeightSample(weight: GlassWeight.prism, name: 'Prism')),
+            ],
+          ),
+        ),
+        const SizedBox(height: Space.xl),
+
+        // ===== Buttons ===== //
+        _Section(
+          title: 'BUTTONS',
+          note: 'Press and hold - the slab thins and the highlight moves to your finger.',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: GlassButton(label: 'Plain', onPressed: () {})),
+                  const SizedBox(width: Space.md),
+                  Expanded(
+                    child: GlassButton(
+                      label: 'Forge',
+                      icon: Icons.dns_rounded,
+                      tint: Palette.ember,
+                      filled: true,
+                      onPressed: () {},
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Space.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: GlassButton(
+                      label: 'ComfyUI',
+                      icon: Icons.hub_rounded,
+                      tint: Palette.iris,
+                      filled: true,
+                      onPressed: () {},
+                    ),
+                  ),
+                  const SizedBox(width: Space.md),
+                  Expanded(child: GlassButton(label: 'Disabled')),
+                ],
               ),
             ],
           ),
         ),
 
-        _Sample(
-          title: 'Mono numerals',
-          note: 'Tabular figures - these columns must not shift as they change.',
-          child: LiquidGlass(
+        // ===== Sliders ===== //
+        _Section(
+          title: 'SLIDERS',
+          note: 'The thumb is a bead of Prism glass. Drag it across the colour.',
+          child: GlassSurface(
             weight: GlassWeight.lens,
             radius: Radii.pane,
             padding: const EdgeInsets.all(Space.lg),
             child: Column(
-              children: const [
-                _Readout('steps', '28'),
-                _Readout('cfg', '4.50'),
-                _Readout('denoise', '0.72'),
-                _Readout('size', '1024x1536'),
-                _Readout('seed', '1104433390'),
+              children: [
+                GlassSlider(
+                  label: 'Steps',
+                  value: _steps,
+                  min: 1,
+                  max: 60,
+                  divisions: 59,
+                  tint: Palette.iris,
+                  format: (v) => v.round().toString(),
+                  onChanged: (v) => setState(() => _steps = v),
+                ),
+                const SizedBox(height: Space.lg),
+                GlassSlider(
+                  label: 'CFG Scale',
+                  value: _cfg,
+                  min: 1,
+                  max: 15,
+                  tint: Palette.ember,
+                  format: (v) => v.toStringAsFixed(2),
+                  onChanged: (v) => setState(() => _cfg = v),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ===== Selector ===== //
+        _Section(
+          title: 'SELECTOR',
+          note: 'Only the selected segment is real glass - the rest are holes in the track.',
+          child: GlassSegmented<String>(
+            value: _mode,
+            tint: Palette.iris,
+            onChanged: (v) => setState(() => _mode = v),
+            segments: const [
+              GlassSegment(value: 'txt2img', label: 'Text', icon: Icons.title_rounded),
+              GlassSegment(value: 'img2img', label: 'Image', icon: Icons.image_rounded),
+              GlassSegment(value: 'inpaint', label: 'Inpaint', icon: Icons.brush_rounded),
+            ],
+          ),
+        ),
+
+        // ===== Switches ===== //
+        _Section(
+          title: 'SWITCHES',
+          note: 'The knob is a glass bead that tints as it travels.',
+          child: GlassSurface(
+            weight: GlassWeight.lens,
+            radius: Radii.pane,
+            padding: const EdgeInsets.all(Space.lg),
+            child: Column(
+              children: [
+                _SwitchRow(
+                  label: 'Random seed',
+                  value: _randomSeed,
+                  tint: Palette.iris,
+                  onChanged: (v) => setState(() => _randomSeed = v),
+                ),
+                const SizedBox(height: Space.lg),
+                _SwitchRow(
+                  label: 'Hires fix',
+                  value: _hires,
+                  tint: Palette.ember,
+                  onChanged: (v) => setState(() => _hires = v),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ===== Mono numerals ===== //
+        _Section(
+          title: 'MONO NUMERALS',
+          note: 'Tabular figures - these must not shift as the values above change.',
+          child: GlassSurface(
+            weight: GlassWeight.lens,
+            radius: Radii.pane,
+            padding: const EdgeInsets.all(Space.lg),
+            child: Column(
+              children: [
+                _Readout('steps', _steps.round().toString()),
+                _Readout('cfg', _cfg.toStringAsFixed(2)),
+                _Readout('mode', _mode),
+                _Readout('seed', _randomSeed ? 'random' : '1104433390'),
               ],
             ),
           ),
@@ -127,48 +202,36 @@ class GlassLab extends StatelessWidget {
   }
 }
 
-class _Note extends StatelessWidget {
-  const _Note();
+class _WeightSample extends StatelessWidget {
+  final GlassWeight weight;
+  final String name;
+  const _WeightSample({required this.weight, required this.name});
 
   @override
   Widget build(BuildContext context) {
-    final available = GlassShader.isAvailable;
-    return LiquidGlass(
-      weight: GlassWeight.vapor,
-      radius: Radii.well,
-      padding: const EdgeInsets.all(Space.lg),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            available ? Icons.check_circle_rounded : Icons.info_rounded,
-            size: 18,
-            color: available ? Palette.iris : Palette.caution,
-          ),
-          const SizedBox(width: Space.md),
-          Expanded(
-            child: Text(
-              available
-                  ? 'Impeller is on and the shader loaded. These panes are doing '
-                      'real per-pixel refraction of what is behind them.'
-                  : 'Impeller or the shader is unavailable on this device, so '
-                      'these panes are falling back to a plain blur. Nothing is '
-                      'broken - the geometry and tint are identical.',
-              style: Type.body.copyWith(fontSize: 13, color: Palette.chalk70),
-            ),
-          ),
-        ],
+    return GlassSurface(
+      weight: weight,
+      radius: Radii.pane,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(name, style: Type.label),
+            const SizedBox(height: 2),
+            Text('${weight.thickness.round()}', style: Type.readout),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _Sample extends StatelessWidget {
+class _Section extends StatelessWidget {
   final String title;
   final String note;
   final Widget child;
 
-  const _Sample({required this.title, required this.note, required this.child});
+  const _Section({required this.title, required this.note, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +240,7 @@ class _Sample extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title.toUpperCase(), style: Type.micro),
+          Text(title, style: Type.micro),
           const SizedBox(height: 2),
           Text(note, style: Type.body.copyWith(fontSize: 12.5, color: Palette.chalk40)),
           const SizedBox(height: Space.md),
@@ -188,30 +251,26 @@ class _Sample extends StatelessWidget {
   }
 }
 
-class _Filler extends StatelessWidget {
+class _SwitchRow extends StatelessWidget {
   final String label;
-  final Color? color;
-  const _Filler({required this.label, this.color});
+  final bool value;
+  final Color tint;
+  final ValueChanged<bool> onChanged;
+
+  const _SwitchRow({
+    required this.label,
+    required this.value,
+    required this.tint,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 56,
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: (color ?? Palette.chalk).withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(9),
-              border: Border.all(color: (color ?? Palette.chalk).withValues(alpha: 0.4)),
-            ),
-          ),
-          const SizedBox(width: Space.md),
-          Text(label, style: Type.label),
-        ],
-      ),
+    return Row(
+      children: [
+        Expanded(child: Text(label, style: Type.label)),
+        GlassSwitch(value: value, tint: tint, onChanged: onChanged),
+      ],
     );
   }
 }
@@ -227,7 +286,10 @@ class _Readout extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Expanded(child: Text(label, style: Type.body.copyWith(fontSize: 13, color: Palette.chalk40))),
+          Expanded(
+            child: Text(label,
+                style: Type.body.copyWith(fontSize: 13, color: Palette.chalk40)),
+          ),
           Text(value, style: Type.readout),
         ],
       ),

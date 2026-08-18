@@ -2,9 +2,10 @@
 
 import 'package:flutter/material.dart';
 
+import 'package:sd_companion/ui/dev/generation_lab.dart';
 import 'package:sd_companion/ui/dev/glass_lab.dart';
 import 'package:sd_companion/ui/dev/state_inspector.dart';
-import 'package:sd_companion/ui/glass/glass_shader.dart';
+
 import 'package:sd_companion/ui/glass/glass_tokens.dart';
 import 'package:sd_companion/ui/glass/liquid_glass.dart';
 
@@ -43,7 +44,7 @@ class _DevHarnessState extends State<DevHarness> {
                 Expanded(
                   child: IndexedStack(
                     index: _tab,
-                    children: const [GlassLab(), StateInspector()],
+                    children: const [GlassLab(), GenerationLab(), StateInspector()],
                   ),
                 ),
               ],
@@ -129,7 +130,6 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final supported = GlassShader.isAvailable;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -140,11 +140,10 @@ class _Header extends StatelessWidget {
             height: 9,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: supported ? Palette.iris : Palette.caution,
+              color: Palette.iris,
               boxShadow: [
                 BoxShadow(
-                  color: (supported ? Palette.iris : Palette.caution)
-                      .withValues(alpha: 0.7),
+                  color: Palette.iris.withValues(alpha: 0.7),
                   blurRadius: 8,
                 ),
               ],
@@ -153,7 +152,7 @@ class _Header extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              supported ? 'Shader glass active' : 'Fallback blur (no Impeller)',
+              'liquid_glass_renderer',
               style: Type.label,
             ),
           ),
@@ -178,7 +177,8 @@ class _Switcher extends StatelessWidget {
         child: Row(
           children: [
             _tab(0, 'Glass', Icons.blur_on_rounded),
-            _tab(1, 'State', Icons.data_object_rounded),
+            _tab(1, 'Run', Icons.auto_awesome_rounded),
+            _tab(2, 'State', Icons.data_object_rounded),
           ],
         ),
       ),
@@ -204,7 +204,7 @@ class _Switcher extends StatelessWidget {
             children: [
               Icon(icon,
                   size: 18, color: selected ? Palette.void_ : Palette.chalk40),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Text(
                 label,
                 style: Type.label.copyWith(
@@ -227,5 +227,5 @@ class LiquidPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      LiquidGlass(radius: Radii.pill, child: child);
+      GlassSurface(radius: Radii.pill, child: child);
 }

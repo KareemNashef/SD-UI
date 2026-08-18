@@ -3,12 +3,13 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:sd_companion/logic/backend/backend_kind.dart';
-import 'package:sd_companion/logic/backend/server_profile.dart';
-import 'package:sd_companion/logic/comfy/comfy_object_info_client.dart';
-import 'package:sd_companion/logic/models/generation_models.dart';
+import 'package:sd_companion/domain/engine/engine_endpoint.dart';
+import 'package:sd_companion/domain/engine/engine_kind.dart';
+import 'package:sd_companion/data/engines/comfy/comfy_object_info_client.dart';
+import 'package:sd_companion/core/app_error.dart';
 
-const _profile = ServerProfile(kind: BackendKind.comfy, host: '127.0.0.1', port: '8188');
+const _endpoint =
+    EngineEndpoint(kind: EngineKind.comfy, host: '127.0.0.1', port: '8188');
 
 void main() {
   test('parses a successful /object_info/<type> response', () async {
@@ -33,7 +34,7 @@ void main() {
       );
     });
 
-    final provider = HttpComfyNodeSchemaProvider(_profile, client: client);
+    final provider = HttpComfyNodeSchemaProvider(_endpoint, client: client);
     final schema = await provider.schemaFor('KSampler');
 
     expect(schema.known, isTrue);
@@ -48,7 +49,7 @@ void main() {
       return http.Response(jsonEncode({'LoadImage': {'input': {'required': {}}}}), 200);
     });
 
-    final provider = HttpComfyNodeSchemaProvider(_profile, client: client);
+    final provider = HttpComfyNodeSchemaProvider(_endpoint, client: client);
     await provider.schemaFor('LoadImage');
     await provider.schemaFor('LoadImage');
 
@@ -57,28 +58,28 @@ void main() {
 
   test('treats a type missing from the response as unknown, not an error', () async {
     final client = MockClient((request) async => http.Response('{}', 200));
-    final provider = HttpComfyNodeSchemaProvider(_profile, client: client);
+    final provider = HttpComfyNodeSchemaProvider(_endpoint, client: client);
     final schema = await provider.schemaFor('Note');
     expect(schema.known, isFalse);
   });
 
-  test('surfaces a typed BackendException on a non-200 response', () async {
+  test('surfaces a typed AppError on a non-200 response', () async {
     final client = MockClient((request) async => http.Response('server error', 500));
-    final provider = HttpComfyNodeSchemaProvider(_profile, client: client);
+    final provider = HttpComfyNodeSchemaProvider(_endpoint, client: client);
 
     expect(
       () => provider.schemaFor('KSampler'),
-      throwsA(isA<BackendException>().having((e) => e.kind, 'kind', BackendErrorKind.server)),
+      throwsA(isA<ServerError>()),
     );
   });
 
-  test('surfaces a typed BackendException when the server is unreachable', () async {
+  test('surfaces a typed AppError when the server is unreachable', () async {
     final client = MockClient((request) async => throw Exception('connection refused'));
-    final provider = HttpComfyNodeSchemaProvider(_profile, client: client);
+    final provider = HttpComfyNodeSchemaProvider(_endpoint, client: client);
 
     expect(
       () => provider.schemaFor('KSampler'),
-      throwsA(isA<BackendException>().having((e) => e.kind, 'kind', BackendErrorKind.connection)),
+      throwsA(isA<UnreachableError>()),
     );
   });
 }

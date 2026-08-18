@@ -102,7 +102,12 @@ No I/O, no widgets. Safe to unit-test with no setup.
 | --- | --- |
 | `persistence/preferences.dart` | Typed `SharedPreferences` wrapper, an ordinary object so tests can substitute it. All keys in `PrefKeys`, **verified against the strings already on users' devices** so the rebuild doesn't orphan saved data |
 | `persistence/settings_repository.dart` | Talks in domain types: "give me the engine state", not "read five strings". Includes fallbacks that read the old build's individual keys |
-| `engines/` | *(next step)* Forge and Comfy implementations of `ImageEngine` |
+| `persistence/comfy_workflow_storage.dart` | Saved ComfyUI workflows, namespaced by endpoint id so two servers can't see each other's |
+| `engines/forge/forge_engine.dart` | A1111/Forge Neo `ImageEngine`. Owns **one** progress poll loop and publishes into the same `Stream` ComfyUI does |
+| `engines/forge/forge_catalog_client.dart` | Checkpoints, LoRAs, VAE modules, PNG info. Pure queries returning domain values — it never writes to a store or persists |
+| `engines/comfy/comfy_engine.dart` | ComfyUI `ImageEngine`, plus the three optional capability mixins (rewrite, describe, upscale) |
+| `engines/comfy/*` | Graph converter, auto-detector, node schema, gallery client, WebSocket progress. Pure and well-tested; moved unchanged |
+| `imaging/` | Mask generation, image processing, PNG metadata parsing |
 
 ---
 
@@ -135,9 +140,20 @@ One store per concern. This is what replaces `globals.dart`.
 
 | File | What it is |
 | --- | --- |
-| `aperture_runtime.dart` | Owns every store and repository. Explicit, ordered construction. `boot()` restores persisted state; `forTesting()` builds one against in-memory preferences |
+| `aperture_runtime.dart` | Owns every store, the registry and the repository. Explicit, ordered construction. `boot()` restores persisted state; `forTesting()` builds one against in-memory preferences. Also owns `submit()` and `cancelRun()` |
+| `engine_registry.dart` | One live engine per endpoint, rebuilt on address change. Not a singleton — the runtime owns it, so a test can inject fakes |
 | `runtime_scope.dart` | `InheritedWidget` exposing the runtime. `RuntimeScope.of(context)` |
-| `app_navigation.dart` *(in `logic/`, moving here)* | UI-agnostic navigation intent bus |
+| `app_navigation.dart` | UI-agnostic navigation intent bus |
+
+### `submit()` — the one place a run is orchestrated
+
+Build spec → `run.begin` → subscribe to engine progress → `generate` →
+append to library, record the prompt, `run.succeed` / `run.fail`.
+
+Previously this sequence was open-coded inside the generate button's
+`onPressed`, which is why a thrown error left the UI stuck "generating"
+forever. Here the run cannot end without `RunStore` being told how it ended,
+because that is the only path out of the function.
 
 Cross-store reactions live in `_wire()` — one readable place, rather than
 listeners attached from whichever widget happened to notice it needed one.
@@ -193,42 +209,50 @@ Mapping to the screens in DESIGN.md:
 
 ## Testing
 
-91 tests, all passing.
+102 tests, all passing.
 
 | Suite | Covers |
 | --- | --- |
 | `test/core/result_test.dart` | Result algebra, `guard`, error mapping |
 | `test/core/store_test.dart` | Store notification, **equality guard**, disposal safety, `StoreGroup` |
 | `test/state/stores_test.dart` | Every store's invariants — the bug-shaped ones listed above |
+| `test/runtime/runtime_test.dart` | Engine registry lifetime; `submit()` success, failure, progress mirroring and the double-tap guard |
+| `test/domain/engine_endpoint_test.dart` | URL building, ws/wss derivation, endpoint identity, capability flags |
 | `test/comfy/*` | The existing engine/graph/detector suites, still green |
 | `test/widget_test.dart` | App boots; runtime reachable through the scope |
 
-Two real defects were caught by these tests while writing them:
+Three real defects were caught by these tests while writing them:
 
 1. `CatalogState.loraTags` was missing from `==`, so the store's equality
    guard silently swallowed every tag change.
 2. `LiquidGlass`'s interactive branch captured a mutable local in a closure,
    so an interactive pane rendered itself forever (stack overflow).
+3. `submit()` checked `run.state.isActive` *after* awaiting spec construction,
+   so a double-tap on Generate slipped two runs through the guard. Fixed with
+   a claim taken before the first `await`.
 
-Neither would have been obvious by reading the code.
+None would have been obvious by reading the code.
 
 ---
 
 ## What is done, and what is next
 
 **Done**
-- `core/`, `domain/`, `state/`, `runtime/`, `data/persistence/`
-- `ui/glass/` — the material, shader-backed and verified compiling into the APK
-- `ui/dev/` — the on-device harness
-- 91 tests green; debug APK builds
+- `core/`, `domain/`, `state/`, `runtime/`, `data/` — every layer
+- Both engines ported onto `ImageEngine`; **`lib/logic/` is gone entirely**,
+  along with `globals.dart`, `api_calls.dart`, `generation_logic.dart`,
+  `backend_manager.dart`, `storage_service.dart`, `image_backend.dart`,
+  `server_profile.dart`, `backend_kind.dart` and the old `models/`
+- `ui/glass/` — the material, on `liquid_glass_renderer`
+- `ui/dev/` — three-tab on-device harness: Glass, Run (a real generation
+  against a live ComfyUI server through the new architecture), State
+- 102 tests green; debug APK builds
 
-**Next (in order)**
-1. **Migrate the engines** into `data/engines/`, rewriting `generate()` to take
-   a `GenerationSpec` and return a `Result`. This is what finally deletes
-   `globals.dart`, `api_calls.dart`, `generation_logic.dart` and
-   `backend_manager.dart` — they survive today only because the old engines
-   still reference them.
-2. Move the Comfy graph machinery (converter, detector, schema, gallery) into
-   `data/engines/comfy/`. Mostly mechanical: that code is pure and already
-   well-tested.
-3. Build the Stage, per the DESIGN.md build order.
+**Next**
+Build the Stage, per the DESIGN.md build order. Every screen now has a store
+to read from and a runtime method to call; no screen needs new plumbing.
+
+Not yet ported, because no UI calls them today: the checkpoint-testing sweep
+and the LoRA browser's grouping helpers. Both were thin wrappers over state
+that `CatalogStore` now holds, so they get rebuilt with their screens rather
+than carried across.

@@ -3,6 +3,7 @@
 
 import 'package:flutter/foundation.dart';
 
+import 'package:sd_companion/domain/catalog/checkpoint.dart';
 import 'package:sd_companion/domain/generation/sampling_params.dart';
 
 /// A complete, self-contained description of one generation.
@@ -36,6 +37,13 @@ class GenerationSpec {
 
   final SamplingParams sampling;
 
+  /// The model to generate with. Forge must select it server-side before
+  /// each run; ComfyUI ignores it, because its graph names its own loader.
+  /// It lives here rather than being read from a store at generation time
+  /// so that a spec records the model it actually used - without it, the
+  /// "reproducible" promise above is only three-quarters true.
+  final Checkpoint? checkpoint;
+
   /// Forge only: extra images composited by the stitch script, base64.
   final List<String> stitchImages;
 
@@ -48,6 +56,7 @@ class GenerationSpec {
     this.sourceImage,
     this.mask,
     this.sampling = const SamplingParams(),
+    this.checkpoint,
     this.stitchImages = const [],
     this.namedImages = const {},
   });
@@ -69,6 +78,7 @@ class GenerationSpec {
     Uint8List? sourceImage,
     Uint8List? mask,
     SamplingParams? sampling,
+    Checkpoint? checkpoint,
     List<String>? stitchImages,
     Map<String, Uint8List>? namedImages,
     bool clearSourceImage = false,
@@ -80,6 +90,7 @@ class GenerationSpec {
       sourceImage: clearSourceImage ? null : (sourceImage ?? this.sourceImage),
       mask: clearMask ? null : (mask ?? this.mask),
       sampling: sampling ?? this.sampling,
+      checkpoint: checkpoint ?? this.checkpoint,
       stitchImages: stitchImages ?? this.stitchImages,
       namedImages: namedImages ?? this.namedImages,
     );

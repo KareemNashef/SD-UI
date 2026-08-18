@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sd_companion/logic/comfy/comfy_node_schema.dart';
-import 'package:sd_companion/logic/comfy/comfy_workflow.dart';
-import 'package:sd_companion/logic/comfy/workflow_auto_detector.dart';
+import 'package:sd_companion/data/engines/comfy/comfy_node_schema.dart';
+import 'package:sd_companion/data/engines/comfy/comfy_workflow.dart';
+import 'package:sd_companion/data/engines/comfy/workflow_auto_detector.dart';
 
 ComfyWorkflowDocument _loadDoc(String name) {
   final file = File('test/fixtures/$name');

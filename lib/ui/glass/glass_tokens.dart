@@ -1,6 +1,9 @@
 // ==================== Glass Tokens ==================== //
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 import 'package:sd_companion/domain/engine/engine_kind.dart';
 
@@ -99,31 +102,89 @@ abstract final class Type {
 }
 
 /// The three weights of the material.
+///
+/// The numbers are chosen so the weights are *obviously* different at a
+/// glance, which the previous set were not. `thickness` is the dominant
+/// term - it drives how much the glass lenses what is behind it - so it
+/// roughly triples across the scale rather than nudging.
 enum GlassWeight {
-  /// Blur only. Cheap enough to repeat - chips, badges, list rows.
-  vapor(blur: 12, refraction: 0, dispersion: 0, tintAlpha: 0.05),
+  /// Thin and barely refractive. Chips, badges, and anything that repeats.
+  vapor(
+    thickness: 8,
+    blur: 2,
+    refractiveIndex: 1.15,
+    chromaticAberration: 0.0,
+    lightIntensity: 0.5,
+    saturation: 1.1,
+    glassAlpha: 0.10,
+  ),
 
-  /// Blur + edge refraction + specular. The persistent chrome.
-  lens(blur: 24, refraction: 26, dispersion: 0.10, tintAlpha: 0.06),
+  /// Clearly lensed, with a visible specular edge. The persistent chrome:
+  /// rail, prompt bar, filmstrip, controls.
+  lens(
+    thickness: 22,
+    blur: 4,
+    refractiveIndex: 1.35,
+    chromaticAberration: 0.04,
+    lightIntensity: 1.0,
+    saturation: 1.4,
+    glassAlpha: 0.06,
+  ),
 
-  /// Adds dispersion and depth. Sheets and dialogs only, one at a time.
-  prism(blur: 38, refraction: 34, dispersion: 0.22, tintAlpha: 0.08);
+  /// Heavy, deeply lensed, with obvious colour fringing at the rim.
+  /// Sheets and dialogs only, one at a time.
+  prism(
+    thickness: 44,
+    blur: 8,
+    refractiveIndex: 1.55,
+    chromaticAberration: 0.10,
+    lightIntensity: 1.4,
+    saturation: 1.7,
+    glassAlpha: 0.04,
+  );
 
+  /// How deep the slab is. The main lever on how much the backdrop bends.
+  final double thickness;
+
+  /// Frosting behind the refraction. Kept low - heavy blur destroys the
+  /// detail that makes refraction legible in the first place.
   final double blur;
 
-  /// How hard light bends at the rim, in logical pixels.
-  final double refraction;
+  /// 1.0 is no bending; ~1.5 is realistic glass.
+  final double refractiveIndex;
 
-  /// Chromatic split between the R and B samples.
-  final double dispersion;
+  /// Colour fringing at the rim.
+  final double chromaticAberration;
 
-  /// How much of the pane's own milky tint shows over the refracted image.
-  final double tintAlpha;
+  final double lightIntensity;
+  final double saturation;
+
+  /// Opacity of the pane's own body tint.
+  final double glassAlpha;
 
   const GlassWeight({
+    required this.thickness,
     required this.blur,
-    required this.refraction,
-    required this.dispersion,
-    required this.tintAlpha,
+    required this.refractiveIndex,
+    required this.chromaticAberration,
+    required this.lightIntensity,
+    required this.saturation,
+    required this.glassAlpha,
   });
+
+  /// Default light direction: upper-left, matching the highlight direction
+  /// used consistently across the design.
+  static const defaultLightAngle = -0.7 * math.pi;
+
+  LiquidGlassSettings settings({Color? tint, double? lightAngle}) =>
+      LiquidGlassSettings(
+        thickness: thickness,
+        blur: blur,
+        refractiveIndex: refractiveIndex,
+        chromaticAberration: chromaticAberration,
+        lightAngle: lightAngle ?? defaultLightAngle,
+        lightIntensity: lightIntensity,
+        saturation: saturation,
+        glassColor: (tint ?? Palette.chalk).withValues(alpha: glassAlpha),
+      );
 }

@@ -11,7 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:sd_companion/runtime/aperture_runtime.dart';
 import 'package:sd_companion/runtime/runtime_scope.dart';
 import 'package:sd_companion/ui/dev/dev_harness.dart';
-import 'package:sd_companion/ui/glass/glass_shader.dart';
+
 import 'package:sd_companion/ui/glass/glass_tokens.dart';
 
 Future<void> main() async {
@@ -24,10 +24,6 @@ Future<void> main() async {
     statusBarIconBrightness: Brightness.light,
     systemNavigationBarIconBrightness: Brightness.light,
   ));
-
-  // Compile/load the glass program once, before the first frame, so panes
-  // never flash through their fallback on startup.
-  await GlassShader.load();
 
   final runtime = await ApertureRuntime.boot();
 

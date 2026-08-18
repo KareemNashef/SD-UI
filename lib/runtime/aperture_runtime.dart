@@ -2,7 +2,12 @@
 
 import 'package:flutter/foundation.dart';
 
+import 'package:sd_companion/core/app_error.dart';
 import 'package:sd_companion/core/result.dart';
+import 'package:sd_companion/domain/engine/image_engine.dart';
+import 'package:sd_companion/domain/generation/generated_image.dart';
+import 'package:sd_companion/domain/generation/run_progress.dart';
+import 'package:sd_companion/runtime/engine_registry.dart';
 import 'package:sd_companion/data/persistence/preferences.dart';
 import 'package:sd_companion/data/persistence/settings_repository.dart';
 import 'package:sd_companion/state/catalog_store.dart';
@@ -27,6 +32,8 @@ class ApertureRuntime {
   final Preferences preferences;
   final SettingsRepository settings;
 
+  final EngineRegistry engines;
+
   final EngineStore engine;
   final SessionStore session;
   final RunStore run;
@@ -37,6 +44,7 @@ class ApertureRuntime {
   ApertureRuntime._({
     required this.preferences,
     required this.settings,
+    required this.engines,
     required this.engine,
     required this.session,
     required this.run,
@@ -72,6 +80,7 @@ class ApertureRuntime {
     final runtime = ApertureRuntime._(
       preferences: prefs,
       settings: settings,
+      engines: EngineRegistry(),
       engine: engine,
       session: session,
       run: RunStore(),
@@ -98,17 +107,88 @@ class ApertureRuntime {
     });
   }
 
+  // ===== Generation ===== //
+
+  /// The engine backing whichever kind is currently selected.
+  ImageEngine get activeEngine => engines.of(engine.state.endpoint);
+
+  /// Runs one generation, start to finish, keeping every store in step.
+  ///
+  /// This is the single place a run is orchestrated. Previously the same
+  /// sequence - build the request, flip the busy flag, poll progress, append
+  /// results, record the prompt, clear the flag - was open-coded in the
+  /// generate button's `onPressed`, which is why a thrown error left the UI
+  /// stuck "generating" forever. Here the store transitions are structural:
+  /// the run cannot end without [RunStore] being told how it ended.
+  Future<Result<List<GeneratedImage>>> submit() async {
+    // Claimed synchronously, before the first await. Checking
+    // `run.state.isActive` instead would leave a window: building the spec
+    // is async, so a double-tap on Generate gets through the check twice
+    // before either run has begun, and fires two generations.
+    if (_submitting) {
+      return const Err(ValidationError('A generation is already running'));
+    }
+    _submitting = true;
+    try {
+      return await _submit();
+    } finally {
+      _submitting = false;
+    }
+  }
+
+  bool _submitting = false;
+
+  Future<Result<List<GeneratedImage>>> _submit() async {
+    final spec = (await session.toSpec()).copyWith(
+      prompt: [session.state.prompt, catalog.buildPromptFragment()]
+          .where((part) => part.isNotEmpty)
+          .join(''),
+      checkpoint: catalog.state.active,
+    );
+
+    run.begin(spec);
+    final engineInstance = activeEngine;
+
+    // Mirror engine progress into the store for as long as this run lasts.
+    final subscription = engineInstance.progress.listen(run.report);
+
+    final result = await engineInstance.generate(spec);
+    await subscription.cancel();
+
+    return result.fold(
+      (images) {
+        library.add(images);
+        promptBook.record(spec.prompt);
+        run.succeed();
+        return Ok(images);
+      },
+      (error) {
+        run.fail(error);
+        return Err(error);
+      },
+    );
+  }
+
+  /// Interrupts the run in flight.
+  Future<Result<void>> cancelRun() async {
+    final result = await activeEngine.cancel();
+    run.report(const RunProgress(phase: RunPhase.cancelled));
+    return result;
+  }
+
   /// A runtime with no persistence, for tests and the dev harness.
   @visibleForTesting
   static ApertureRuntime forTesting({
     EngineState? engineState,
     SessionState? sessionState,
+    EngineRegistry? engines,
   }) {
     final prefs = _NullPreferences();
     final settings = SettingsRepository(prefs);
-    return ApertureRuntime._(
+    final runtime = ApertureRuntime._(
       preferences: prefs,
       settings: settings,
+      engines: engines ?? EngineRegistry(),
       engine: EngineStore(engineState ?? EngineState.initial()),
       session: SessionStore(sessionState ?? const SessionState()),
       run: RunStore(),
@@ -116,9 +196,12 @@ class ApertureRuntime {
       catalog: CatalogStore(),
       promptBook: PromptBookStore(),
     );
+    runtime._wire();
+    return runtime;
   }
 
-  void dispose() {
+  Future<void> dispose() async {
+    await engines.dispose();
     engine.dispose();
     session.dispose();
     run.dispose();

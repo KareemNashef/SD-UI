@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sd_companion/logic/comfy/comfy_graph_converter.dart';
-import 'package:sd_companion/logic/comfy/comfy_node_schema.dart';
-import 'package:sd_companion/logic/comfy/comfy_workflow.dart';
-import 'package:sd_companion/logic/models/generation_models.dart';
+import 'package:sd_companion/data/engines/comfy/comfy_graph_converter.dart';
+import 'package:sd_companion/data/engines/comfy/comfy_node_schema.dart';
+import 'package:sd_companion/data/engines/comfy/comfy_workflow.dart';
+import 'package:sd_companion/core/app_error.dart';
 
 Map<String, dynamic> _loadFixture(String name) {
   final file = File('test/fixtures/$name');
@@ -132,7 +132,7 @@ void main() {
 
     expect(
       () => converter.convert(badDoc),
-      throwsA(isA<BackendException>().having((e) => e.kind, 'kind', BackendErrorKind.validation)),
+      throwsA(isA<ValidationError>()),
     );
   });
 

@@ -271,7 +271,7 @@ class _Panel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: Space.lg),
-      child: LiquidGlass(
+      child: GlassSurface(
         weight: GlassWeight.lens,
         radius: Radii.pane,
         padding: const EdgeInsets.all(Space.lg),

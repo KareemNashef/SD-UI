@@ -25,6 +25,11 @@ class RunProgress {
   /// ComfyUI: which graph node is executing right now.
   final String? currentNode;
 
+  /// Human-readable stage, when the engine reports one - Forge's upscaler
+  /// says "Phase 2: DiT Upscaling", Forge's sampler says it is swapping
+  /// checkpoints. Free text, shown verbatim; null means "use [phase]".
+  final String? stage;
+
   /// Latest preview frame, when the engine streams them.
   final Uint8List? preview;
 
@@ -38,6 +43,7 @@ class RunProgress {
     this.stepTotal,
     this.queuePosition,
     this.currentNode,
+    this.stage,
     this.preview,
     this.failureMessage,
   });
@@ -60,6 +66,7 @@ class RunProgress {
     int? stepTotal,
     int? queuePosition,
     String? currentNode,
+    String? stage,
     Uint8List? preview,
     String? failureMessage,
   }) {
@@ -70,6 +77,7 @@ class RunProgress {
       stepTotal: stepTotal ?? this.stepTotal,
       queuePosition: queuePosition ?? this.queuePosition,
       currentNode: currentNode ?? this.currentNode,
+      stage: stage ?? this.stage,
       preview: preview ?? this.preview,
       failureMessage: failureMessage ?? this.failureMessage,
     );
@@ -84,12 +92,13 @@ class RunProgress {
       other.stepTotal == stepTotal &&
       other.queuePosition == queuePosition &&
       other.currentNode == currentNode &&
+      other.stage == stage &&
       identical(other.preview, preview) &&
       other.failureMessage == failureMessage;
 
   @override
   int get hashCode => Object.hash(phase, fraction, stepCurrent, stepTotal,
-      queuePosition, currentNode, preview, failureMessage);
+      queuePosition, currentNode, stage, preview, failureMessage);
 }
 
 enum RunPhase {

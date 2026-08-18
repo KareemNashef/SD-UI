@@ -8,11 +8,12 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:sd_companion/logic/backend/backend_kind.dart';
-import 'package:sd_companion/logic/backend/server_profile.dart';
-import 'package:sd_companion/logic/comfy/comfy_gallery_client.dart';
+import 'package:sd_companion/domain/engine/engine_endpoint.dart';
+import 'package:sd_companion/domain/engine/engine_kind.dart';
+import 'package:sd_companion/data/engines/comfy/comfy_gallery_client.dart';
 
-const _profile = ServerProfile(kind: BackendKind.comfy, host: '127.0.0.1', port: '8188');
+const _endpoint =
+    EngineEndpoint(kind: EngineKind.comfy, host: '127.0.0.1', port: '8188');
 
 Map<String, dynamic> _fileEntry({
   required String name,
@@ -54,7 +55,7 @@ void main() {
     });
 
     final client = ComfyGalleryClient(client: mock);
-    final images = await client.fetchAll(_profile);
+    final images = await client.fetchAll(_endpoint);
 
     expect(callCount, 1);
     expect(images, hasLength(2));
@@ -79,7 +80,7 @@ void main() {
     ));
 
     final client = ComfyGalleryClient(client: mock);
-    final images = await client.fetchAll(_profile, forceRefresh: true);
+    final images = await client.fetchAll(_endpoint, forceRefresh: true);
 
     expect(images.single.pathSegments, ['krea2edit']);
     expect(images.single.subfolder, 'krea2edit');
@@ -101,12 +102,12 @@ void main() {
     });
 
     final client = ComfyGalleryClient(client: mock);
-    final first = await client.fetchAll(_profile, forceRefresh: true);
-    final second = await client.fetchAll(_profile); // should hit cache
+    final first = await client.fetchAll(_endpoint, forceRefresh: true);
+    final second = await client.fetchAll(_endpoint); // should hit cache
     expect(callCount, 1);
     expect(identical(first, second), isTrue);
 
-    await client.fetchAll(_profile, forceRefresh: true); // bypasses cache
+    await client.fetchAll(_endpoint, forceRefresh: true); // bypasses cache
     expect(callCount, 2);
     client.dispose();
   });
@@ -116,7 +117,7 @@ void main() {
     final client = ComfyGalleryClient(client: mock);
 
     await expectLater(
-      client.fetchAll(_profile, forceRefresh: true),
+      client.fetchAll(_endpoint, forceRefresh: true),
       throwsA(isA<ComfyGalleryUnavailableException>()),
     );
     client.dispose();
@@ -137,7 +138,7 @@ void main() {
     ));
 
     final client = ComfyGalleryClient(client: mock);
-    final images = await client.fetchAll(_profile, forceRefresh: true);
+    final images = await client.fetchAll(_endpoint, forceRefresh: true);
 
     expect(images, hasLength(1));
     expect(images.single.filename, 'a.png');
