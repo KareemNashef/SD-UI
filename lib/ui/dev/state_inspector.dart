@@ -11,8 +11,8 @@ import 'package:sd_companion/state/library_store.dart';
 import 'package:sd_companion/state/prompt_book_store.dart';
 import 'package:sd_companion/state/run_store.dart';
 import 'package:sd_companion/state/session_store.dart';
-import 'package:sd_companion/ui/glass/glass_tokens.dart';
-import 'package:sd_companion/ui/glass/liquid_glass.dart';
+import 'package:sd_companion/ui/desk/desk_controls.dart';
+import 'package:sd_companion/ui/desk/desk_tokens.dart';
 
 /// Live view of every store, with controls that mutate them.
 ///
@@ -29,7 +29,7 @@ class StateInspector extends StatelessWidget {
     final rt = RuntimeScope.of(context);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+      padding: const EdgeInsets.fromLTRB(Space.gutter, Space.sm, Space.gutter, 96),
       children: [
         // ===== Engine ===== //
         _Panel(
@@ -50,7 +50,6 @@ class StateInspector extends StatelessWidget {
                       child: _Button(
                         label: 'Forge',
                         active: s.active == EngineKind.forge,
-                        tint: Palette.ember,
                         onTap: () => rt.engine.setActive(EngineKind.forge),
                       ),
                     ),
@@ -59,7 +58,6 @@ class StateInspector extends StatelessWidget {
                       child: _Button(
                         label: 'Comfy',
                         active: s.active == EngineKind.comfy,
-                        tint: Palette.iris,
                         onTap: () => rt.engine.setActive(EngineKind.comfy),
                       ),
                     ),
@@ -271,14 +269,12 @@ class _Panel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: Space.lg),
-      child: GlassSurface(
-        weight: GlassWeight.lens,
-        radius: Radii.pane,
-        padding: const EdgeInsets.all(Space.lg),
+      child: DeskPanel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title.toUpperCase(), style: Type.micro),
+            Text(title.toUpperCase(),
+                style: Type.micro.copyWith(color: DeskTheme.of(context).inkMuted)),
             const SizedBox(height: Space.md),
             child,
           ],
@@ -303,12 +299,13 @@ class _Row extends StatelessWidget {
           SizedBox(
             width: 150,
             child: Text(label,
-                style: Type.body.copyWith(fontSize: 12.5, color: Palette.chalk40)),
+                style: Type.body.copyWith(
+                    fontSize: 12.5, color: DeskTheme.of(context).inkFaint)),
           ),
           Expanded(
             child: Text(
               value,
-              style: Type.readout,
+              style: Type.readout.copyWith(color: DeskTheme.of(context).ink),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.right,
@@ -324,43 +321,18 @@ class _Button extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final bool active;
-  final Color? tint;
 
   const _Button({
     required this.label,
     required this.onTap,
     this.active = false,
-    this.tint,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final accent = tint ?? Palette.chalk;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(Radii.pill),
-        // 44pt minimum touch target, per the design rules.
-        child: Container(
-          height: 44,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: active ? accent.withValues(alpha: 0.22) : Palette.chalk08,
-            borderRadius: BorderRadius.circular(Radii.pill),
-            border: Border.all(
-              color: active ? accent.withValues(alpha: 0.6) : Palette.chalk15,
-            ),
-          ),
-          child: Text(
-            label,
-            style: Type.label.copyWith(
-              color: active ? accent : Palette.chalk70,
-              fontSize: 12.5,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => DeskButton(
+        label: label,
+        expand: true,
+        kind: active ? DeskButtonKind.primary : DeskButtonKind.secondary,
+        onPressed: onTap,
+      );
 }

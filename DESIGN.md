@@ -1,326 +1,481 @@
-# Aperture — Design System
+# Aperture — Desk
 
-> The reference this build follows. Every UI decision traces back to
-> something in here. If a screen contradicts this document, the screen is
-> wrong.
-
----
-
-## 0. What went wrong last time
-
-The previous attempt kept the old structure and changed the colors. It also
-called flat translucent boxes with white borders "Liquid Glass," which they
-were not. This document fixes both, and every claim in it is verified
-against the actual toolchain before it is written down (see §8).
+The design system. Everything here is reproducible in Flutter with flat
+fills, solid strokes and transforms. **No shaders, no backdrop filters, no
+blurred shadows anywhere.** That constraint is not a compromise — it is what
+makes the look coherent.
 
 ---
 
-## 1. What this app actually is
+## 1. The idea
 
-**A remote control for a GPU that isn't in your hand.**
+Aperture is a **desk you work at**, not a screen you operate.
 
-You are on a phone. The machine doing the work is across the room or across
-the house. The loop is: *say what you want → watch it happen → look at it →
-adjust → go again.* Everything else is setup.
+Every element is a physical object lying on a warm work surface: the source
+image is a mounted sheet, each result is a photographic print, the tools live
+in a tray bolted to the left edge, and the model you have loaded is a labelled
+card tucked at the top.
 
-Three consequences that drive the whole design:
+Three consequences follow, and they decide almost every question later:
 
-1. **The image is the subject.** It is not a card inside a form. It is the
-   application surface.
-2. **Waiting is a first-class state.** A generation takes 10s to 3min. The
-   waiting UI is not a spinner bolted on — it is one of the app's main
-   screens.
-3. **Iteration is the point.** Nobody generates once. Compare-and-adjust
-   must cost zero navigation.
+1. **Objects cast hard shadows, never soft ones.** A solid offset in ink at
+   zero blur. This is how the design gets depth for free.
+2. **Paper is square. Tools are rounded.** Anything that represents a physical
+   sheet has sharp corners. Anything you press has soft ones. You can tell what
+   is content and what is control without reading a word.
+3. **Prints are never perfectly aligned.** Results land on the desk at a slight
+   angle, like photographs actually do. The angle is deterministic per image,
+   never random per frame.
 
-### The structural failure of the old app
+### What this replaces
 
-The old app was **a scrolling form that happened to contain a picture**:
-
-```
-[ scroll view ]
-  ├── canvas card (fixed 550px)
-  ├── PROMPT section
-  ├── stitch section
-  ├── comfy extra-images section
-  └── control bar  → tap Generate → NAVIGATES AWAY to Results tab
-```
-
-You scrolled a form to make art. Generating threw you to a different page,
-so comparing your new result to your last one was a page transition, and
-changing the checkpoint mid-flow meant a trip to a third tab.
-
-**Aperture is not a set of pages. It is one surface with things floating
-over it.**
+The previous direction ("Liquid Glass") is dead. It required per-pixel
+refraction over a full-screen backdrop every frame, which no phone should
+spend its GPU on for chrome. Nothing in this document costs more than a
+rounded rectangle.
 
 ---
 
-## 2. The core idea: The Stage and the glass
+## 2. Colour
 
-### The Stage
-One full-bleed, edge-to-edge surface that **never navigates**. It morphs
-between states:
+One surface, one paper, one ink, one accent. That is the whole palette.
+Resist adding a second accent — the design gets its energy from contrast and
+shadow, not from hue.
 
-| State | What the Stage shows |
-| --- | --- |
-| Empty | An invitation. Nothing else. |
-| Source | Your input image (img2img / inpaint) |
-| Painting | Source + your mask strokes |
-| Working | Live preview frames, sharpening as steps complete |
-| Result | The finished image |
-| Comparing | Result, wiped against the source under your thumb |
+### Day (default)
 
-### The glass
-Controls **float above** the Stage as refractive panes. This is the entire
-reason to use this material: chrome that stays legible without hiding the
-image underneath it. The image bends through the glass — which also means
-**the chrome must stay achromatic**, or the refraction is invisible.
+| Token | Hex | Use |
+|---|---|---|
+| `desk` | `#DED2BC` | The work surface. The app's background, always. |
+| `deskGrain` | `#000000` @ 2.8% | Diagonal grain over `desk`. Texture only, never structural. |
+| `paper` | `#FBF7EF` | Every object that sits on the desk: sheets, prints, fields, cards. |
+| `paperEdge` | `#EFE8D9` | The mat inset inside a mounted sheet; disabled paper. |
+| `ink` | `#211C14` | All borders, all shadows, primary text, the tool tray. |
+| `inkMuted` | `#4C4536` | Secondary text on paper. |
+| `inkFaint` | `#7A7364` | Labels, units, placeholder text. |
+| `clay` | `#C4472F` | **The only accent.** Primary actions, active state, live handles. |
+| `clayDeep` | `#A9331E` | The pressed/under-edge of a clay object. |
 
-```
-        ┌─────────────────────────────┐
-        │  ▸ Rail   engine · model    │  ← thin glass, floats
-        │                             │
-        │                             │
-        │        T H E   S T A G E    │  ← full bleed image
-        │                             │
-        │                             │
-        │  ▸ Filmstrip  ▫ ▫ ▫ ▫ ▫    │  ← thin glass, recent results
-        │  ▸ Prompt bar        ( ◎ )  │  ← regular glass + aperture
-        └─────────────────────────────┘
-                                   ↑ everything else arrives as a sheet
-```
+### Night
 
-**There are no tabs.** Gallery and Settings are not destinations you travel
-to; they are sheets that rise over the Stage and drop away again. The
-Stage never unmounts, so your work is never lost behind a transition.
+A desk lamp turned down, not an inversion. Same objects, less light. Paper
+stays lighter than the desk; ink stays the darkest thing on screen.
 
----
-
-## 3. The material — real Liquid Glass
-
-Three weights. All three are **shader-backed**, not opacity tricks.
-
-| Weight | Blur | Refraction | Dispersion | Used for |
-| --- | --- | --- | --- | --- |
-| **Vapor** | 12 | — | — | inline chips, badges, labels |
-| **Lens** | 24 | ✅ | slight | rail, prompt bar, filmstrip, buttons |
-| **Prism** | 40 | ✅ | ✅ | sheets, dialogs, the parameter panel |
-
-### What makes it real
-`shaders/liquid_glass.frag` — **already written, already compiling** — does
-actual optics:
-
-- A **rounded-rect SDF** defines the pane.
-- The **SDF gradient becomes a surface normal**, so light bends hard at the
-  rim and passes straight through the middle. This is the single detail
-  that separates glass from frosting: a real lens is only distorting near
-  its edges.
-- **Chromatic dispersion** samples R/G/B at slightly different offsets,
-  producing the faint colour fringing at a real lens edge.
-- A **specular band** appears where the normal faces the light — and the
-  light direction is a uniform, so it **tracks your finger** on press.
-
-### Degradation, honestly
-`ImageFilter.shader` requires Impeller. Impeller is default on Android 10+
-and iOS. On anything older, `LiquidGlass` falls back to
-`BackdropFilter(blur)` + gradient border — visually simpler, structurally
-identical, never broken. This is a runtime check
-(`ImageFilter.isShaderFilterSupported`), not a build flag.
-
-### Performance rule
-Refraction is a per-pixel backdrop sample. **Never put Lens or Prism inside
-a scrolling list.** Repeating surfaces (gallery cells, list rows) use
-Vapor or plain fills. The persistent chrome — rail, prompt bar, filmstrip,
-one sheet at a time — is a fixed, small number of panes.
-
----
-
-## 4. Colour — the image is the palette
-
-The chrome is **achromatic on purpose**. Colour enters the interface from
-exactly two places: the user's image showing through the glass, and a
-single engine accent used sparingly.
-
-### Ground
-| Token | Value | Use |
-| --- | --- | --- |
-| `void` | `#06060A` | behind everything; the Stage's empty state |
-| `well` | `#0E0F16` | sheet floor, inert wells |
-| `chalk` | `#F2F3F7` | primary text |
-| `chalk70` | 70% chalk | secondary text |
-| `chalk40` | 40% chalk | tertiary, placeholders |
-| `chalk15` | 15% chalk | hairlines, dividers |
-
-### Engine identity — a signal, not a paint job
-The old app flooded every border, icon and glow with the engine colour.
-Aperture uses it in **exactly three places**: the status dot, the active
-selection ring, and the aperture button's fill.
-
-| Engine | Token | Value |
-| --- | --- | --- |
-| Forge Neo | `ember` | `#FF8A4C` |
-| ComfyUI | `iris` | `#8B7CFF` |
-
-Warm vs cool, distinguishable at a glance and for the ~8% of men with a
-red-green colour deficiency, and neither collides with the semantic red.
+| Token | Hex |
+|---|---|
+| `desk` | `#2A241B` |
+| `deskGrain` | `#000000` @ 5% |
+| `paper` | `#E4DAC4` |
+| `paperEdge` | `#D5CAB2` |
+| `ink` | `#14110C` |
+| `inkMuted` | `#3E382C` |
+| `inkFaint` | `#6A6252` |
+| `clay` | `#D4573C` |
+| `clayDeep` | `#B03B22` |
 
 ### Semantic
-| Token | Value | Use |
-| --- | --- | --- |
-| `alert` | `#FF5C7A` | errors, destructive actions |
-| `caution` | `#FFC24B` | warnings, the compare state |
 
-There is deliberately **no semantic green**. "Connected" is shown by the
-engine dot being lit, not by a green light — the old app's green/violet
-collision is exactly what this avoids.
+Used for meaning only, never for decoration. Each appears as a stamp — text
+plus a 2px border, no fill — so they never compete with `clay`.
 
----
+| Token | Hex | Meaning |
+|---|---|---|
+| `good` | `#4A7A46` | Connected, saved, complete |
+| `caution` | `#C98A1E` | Queued, degraded, unverified |
+| `alert` | `#A32B1C` | Failed, unreachable, destructive |
 
-## 5. Type — an instrument, not a magazine
+### Engine identity
 
-One family, plus a mono for every number.
-
-- **Geist** (SIL OFL, already downloaded) — all UI text.
-- **Geist Mono** (SIL OFL, already downloaded) — **every numeral**: steps,
-  CFG, denoise, resolution, seeds, percentages, queue position, file sizes.
-
-This is not decoration. This app displays a *lot* of numbers, and they sit
-in columns that must line up and in live counters that must not jitter as
-they tick. Tabular mono figures fix both. The previous attempt reached for
-a display serif, which is a magazine choice, not an instrument choice.
-
-| Role | Face | Size | Weight | Notes |
-| --- | --- | --- | --- | --- |
-| `stageTitle` | Geist | 28 | 700 | empty-state invitation only |
-| `sheetTitle` | Geist | 20 | 700 | sheet headers |
-| `body` | Geist | 15 | 400 | prompt text, descriptions |
-| `label` | Geist | 13 | 600 | controls, buttons |
-| `micro` | Geist | 11 | 700 | uppercase, `0.12em` tracking, section eyebrows |
-| `readout` | Geist Mono | 13 | 500 | **all** parameter values |
-| `readoutLarge` | Geist Mono | 32 | 500 | the progress percentage |
+Forge and ComfyUI are **not** distinguished by colour. They are distinguished
+by what the card at the top of the screen says, and by which tools exist in
+the tray. Introducing a per-engine hue would break the single-accent rule and
+make the two engines look like two apps.
 
 ---
 
-## 6. Geometry & motion
+## 3. Type
 
-**Radii** — glass panes are generously rounded, because the corner radius
-is what the refraction reads along.
-`pane 28` · `sheet 32` · `chip 999` · `well 14`
+Two families, both already bundled.
 
-**Spacing** — 4pt base: `4 · 8 · 12 · 16 · 24 · 32 · 48`
+- **Geist** — everything a person reads.
+- **Geist Mono** — everything a machine produced: values, units, counts,
+  labels, IDs, timestamps.
 
-**Touch targets** — 44pt minimum, no exceptions.
+The split is semantic, not decorative. If a number can change as a result of
+something the server did, it is Mono with `FontFeature.tabularFigures()` so it
+cannot reflow while it updates.
 
-**Motion**
-| Move | Duration | Curve |
-| --- | --- | --- |
-| press feedback | 120ms | `easeOutCubic` |
-| pane state | 260ms | `easeOutCubic` |
-| sheet rise | 380ms | `easeOutQuint` |
-| Stage cross-fade | 450ms | `easeInOutCubic` |
+| Style | Family | Size | Weight | Tracking | Use |
+|---|---|--:|--:|--:|---|
+| `deskTitle` | Geist | 24 | 650 | -0.035em | Screen title, once per screen |
+| `sheetTitle` | Geist | 19 | 650 | -0.025em | Drawer and modal headings |
+| `body` | Geist | 13.5 | 400 | 0 | Prose, prompt text |
+| `label` | Geist | 12 | 600 | -0.01em | Button and control labels |
+| `value` | Geist | 20 | 650 | -0.03em | A parameter's current value, set large |
+| `micro` | Mono | 8.5 | 400 | 0.16em | UPPERCASE captions on objects |
+| `readout` | Mono | 12 | 500 | 0.02em | Live numbers, tabular |
 
-Motion rules:
-1. **The glass reacts.** Press a pane, the specular highlight moves toward
-   your finger. This is the shader's light-angle uniform, not a fake.
-2. **Sheets thicken as they rise** — blur and refraction animate up from
-   Lens to Prism during the transition.
-3. **Nothing bounces.** This is an instrument.
-4. `MediaQuery.disableAnimations` freezes ambient motion and shortens
-   transitions. Respected everywhere.
+Rules:
 
----
-
-## 7. The components
-
-### 7.1 Rail *(Lens)*
-Top, floating, always visible. `[engine dot] Model/workflow name  ⌄`
-Tap → **Context sheet**. This is how you change checkpoint or workflow —
-one tap from the Stage, not a trip to a settings tab.
-
-### 7.2 Prompt Bar *(Lens)*
-Bottom. Collapsed: one line + the aperture. Focused: expands to 4 lines,
-reveals negative-prompt toggle and the AI actions (Enhance / Describe /
-Optimize — gated by `BackendCapabilities`). Filmstrip and rail fade back.
-
-### 7.3 The Aperture *(the generate control)*
-A circular iris — the app's namesake and its icon. **One element, three
-states**, never a separate progress bar:
-
-- **Idle** — engine-tinted fill, iris glyph
-- **Working** — the ring *is* the progress; iris blades close as steps
-  complete; centre shows `readoutLarge` percent. Tap = cancel.
-- **Done** — blades snap open, result lands on the Stage
-
-### 7.4 Filmstrip *(Vapor)*
-Above the prompt bar. Recent results, newest first. Tap → that image takes
-the Stage. **This is what kills the separate Results page** for the
-iterate loop. Swipe up on it → the full Gallery sheet.
-
-### 7.5 Sheets *(Prism)*
-Everything not on the Stage arrives here: Context (model/workflow +
-parameters), Gallery, Tools, Settings, Server Library, Test Lab. They rise
-over the Stage, which stays mounted underneath.
-
-### 7.6 Parameter Row
-The workhorse of the Context sheet. `label — [ control ] — readout`, where
-readout is always Geist Mono. One row type serves sliders, steppers,
-pickers and toggles, so 30+ parameters across two backends stay visually
-uniform.
+- Micro is **always uppercase** and always Mono. It is the label printed on a
+  physical thing — a negative sleeve, a file tab.
+- Never set body text below 12px. Micro is the only exception and it is never
+  prose.
+- One `deskTitle` per screen. Two competing titles means the screen is two
+  screens.
 
 ---
 
-## 8. Verified, not assumed
+## 4. Space, borders, corners
 
-Everything load-bearing in this document was checked against the real
-toolchain **before** being written down:
+### Spacing scale
 
-| Claim | Verification | Result |
-| --- | --- | --- |
-| Fragment shaders supported | `flutter --version` | 3.41.1 stable |
-| `ImageFilter.shader` exists | read `sky_engine/lib/ui/painting.dart:4386` | present, Impeller-only |
-| Runtime capability check | same file | `ImageFilter.isShaderFilterSupported` |
-| The glass shader compiles | `flutter build apk --debug` | **passes** |
-| Compiled shader ships | `unzip -l app-debug.apk` | `liquid_glass.frag`, 13,496b IPLR |
-| Impeller default on Android | Flutter docs | default on Vulkan devices (Android 10+) |
-| Geist / Geist Mono obtainable | downloaded from Google Fonts | OFL, in `assets/fonts/` |
+`4 · 8 · 12 · 16 · 24 · 32 · 48`. Nothing between these values.
 
-**Nothing in this document is aspirational.** The shader in
-`shaders/liquid_glass.frag` is real, compiles today, and is already bundled
-into the APK.
+Screen gutter is **12** on the outer edges, **16** for content that sits
+inside a paper object. The tool tray owns the left **44** and content starts
+after it.
 
----
+### Borders
 
-## 9. Build order
+| Weight | Use |
+|---|---|
+| `1px ink @ 20%` | Hairline divider inside a paper object |
+| `2px ink` | **The default.** Every interactive paper object: buttons, fields, chips, dropdowns |
+| `2.5px clay` | Live/draggable affordances only — outpaint handles, the active mask brush |
+| `3px ink` | The mounted sheet's outer frame |
 
-Follows `FEATURES.md` tiers. Each step ends compiling, testing and
-runnable — no big-bang integration.
+There is no such thing as a borderless control on paper. If it can be pressed
+and it sits on the desk, it is outlined in ink.
 
-| # | Step | Delivers |
-| --- | --- | --- |
-| 0 | `LiquidGlass` widget + design tokens | the material, on-device |
-| 1 | Stage shell + Rail + connection | app boots, shows engine, connects |
-| 2 | Prompt Bar + Aperture + generate | **end-to-end generation** |
-| 3 | Working state + live preview | the waiting experience |
-| 4 | Filmstrip + Stage result states | the iterate loop closes |
-| 5 | Context sheet | checkpoint/workflow + parameters |
-| 6 | Image input + mask painting | img2img and inpainting |
-| 7 | Gallery sheet | browse, save, send-to |
-| 8 | Tools sheet | crop / resize / upscale / stitch |
-| 9 | Comfy workflow sheet | import, auto-detect, edit |
-| 10 | Prompt intelligence | history, favourites, AI actions |
-| 11 | Power tools | server library, test lab |
+### Corners
+
+This is the rule that makes the design legible:
+
+| Radius | Applies to |
+|---|---|
+| `0` | **Paper as content** — the mounted sheet, prints, the negative strip |
+| `2` | Photographic edges where a hairline round reads better at small sizes |
+| `10` | **Controls** — chips, fields, tool buttons, dropdown cards |
+| `12` | Larger control surfaces — parameter slabs, drawer heads |
+| `999` | Nothing. Aperture has no pill shapes. |
+
+Pills are banned. A pill reads as a soft digital token and fights everything
+else on the desk. Buttons are rounded rectangles.
 
 ---
 
-## 10. Rules
+## 5. Depth — the hard shadow
 
-1. **The Stage never navigates.** If a thing needs the whole screen, it is
-   a sheet over the Stage.
-2. **Gate on `BackendCapabilities`,** never `if (backend == comfy)`.
-3. **Every number is Geist Mono.**
-4. **Colour is earned.** Chrome is achromatic; the accent appears in three
-   places only.
-5. **No Lens/Prism inside a scrolling list.**
-6. **Every control is ≥44pt.**
-7. **Degrade, never break** — no-Impeller devices get plain blur and lose
-   nothing functional.
+Depth is a **solid offset in ink at zero blur**, always down-right, always at
+the same 3:4 ratio between x and y. Never a soft shadow. Never a gradient.
+
+| Elevation | Offset | Opacity | Applies to |
+|---|---|--:|---|
+| `rest` | `2, 3` | 22% | Prints, chips, small cards |
+| `raised` | `3, 4` | 22% | Buttons, fields, dropdowns at rest |
+| `sheet` | `4, 6` | 22% | The mounted source sheet |
+| `drawer` | `0, -6` | 28% | Modals rising from the bottom edge (shadow points **up**) |
+| `lifted` | `6, 8` | 26% | An object being dragged |
+
+The offset is what encodes height, so it must never be animated to a *different
+direction* — only to a smaller or larger magnitude along the same diagonal.
+
+---
+
+## 6. Motion
+
+Motion is spring-driven and physical. Objects have weight; they overshoot and
+settle. Nothing fades in place — things arrive from somewhere.
+
+### Springs
+
+| Name | Stiffness | Damping | Use |
+|---|--:|--:|---|
+| `press` | 420 | 26 | Button down/up |
+| `settle` | 300 | 22 | A print landing, a drawer opening |
+| `snap` | 520 | 30 | Tool selection, toggle travel |
+| `drift` | 140 | 18 | Idle hints, handle pulse |
+
+Durations, where a spring is not appropriate: **90ms** press-in, **220ms**
+cross-fade, **320ms** drawer, **420ms** print arrival.
+
+### The five named motions
+
+1. **Press-into-shadow.** On tap down, the object translates by exactly its
+   shadow offset and its shadow shrinks to `1,1`. On release it springs back
+   past rest by ~4% and settles. This is the app's signature interaction and
+   every pressable thing does it — no ripples, no opacity changes.
+
+2. **Print arrival.** A new result enters from beyond the right edge at
+   `+20°` rotation, travels on the `settle` spring to its resting angle, and
+   nudges its neighbours aside. Batches stagger by **80ms** per print.
+
+3. **Handle pulse.** Outpaint handles scale `1.0 → 1.35 → 1.0` on the `drift`
+   spring over 4.4s, forever, until touched. This is the only permanently
+   animating element in the app and it exists to teach one non-obvious gesture.
+
+4. **Drawer rise.** Modals translate up from the bottom edge on `settle`, with
+   the desk behind them darkening to `ink @ 32%` — a flat scrim, never a blur.
+
+5. **Tab slide.** The active fill in a tray or tab strip travels between
+   positions on `snap` while the labels stay put.
+
+### Reduced motion
+
+When `MediaQuery.disableAnimations` is true: press-into-shadow becomes an
+instant state change, print arrival becomes a 120ms fade, and the handle pulse
+stops entirely. Layout never depends on an animation having run.
+
+### Rotation is deterministic
+
+A print's resting angle comes from its image id, not from `Random()`:
+
+```dart
+double restAngleFor(String id) => ((id.hashCode % 9) - 4) * 0.9 * pi / 180;
+```
+
+Range −3.6° to +3.6°. Computing it per build from a stable input means a print
+never jitters when the list rebuilds — the single most common way this kind of
+design goes wrong.
+
+---
+
+## 7. Components
+
+### 7.1 Desk
+
+The app background. `desk` fill plus a diagonal grain: repeating 96° lines,
+2px on / 7px off, at `deskGrain`. Painted once by a `CustomPainter` in a
+`RepaintBoundary` — it never animates and must never be rebuilt.
+
+### 7.2 Mounted sheet — the source image
+
+The single most important object. A paper rectangle with a **3px ink** frame
+and `sheet` elevation. The image sits inset by **12** on all sides, so the
+paper reads as a mat board around a photograph.
+
+- Corner radius `0`. It is paper.
+- Micro caption `SOURCE` bottom-left, inside the image, in `paper` over the
+  photograph.
+- Four **outpaint handles** at the corners: 16×16, `paper` fill, `2.5px clay`
+  border, pulsing on `drift`. Dragging one extends the canvas.
+- Mask strokes are painted directly on the image area in `clay @ 45%`.
+
+### 7.3 Print — a result
+
+A small paper rectangle with **5px** padding on three sides and **14px** at
+the bottom, exactly like a photographic print with a wide lower margin. Holds
+the image at radius `0`, carries `rest` elevation, and sits at its
+deterministic angle.
+
+- Selected: the ink border thickens to 2px and elevation goes to `raised`.
+- Prints overlap by about a third of their width along the shelf.
+- Batch count appears as a micro stamp on the shelf's left end (`×4`).
+
+### 7.4 Tool tray
+
+A tray of `ink` bolted to the **left edge**, full height of the work area,
+44 wide, radius `0` on the left and `16` on the right — because it is attached
+to the frame, not lying on the desk.
+
+- Tools are 30×30, radius `10`, icon in `paper @ 70%`.
+- The active tool has a `clay` fill and `paper` icon; the fill slides between
+  positions on `snap`.
+- The tray is **capability-gated**: it holds only the tools the active engine
+  actually supports, read from `EngineCapabilities` — never from an
+  `if (isComfy)`. A missing tool leaves no gap; the tray is shorter.
+
+### 7.5 Card — the loaded model
+
+A small `ink` rectangle with `paper` micro text, radius `2`, tucked into the
+top row. Shows the checkpoint (Forge) or the workflow (ComfyUI). A second card
+in `clay` shows LoRA count when any are active. Tapping opens the picker
+drawer.
+
+### 7.6 Buttons
+
+Rounded rectangle, radius `10`, **2px ink** border, `raised` elevation,
+`label` type, minimum height **44**.
+
+| Variant | Fill | Text |
+|---|---|---|
+| Primary | `clay` | `paper` |
+| Secondary | `paper` | `ink` |
+| Ghost | none | `ink`, border only |
+| Destructive | `paper` | `alert`, border `alert` |
+
+All four press into their shadow. Disabled: fill `paperEdge`, border and text
+`inkFaint`, elevation removed, no press response.
+
+### 7.7 Field — prompt and text entry
+
+`paper` fill, **2px ink** border, radius `10`, padding `12×14`. Micro label
+sits **above and outside** the field in `inkFaint`, never as a placeholder,
+because a placeholder disappears exactly when you need it.
+
+Focused: border becomes **2.5px clay**. No glow, no colour change to the fill.
+
+### 7.8 Chip — a value at a glance
+
+`paper` fill, **2px ink** border, radius `10`, `rest` elevation. Two lines:
+micro unit label above in `inkFaint`, `value` type below in `ink`. Tapping
+opens that parameter's control; dragging horizontally scrubs it in place.
+
+### 7.9 Slider — the ruler
+
+Sliders are **rulers**, because a desk has one.
+
+- Track: `paperEdge` fill, `2px ink` border, height 26, radius `2`.
+- Ticks: 1px ink lines at 10% intervals, taller at 50%.
+- Fill: `clay` from the left up to the value, drawn **behind** the ticks.
+- Thumb: a 22×34 `paper` tab with a 2px ink border and `rest` elevation — it
+  sticks up above the track like a brass slide. It carries the value in
+  `readout` type.
+- Dragging lifts the thumb to `lifted` and it presses back down on release.
+
+### 7.10 Dropdown — the index card
+
+Never a native menu. Tapping the trigger drops a `paper` card with a **2px
+ink** border, radius `10` and `raised` elevation, anchored under the trigger,
+arriving on `settle` with a 4px overshoot.
+
+- Rows are 44 tall, separated by hairlines.
+- The selected row carries a `clay` left bar 3px wide and its label in `ink`
+  at weight 600.
+- Over 8 items, the card gets a fixed max height and scrolls; it never covers
+  its own trigger.
+
+### 7.11 Toggle — the tab in a slot
+
+A 52×30 `paperEdge` slot with a 2px ink border and radius `10`, holding a
+24×24 `paper` tab with a 2px ink border. The tab travels on `snap`. When on,
+the **slot** fills `clay`; the tab itself never changes colour, because a
+physical tab doesn't.
+
+### 7.12 Tab strip — file tabs
+
+Tabs are folder tabs: `paper` with a 2px ink border, radius `10` on the top
+corners only and `0` on the bottom, sitting flush on the surface they label.
+The active tab fills `clay`, sits 2px higher, and its bottom border is removed
+so it joins the panel below.
+
+### 7.13 Drawer — the modal
+
+Every modal is a drawer pulled up from the bottom edge. Full width, `paper`
+fill, **3px ink** top border, radius `12` on the top corners only, `drawer`
+elevation. A 40×4 ink handle sits centred at the top.
+
+- Rises on `settle` over 320ms; the desk behind darkens to a flat `ink @ 32%`.
+- Drag down to dismiss, with velocity carried.
+- Maximum height 88% of the screen. A drawer that would exceed it scrolls
+  internally, keeping its head and its primary action pinned.
+
+Drawers hold: model/workflow picker, LoRA picker, prompt history, generation
+settings, the server gallery, upscale, crop.
+
+### 7.14 Progress — the filling ruler
+
+Generation progress reuses the ruler: the same track, filling in `clay`, with
+the `readout` percentage on the thumb. Indeterminate progress shows a 25%
+segment travelling the track on a 1.4s loop.
+
+Live preview frames from ComfyUI render **into the print that is being
+generated** — the print exists on the shelf from the moment the run is queued,
+starting as `paperEdge` and filling in as frames arrive. A batch shows all its
+empty prints immediately, so you can see how many are coming.
+
+### 7.15 Sticky note — the toast
+
+Transient messages are sticky notes: `paper` fill, no border, `rest`
+elevation, rotated by −2°, arriving from the top-right on `settle`. Errors use
+an `alert` 2px border and `alert` text. Auto-dismiss at 4s, or swipe away.
+
+---
+
+## 8. Layout
+
+The front page, top to bottom:
+
+```
+┌────────────────────────────────────────┐
+│  Aperture        [MODEL CARD] [LORA]   │  56  title row
+│ ┌──┐ ┌──────────────────────────────┐  │
+│ │T │ │                              │  │
+│ │o │ │      MOUNTED SHEET           │  │  flexible
+│ │o │ │      (source + mask)         │  │
+│ │l │ │                              │  │
+│ │s │ └──────────────────────────────┘  │
+│ │  │   ▟ ▟ ▟ ▟   the print shelf      │  110
+│ └──┘                                   │
+│  ┌──────────────────────────────────┐  │
+│  │ prompt field                     │  │  ~44
+│  └──────────────────────────────────┘  │
+│  [.62] [28] [×4]          [ GENERATE ] │  48  chip row
+└────────────────────────────────────────┘
+```
+
+Rules:
+
+- The **sheet is always the largest object on screen.** If a feature needs
+  more room than is left, it goes in a drawer.
+- The **tray is always present** and always on the left. It is the only
+  persistent navigation; there is no bottom bar.
+- The **print shelf never scrolls the page.** It scrolls horizontally within
+  its own band, and it is always visible, because comparing a result to the
+  source is the app's core act.
+- The **generate button is always bottom-right**, always `clay`, always the
+  same size. It is the one control whose position never changes.
+
+### Capability gating
+
+The screen's shape is driven entirely by `EngineCapabilities`:
+
+| Flag off | Effect |
+|---|---|
+| `loras` | The LoRA card disappears from the title row |
+| `checkpoints` | The model card shows the workflow instead |
+| `masks` | The brush tool leaves the tray; handles stay for outpaint |
+| `livePreview` | Prints appear filled on completion rather than progressively |
+| `serverLibrary` | The gallery tool leaves the tray |
+| `stitching` | The stitch tool leaves the tray |
+
+No screen may branch on the engine enum. Every branch reads a flag.
+
+---
+
+## 9. Rules
+
+**Always**
+
+- Shadows are solid ink, offset down-right, zero blur.
+- Paper content is square; controls are radius 10.
+- Every pressable object presses into its own shadow.
+- Machine-produced numbers are Mono with tabular figures.
+- Print angles are derived from the image id.
+- Touch targets are at least 44×44.
+- Capability flags decide what exists, never the engine enum.
+
+**Never**
+
+- No blurred shadows, no gradients on chrome, no glass, no shaders.
+- No pill shapes.
+- No second accent colour. `clay` is it.
+- No placeholder-as-label.
+- No native Material dropdowns, switches or dialogs — every one is replaced.
+- No ripple effects. The press-into-shadow is the feedback.
+- No permanently animating element except the outpaint handles.
+- No bottom navigation bar.
+
+---
+
+## 10. Build order
+
+1. `ui/desk/desk_tokens.dart` — colour, type, space, elevation, motion
+2. `ui/desk/desk_surface.dart` — desk, grain painter, paper, sheet, print
+3. `ui/desk/desk_controls.dart` — button, field, chip, ruler, toggle, tabs
+4. `ui/desk/desk_overlays.dart` — dropdown, drawer, sticky note
+5. Front page — tray, title row, sheet, shelf, prompt, chips, generate
+6. Drawers — model picker, LoRA picker, parameters, prompt history
+7. Server gallery, upscale, crop
+8. Test lab

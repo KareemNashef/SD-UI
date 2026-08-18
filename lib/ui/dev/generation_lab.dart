@@ -11,23 +11,22 @@ import 'package:sd_companion/domain/engine/engine_kind.dart';
 import 'package:sd_companion/domain/generation/generated_image.dart';
 import 'package:sd_companion/runtime/aperture_runtime.dart';
 import 'package:sd_companion/runtime/runtime_scope.dart';
+import 'package:sd_companion/state/library_store.dart';
 import 'package:sd_companion/state/run_store.dart';
 import 'package:sd_companion/state/session_store.dart';
-import 'package:sd_companion/ui/glass/glass_controls.dart';
-import 'package:sd_companion/ui/glass/glass_tokens.dart';
-import 'package:sd_companion/ui/glass/liquid_glass.dart';
+import 'package:sd_companion/ui/desk/desk_controls.dart';
+import 'package:sd_companion/ui/desk/desk_overlays.dart';
+import 'package:sd_companion/ui/desk/desk_surface.dart';
+import 'package:sd_companion/ui/desk/desk_tokens.dart';
 
-/// A real generation, driven entirely through the new architecture.
+/// A real generation, driven through the new architecture and dressed in the
+/// Desk system.
 ///
-/// This is the end-to-end proof the framework works: the glass controls
-/// write into [SessionStore], `ApertureRuntime.submit()` builds a
-/// [GenerationSpec] from that store plus the catalogue, the ComfyUI engine
-/// runs it, progress arrives on the engine's stream and lands in
-/// [RunStore], and the result lands in the library. No widget here touches
-/// HTTP, and nothing reads a global.
-///
-/// The bundled `debug_krea_txt2img.json` workflow supplies the graph, so the
-/// only thing needed on the device is a reachable ComfyUI server.
+/// This doubles as the first draft of the front page: tool tray on the left,
+/// the mounted sheet as the largest object, the print shelf under it, prompt
+/// and value chips below, generate always bottom-right. Nothing here touches
+/// HTTP and nothing reads a global - the controls write into [SessionStore]
+/// and `ApertureRuntime.submit()` does the rest.
 class GenerationLab extends StatefulWidget {
   const GenerationLab({super.key});
 
@@ -47,6 +46,7 @@ class _GenerationLabState extends State<GenerationLab> {
   String _status = 'Not connected';
   bool _busy = false;
   bool _ready = false;
+  int _tool = 0;
 
   @override
   void dispose() {
@@ -64,8 +64,6 @@ class _GenerationLabState extends State<GenerationLab> {
         port: _port.text.trim(),
       );
 
-  /// Point the runtime at this server, prove it answers, and load the
-  /// bundled workflow into its workflow service.
   Future<void> _connect() async {
     setState(() {
       _busy = true;
@@ -93,9 +91,8 @@ class _GenerationLabState extends State<GenerationLab> {
     final workflows = _rt.engines.workflowsFor(endpoint);
     await workflows.loadFor(endpoint);
     try {
-      // Re-import every time: the point of this screen is to test against
-      // the bundled graph as shipped, not against whatever a previous
-      // session left saved and possibly edited.
+      // Re-import every time: the point is to test the bundled graph as
+      // shipped, not whatever a previous session left saved and edited.
       final record = await workflows.importWorkflow(
         await rootBundle.loadString(_workflowAsset),
         name: 'Krea txt2img (debug)',
@@ -125,292 +122,323 @@ class _GenerationLabState extends State<GenerationLab> {
   Future<void> _generate() async {
     _rt.session.setPrompt(_prompt.text);
     setState(() => _status = 'Submitting…');
-
     final result = await _rt.submit();
     if (!mounted) return;
     setState(() {
       _status = result.fold(
-        (images) => 'Done - ${images.length} image(s)',
+        (images) => 'Done — ${images.length} image(s)',
         (error) => error.message,
       );
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
-      children: [
-        // ===== Server ===== //
-        Text('SERVER', style: Type.micro),
-        const SizedBox(height: Space.md),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Future<void> _openServerDrawer() => showDeskDrawer<void>(
+        context: context,
+        title: 'Server',
+        action: DeskStamp(
+          label: _ready ? 'ready' : 'idle',
+          color: _ready ? DeskPalette.good : DeskPalette.caution,
+        ),
+        builder: (context) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              flex: 3,
-              child: GlassField(label: 'Host', controller: _host),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: DeskField(label: 'Host', controller: _host),
+                ),
+                const SizedBox(width: Space.md),
+                Expanded(
+                  child: DeskField(
+                    label: 'Port',
+                    controller: _port,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: Space.md),
-            Expanded(
-              child: GlassField(
-                label: 'Port',
-                controller: _port,
-                keyboardType: TextInputType.number,
-              ),
+            const SizedBox(height: Space.lg),
+            DeskButton(
+              label: _busy ? 'Working…' : 'Connect & load workflow',
+              icon: Icons.link_rounded,
+              kind: DeskButtonKind.primary,
+              expand: true,
+              onPressed: _busy
+                  ? null
+                  : () {
+                      Navigator.of(context).pop();
+                      _connect();
+                    },
             ),
           ],
         ),
-        const SizedBox(height: Space.md),
-        GlassButton(
-          label: _busy ? 'Working…' : 'Connect & load workflow',
-          icon: Icons.hub_rounded,
-          tint: Palette.iris,
-          filled: true,
-          onPressed: _busy ? null : _connect,
-        ),
-        const SizedBox(height: Space.sm),
-        _StatusLine(text: _status, ok: _ready),
-        const SizedBox(height: Space.xl),
+      );
 
-        // ===== Prompt ===== //
-        Text('PROMPT', style: Type.micro),
-        const SizedBox(height: Space.md),
-        GlassField(label: 'Positive', controller: _prompt, maxLines: 3),
-        const SizedBox(height: Space.xl),
-
-        // ===== Sampling, bound to the real session store ===== //
-        Text('SAMPLING', style: Type.micro),
-        const SizedBox(height: 2),
-        Text(
-          'These write straight into SessionStore - the numbers below are '
-          'read back from it, not from local state.',
-          style: Type.body.copyWith(fontSize: 12.5, color: Palette.chalk40),
-        ),
-        const SizedBox(height: Space.md),
-        ValueListenableBuilder<SessionState>(
+  Future<void> _openSettingsDrawer() => showDeskDrawer<void>(
+        context: context,
+        title: 'Generation settings',
+        builder: (context) => ValueListenableBuilder<SessionState>(
           valueListenable: _rt.session,
-          builder: (context, s, _) => GlassSurface(
-            weight: GlassWeight.lens,
-            radius: Radii.pane,
-            padding: const EdgeInsets.all(Space.lg),
-            child: Column(
-              children: [
-                GlassSlider(
-                  label: 'Steps',
-                  value: s.sampling.steps.toDouble(),
-                  min: 1,
-                  max: 60,
-                  divisions: 59,
-                  tint: Palette.iris,
-                  format: (v) => v.round().toString(),
-                  onChanged: (v) => _rt.session
-                      .tuneSampling((p) => p.copyWith(steps: v.round())),
-                ),
-                const SizedBox(height: Space.lg),
-                GlassSlider(
-                  label: 'CFG Scale',
-                  value: s.sampling.cfgScale,
-                  min: 1,
-                  max: 15,
-                  tint: Palette.ember,
-                  format: (v) => v.toStringAsFixed(2),
-                  onChanged: (v) =>
-                      _rt.session.tuneSampling((p) => p.copyWith(cfgScale: v)),
-                ),
-                const SizedBox(height: Space.lg),
-                GlassSegmented<int>(
-                  value: s.sampling.width,
-                  tint: Palette.iris,
-                  onChanged: (v) => _rt.session.tuneSampling(
-                    (p) => p.copyWith(width: v, height: v),
-                  ),
-                  segments: const [
-                    GlassSegment(value: 512, label: '512'),
-                    GlassSegment(value: 768, label: '768'),
-                    GlassSegment(value: 1024, label: '1024'),
-                  ],
-                ),
-                const SizedBox(height: Space.lg),
-                Row(
-                  children: [
-                    Expanded(child: Text('Random seed', style: Type.label)),
-                    GlassSwitch(
-                      value: s.sampling.isSeedRandom,
-                      tint: Palette.iris,
-                      onChanged: (random) => _rt.session.tuneSampling(
-                        (p) => random
-                            ? p.copyWith(clearSeed: true)
-                            : p.copyWith(seed: 1104433390),
-                      ),
+          builder: (context, s, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DeskRuler(
+                label: 'Steps',
+                value: s.sampling.steps.toDouble(),
+                min: 1,
+                max: 60,
+                divisions: 59,
+                format: (v) => v.round().toString(),
+                onChanged: (v) => _rt.session
+                    .tuneSampling((p) => p.copyWith(steps: v.round())),
+              ),
+              const SizedBox(height: Space.lg),
+              DeskRuler(
+                label: 'Guidance',
+                value: s.sampling.cfgScale,
+                min: 1,
+                max: 15,
+                format: (v) => v.toStringAsFixed(2),
+                onChanged: (v) =>
+                    _rt.session.tuneSampling((p) => p.copyWith(cfgScale: v)),
+              ),
+              const SizedBox(height: Space.lg),
+              DeskDropdown<int>(
+                label: 'Resolution',
+                value: s.sampling.width,
+                options: const [
+                  DeskOption(value: 512, label: '512 × 512'),
+                  DeskOption(value: 768, label: '768 × 768', detail: 'DEFAULT'),
+                  DeskOption(value: 1024, label: '1024 × 1024'),
+                ],
+                onChanged: (v) => _rt.session
+                    .tuneSampling((p) => p.copyWith(width: v, height: v)),
+              ),
+              const SizedBox(height: Space.lg),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Random seed',
+                      style:
+                          Type.label.copyWith(color: DeskTheme.of(context).ink),
                     ),
+                  ),
+                  DeskToggle(
+                    value: s.sampling.isSeedRandom,
+                    onChanged: (random) => _rt.session.tuneSampling(
+                      (p) => random
+                          ? p.copyWith(clearSeed: true)
+                          : p.copyWith(seed: 1104433390),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final p = DeskTheme.of(context);
+
+    return Column(
+      children: [
+        // ===== Title row: what is loaded, and whether it answers ===== //
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              Space.gutter, Space.md, Space.gutter, Space.sm),
+          child: Row(
+            children: [
+              DeskCard(label: 'krea txt2img', onTap: _openServerDrawer),
+              const SizedBox(width: Space.sm),
+              DeskCard(label: 'comfy', accent: true, onTap: _openServerDrawer),
+              const Spacer(),
+              DeskStamp(
+                label: _ready ? 'ready' : 'offline',
+                color: _ready ? DeskPalette.good : DeskPalette.caution,
+              ),
+            ],
+          ),
+        ),
+
+        // ===== Tray + mounted sheet ===== //
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: Space.md),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DeskToolTray(
+                  tools: [
+                    DeskTool(
+                        icon: Icons.dns_rounded,
+                        name: 'Server',
+                        onTap: _openServerDrawer),
+                    DeskTool(
+                        icon: Icons.tune_rounded,
+                        name: 'Settings',
+                        onTap: _openSettingsDrawer),
+                    const DeskTool(icon: Icons.brush_rounded, name: 'Mask'),
+                    const DeskTool(
+                        icon: Icons.photo_library_rounded, name: 'Gallery'),
                   ],
+                  activeIndex: _tool,
+                  onSelect: (i) => setState(() => _tool = i),
                 ),
+                const SizedBox(width: Space.md),
+                Expanded(
+                  child: ValueListenableBuilder<RunState>(
+                    valueListenable: _rt.run,
+                    builder: (context, run, _) {
+                      final preview = run.progress.preview;
+                      return MountedSheet(
+                        caption: preview != null ? 'PREVIEW' : 'SOURCE',
+                        showHandles: preview == null,
+                        image: preview != null
+                            ? Image.memory(preview,
+                                fit: BoxFit.contain, gaplessPlayback: true)
+                            : Center(
+                                child: Text('NO SOURCE',
+                                    style:
+                                        Type.micro.copyWith(color: p.inkFaint)),
+                              ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: Space.gutter),
               ],
             ),
           ),
         ),
-        const SizedBox(height: Space.xl),
 
-        // ===== Run ===== //
+        // ===== Print shelf ===== //
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+          child: ValueListenableBuilder<LibraryState>(
+            valueListenable: _rt.library,
+            builder: (context, lib, _) {
+              if (lib.isEmpty) {
+                return SizedBox(
+                  height: 110,
+                  child: Center(
+                    child: Text('NOTHING PRINTED YET',
+                        style: Type.micro.copyWith(color: p.inkFaint)),
+                  ),
+                );
+              }
+              return PrintShelf(
+                stamp: '×${lib.count}',
+                prints: [
+                  for (final image in lib.images)
+                    Print(
+                      id: image.id,
+                      selected: image.id == lib.selectedId,
+                      onTap: () => _rt.library.select(image.id),
+                      image: _preview(image),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+
+        // ===== Progress, only while a run is in flight ===== //
         ValueListenableBuilder<RunState>(
           valueListenable: _rt.run,
-          builder: (context, run, _) => Column(
+          builder: (context, run, _) => run.isActive
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      Space.gutter, Space.sm, Space.gutter, 0),
+                  child: DeskProgress(
+                    fraction: run.progress.fraction,
+                    caption: (run.progress.stage ?? run.progress.phase.label)
+                        .toUpperCase(),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+
+        // ===== Prompt, chips, generate ===== //
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              Space.gutter, Space.md, Space.gutter, Space.md),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: GlassButton(
-                      label: run.isActive ? 'Generating…' : 'Generate',
-                      icon: Icons.auto_awesome_rounded,
-                      tint: Palette.iris,
-                      filled: true,
-                      onPressed: (!_ready || run.isActive) ? null : _generate,
+              DeskField(label: 'Prompt', controller: _prompt, maxLines: 2),
+              const SizedBox(height: Space.md),
+              ValueListenableBuilder<SessionState>(
+                valueListenable: _rt.session,
+                builder: (context, s, _) => Row(
+                  children: [
+                    DeskChip(
+                      unit: 'steps',
+                      value: '${s.sampling.steps}',
+                      onTap: _openSettingsDrawer,
                     ),
-                  ),
-                  const SizedBox(width: Space.md),
-                  GlassButton(
-                    label: 'Stop',
-                    icon: Icons.stop_rounded,
-                    tint: Palette.alert,
-                    onPressed: run.isActive ? _rt.cancelRun : null,
-                  ),
-                ],
+                    const SizedBox(width: Space.sm),
+                    DeskChip(
+                      unit: 'cfg',
+                      value: s.sampling.cfgScale.toStringAsFixed(1),
+                      onTap: _openSettingsDrawer,
+                    ),
+                    const SizedBox(width: Space.sm),
+                    DeskChip(
+                      unit: 'size',
+                      value: '${s.sampling.width}',
+                      onTap: _openSettingsDrawer,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: Space.md),
-              _RunReadout(run: run),
+              ValueListenableBuilder<RunState>(
+                valueListenable: _rt.run,
+                builder: (context, run, _) => Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _status,
+                        style: Type.micro.copyWith(color: p.inkFaint),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: Space.sm),
+                    if (run.isActive)
+                      DeskButton(
+                        label: 'Stop',
+                        kind: DeskButtonKind.destructive,
+                        onPressed: _rt.cancelRun,
+                      )
+                    else
+                      DeskButton(
+                        label: 'Generate',
+                        icon: Icons.play_arrow_rounded,
+                        kind: DeskButtonKind.primary,
+                        onPressed: _ready ? _generate : null,
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: Space.xl),
-
-        // ===== Result ===== //
-        Text('LIBRARY', style: Type.micro),
-        const SizedBox(height: Space.md),
-        ValueListenableBuilder(
-          valueListenable: _rt.library,
-          builder: (context, lib, _) {
-            final image = lib.selected;
-            return GlassSurface(
-              weight: GlassWeight.lens,
-              radius: Radii.pane,
-              padding: const EdgeInsets.all(Space.lg),
-              child: image == null
-                  ? SizedBox(
-                      height: 120,
-                      child: Center(
-                        child: Text('Nothing generated yet',
-                            style: Type.body.copyWith(color: Palette.chalk40)),
-                      ),
-                    )
-                  : Column(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(Radii.well),
-                          child: _preview(image),
-                        ),
-                        const SizedBox(height: Space.md),
-                        Text('${lib.count} in library', style: Type.readout),
-                      ],
-                    ),
-            );
-          },
-        ),
       ],
     );
   }
 
-  /// Forge hands back data URLs, ComfyUI hands back `/view` URLs; both end
-  /// up in the same library, so both have to render here.
+  /// Forge hands back data URLs, ComfyUI hands back `/view` URLs; both end up
+  /// on the same shelf, so both have to render here.
   Widget _preview(GeneratedImage image) => image.isDataUrl
       ? Image.memory(
           base64Decode(image.url.substring(image.url.indexOf(',') + 1)),
-          fit: BoxFit.contain,
+          fit: BoxFit.cover,
         )
-      : Image.network(image.url, fit: BoxFit.contain);
-}
-
-class _StatusLine extends StatelessWidget {
-  final String text;
-  final bool ok;
-  const _StatusLine({required this.text, required this.ok});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: ok ? Palette.iris : Palette.chalk40,
-          ),
-        ),
-        const SizedBox(width: Space.sm),
-        Expanded(
-          child: Text(
-            text,
-            style: Type.body.copyWith(
-              fontSize: 12.5,
-              color: ok ? Palette.chalk70 : Palette.chalk40,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RunReadout extends StatelessWidget {
-  final RunState run;
-  const _RunReadout({required this.run});
-
-  @override
-  Widget build(BuildContext context) {
-    final p = run.progress;
-    return GlassSurface(
-      weight: GlassWeight.vapor,
-      radius: Radii.well,
-      padding: const EdgeInsets.all(Space.lg),
-      child: Column(
-        children: [
-          _row('phase', p.stage ?? p.phase.label),
-          _row('percent', p.percent == null ? '—' : '${p.percent}%'),
-          _row('step',
-              p.stepTotal == null ? '—' : '${p.stepCurrent ?? 0}/${p.stepTotal}'),
-          if (p.failureMessage != null)
-            Padding(
-              padding: const EdgeInsets.only(top: Space.sm),
-              child: Text(
-                p.failureMessage!,
-                style: Type.body.copyWith(fontSize: 12, color: Palette.alert),
-              ),
-            ),
-          if (p.preview != null) ...[
-            const SizedBox(height: Space.md),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(Radii.well),
-              child: Image.memory(p.preview!, height: 160, fit: BoxFit.contain),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _row(String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(label,
-                  style: Type.body
-                      .copyWith(fontSize: 12.5, color: Palette.chalk40)),
-            ),
-            Text(value, style: Type.readout),
-          ],
-        ),
-      );
+      : Image.network(image.url, fit: BoxFit.cover);
 }
