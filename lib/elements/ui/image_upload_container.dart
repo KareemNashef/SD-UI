@@ -75,6 +75,8 @@ class _ImageContainerState extends State<ImageContainer> {
 
   // Prompt Variables
   bool _isOptimizingPrompt = false;
+  bool _isEnhancingPrompt = false;
+  bool _isDescribingImage = false;
   String? _previousPrompt;
 
   // Pan Variables
@@ -988,6 +990,58 @@ class _ImageContainerState extends State<ImageContainer> {
     );
   }
 
+  // ===== AI Prompt Helpers (Comfy) ===== //
+
+  Future<void> _enhancePrompt() async {
+    if (_isEnhancingPrompt || userPrompt.text.isEmpty) return;
+    setState(() {
+      _isEnhancingPrompt = true;
+      _previousPrompt = userPrompt.text;
+    });
+    try {
+      final result = await globalComfyBackend.enhancePrompt(userPrompt.text);
+      if (mounted) {
+        setState(() {
+          userPrompt.text = result;
+          userPrompt.selection = TextSelection.fromPosition(TextPosition(offset: userPrompt.text.length));
+        });
+      }
+    } catch (e) {
+      if (mounted) _showError("Prompt enhancement failed: $e");
+    } finally {
+      if (mounted) setState(() => _isEnhancingPrompt = false);
+    }
+  }
+
+  /// Opens its own image picker rather than reusing whatever's loaded on
+  /// the canvas - describing an image is a standalone lookup the user
+  /// reaches for regardless of what (if anything) they're currently
+  /// inpainting, not an action tied to the canvas's own image.
+  Future<void> _pickAndDescribeImage() async {
+    if (_isDescribingImage) return;
+    final XFile? picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+
+    setState(() {
+      _isDescribingImage = true;
+      _previousPrompt = userPrompt.text;
+    });
+    try {
+      final bytes = await picked.readAsBytes();
+      final result = await globalComfyBackend.describeImage(bytes);
+      if (mounted) {
+        setState(() {
+          userPrompt.text = result;
+          userPrompt.selection = TextSelection.fromPosition(TextPosition(offset: userPrompt.text.length));
+        });
+      }
+    } catch (e) {
+      if (mounted) _showError("Image description failed: $e");
+    } finally {
+      if (mounted) setState(() => _isDescribingImage = false);
+    }
+  }
+
   Widget _buildPromptSection() {
     final bool hasText = userPrompt.text.isNotEmpty;
     final bool canUndo = _previousPrompt != null;
@@ -1093,18 +1147,52 @@ class _ImageContainerState extends State<ImageContainer> {
                       const SizedBox(width: 4),
                     ],
 
-                    // 3. Clear Button (Icon Only)
-                    Tooltip(
-                      message: "Clear",
-                      child: InkWell(
-                        onTap: () => setState(() => userPrompt.clear()),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Padding(
-                          padding: const EdgeInsets.all(6.0),
-                          child: Icon(Icons.close_rounded, size: 16, color: Colors.white.withValues(alpha: 0.6)),
+                    // 3. AI Enhance Button (Comfy only) - same slot Optimize
+                    // fills for Forge, driving the bundled QwenVL rewrite
+                    // workflow instead of the ollama_optimizer endpoint.
+                    if (hasText && globalBackend.capabilities.promptEnhance) ...[
+                      Tooltip(
+                        message: "Rewrite this prompt with AI",
+                        child: InkWell(
+                          onTap: _isEnhancingPrompt ? null : _enhancePrompt,
+                          borderRadius: BorderRadius.circular(20),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentPrimary.withValues(alpha: 0.1),
+                              border: Border.all(color: AppTheme.accentPrimary.withValues(alpha: 0.3), width: 1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              children: [
+                                if (_isEnhancingPrompt) SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentPrimary)) else Icon(Icons.auto_awesome_rounded, size: 14, color: AppTheme.accentPrimary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _isEnhancingPrompt ? "Enhancing..." : "Enhance",
+                                  style: TextStyle(color: AppTheme.accentPrimary, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.3),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 4),
+                    ],
+
+                    // 4. Clear Button (Icon Only)
+                    if (hasText)
+                      Tooltip(
+                        message: "Clear",
+                        child: InkWell(
+                          onTap: () => setState(() => userPrompt.clear()),
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.all(6.0),
+                            child: Icon(Icons.close_rounded, size: 16, color: Colors.white.withValues(alpha: 0.6)),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
             ],
@@ -1441,6 +1529,31 @@ class _ImageContainerState extends State<ImageContainer> {
                 });
               },
             ),
+            if (globalBackend.capabilities.imageToText) ...[
+              const SizedBox(width: 4),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  GlassOptionButton(
+                    icon: Icons.image_search_rounded,
+                    tooltip: 'Describe an image with AI',
+                    isActive: _isDescribingImage,
+                    onTap: () {
+                      FocusScope.of(context).unfocus();
+                      _pickAndDescribeImage();
+                    },
+                  ),
+                  if (_isDescribingImage)
+                    IgnorePointer(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.comfyAccentSecondary),
+                      ),
+                    ),
+                ],
+              ),
+            ],
           ],
         ),
 

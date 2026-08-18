@@ -8,8 +8,10 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 
@@ -18,6 +20,7 @@ import 'package:sd_companion/logic/backend/backend_kind.dart';
 import 'package:sd_companion/logic/backend/image_backend.dart';
 import 'package:sd_companion/logic/backend/server_profile.dart';
 import 'package:sd_companion/logic/comfy/comfy_graph_converter.dart';
+import 'package:sd_companion/logic/comfy/comfy_node_schema.dart';
 import 'package:sd_companion/logic/comfy/comfy_object_info_client.dart';
 import 'package:sd_companion/logic/comfy/comfy_progress_service.dart';
 import 'package:sd_companion/logic/comfy/comfy_workflow.dart';
@@ -127,6 +130,21 @@ class ComfyBackend implements ImageBackend {
       }
     }
 
+    // ComfyUI caches node outputs by their resolved input values, not by
+    // request - it has no idea a "regenerate" happened and will silently
+    // return the previous run's cached image if nothing actually changed.
+    // The stored seed value never changes on its own (the "randomize" flag
+    // is purely metadata this app tracks; only the real ComfyUI frontend's
+    // JS re-rolls it, and only *after* a run completes, for next time), so
+    // a same-image-same-prompt regenerate with Random seed would otherwise
+    // resubmit an identical graph forever. Roll a fresh seed in as an
+    // override (not persisted to the saved workflow) whenever the widget is
+    // flagged randomize, so every such generation is actually novel.
+    for (final widget in detected.samplerSettings) {
+      if (widget.controlAfterGenerateSlotIndex == null || !widget.isRandomized) continue;
+      overrides['${widget.node.id}:${widget.input.name}'] = _randomSeedValue();
+    }
+
     final schemaProvider = HttpComfyNodeSchemaProvider(profile);
     final converter = ComfyGraphConverter(schemaProvider);
     final ComfyGraphConversionResult conversion;
@@ -169,6 +187,270 @@ class ComfyBackend implements ImageBackend {
       progressService.endTracking();
     }
   }
+
+  // ===== SeedVR2 Upscale ===== //
+  //
+  // Unlike the main txt2img/img2img/inpainting flow, this doesn't run a
+  // user-imported workflow - it's a small, fixed IMAGE->IMAGE pipeline
+  // (LoadImage -> SeedVR2TilingUpscaler -> SaveImage) bundled with the app,
+  // matching the same UI the Forge upscale modal already offers. It reuses
+  // all the same queueing/history/progress machinery as generate() rather
+  // than duplicating it.
+
+  static const _kUpscaleWorkflowAsset = 'assets/comfy/seedvr2_upscale.json';
+  ComfyWorkflowDocument? _upscaleWorkflowTemplate;
+
+  Future<ComfyWorkflowDocument> _loadUpscaleWorkflow() async {
+    // Cache the parsed template, but always hand back a clone - the graph
+    // converter overrides values on a per-call basis and must never mutate
+    // shared state between concurrent/repeated upscale calls.
+    _upscaleWorkflowTemplate ??= ComfyWorkflowDocument.parse(
+      await rootBundle.loadString(_kUpscaleWorkflowAsset),
+    );
+    return _upscaleWorkflowTemplate!.clone();
+  }
+
+  /// Runs the bundled SeedVR2 workflow against [imageBytes], targeting
+  /// [resolution] pixels on the image's longest side. Returns a ComfyUI
+  /// `/view` URL for the upscaled output - safe to hand straight to
+  /// `GeneratedImage.local`, which displays network URLs the same way it
+  /// displays data URLs.
+  Future<String> upscaleSeedVR2({
+    required Uint8List imageBytes,
+    required int resolution,
+    Function(Map<String, dynamic> progressData)? onProgress,
+  }) async {
+    final doc = await _loadUpscaleWorkflow();
+
+    ComfyEditorNode? loadImageNode;
+    ComfyEditorNode? upscalerNode;
+    for (final node in doc.nodes) {
+      if (node.type == 'LoadImage') loadImageNode = node;
+      if (node.type == 'SeedVR2TilingUpscaler') upscalerNode = node;
+    }
+    if (loadImageNode == null || upscalerNode == null) {
+      throw const BackendException(
+        'Bundled SeedVR2 upscale workflow is missing required nodes',
+        kind: BackendErrorKind.validation,
+      );
+    }
+
+    final schemaProvider = HttpComfyNodeSchemaProvider(profile);
+    final upscalerSchema = await schemaProvider.schemaFor(upscalerNode.type);
+    if (!upscalerSchema.known || upscalerSchema.inputByName('new_resolution') == null) {
+      throw const BackendException(
+        'SeedVR2TilingUpscaler node is not available on this ComfyUI server. '
+        'Install moonwhaler/comfyui-seedvr2-tilingupscaler and its models.',
+        kind: BackendErrorKind.unsupported,
+      );
+    }
+
+    final clientId = progressService.ensureClientId();
+    await progressService.connect(profile, force: true);
+
+    final uploadedFilename = await _uploadImage(imageBytes, loadImageNode.id);
+    final overrides = <String, dynamic>{
+      '${loadImageNode.id}:image': uploadedFilename,
+      '${upscalerNode.id}:new_resolution': resolution,
+    };
+
+    final converter = ComfyGraphConverter(schemaProvider);
+    final ComfyGraphConversionResult conversion;
+    try {
+      conversion = await converter.convert(doc, overrides: overrides);
+    } on ComfyWorkflowParseException catch (e) {
+      throw BackendException(e.message, kind: BackendErrorKind.validation);
+    }
+
+    final promptId = await _queuePrompt(conversion.apiGraph, clientId);
+    progressService.beginTracking(promptId);
+
+    void Function()? unsubscribe;
+    if (onProgress != null) {
+      void listener() {
+        final p = progressService.notifier.value;
+        onProgress({'progress': p.fraction, 'status': _describeUpscaleProgress(p)});
+      }
+
+      progressService.notifier.addListener(listener);
+      unsubscribe = () => progressService.notifier.removeListener(listener);
+    }
+
+    try {
+      final history = await _awaitHistory(promptId);
+      final images = _extractOutputImages(
+        history: history,
+        promptId: promptId,
+        workflowId: 'seedvr2_upscale',
+        promptSnapshot: '',
+        negativeSnapshot: '',
+      );
+      if (images.isEmpty) {
+        throw const BackendException(
+          'SeedVR2 upscale finished but returned no image output',
+          kind: BackendErrorKind.server,
+        );
+      }
+      return images.first.imageUrl;
+    } finally {
+      unsubscribe?.call();
+      progressService.endTracking();
+    }
+  }
+
+  String _describeUpscaleProgress(GenerationProgress p) => switch (p.state) {
+    GenerationState.queued => 'Queued',
+    GenerationState.running => 'Upscaling',
+    GenerationState.completed => 'Finishing',
+    _ => 'Processing',
+  };
+
+  // ===== Prompt Enhance / Image-to-Prompt ===== //
+  //
+  // Two more small bundled utility workflows, same shape as the upscale one
+  // above: fixed IMAGE/STRING->STRING pipelines built on the QwenVL-GGUF
+  // custom nodes (1038lab/ComfyUI-QwenVL), driven purely by widget-name
+  // overrides resolved against the live server's own schema rather than
+  // any positional assumption - the SeedVR2 workflow already showed what
+  // goes wrong when that's assumed instead of verified. Both terminate in
+  // a core `PreviewAny` node, whose ComfyUI-side implementation reports its
+  // stringified value at `outputs[nodeId]['text'][0]` in `/history` (it has
+  // no image output to extract, unlike the rest of this backend).
+
+  static const _kPromptEnhanceWorkflowAsset = 'assets/comfy/prompt_enhance.json';
+  static const _kImg2PromptWorkflowAsset = 'assets/comfy/img2prompt.json';
+  ComfyWorkflowDocument? _promptEnhanceTemplate;
+  ComfyWorkflowDocument? _img2PromptTemplate;
+
+  Future<ComfyWorkflowDocument> _loadPromptEnhanceWorkflow() async {
+    _promptEnhanceTemplate ??= ComfyWorkflowDocument.parse(
+      await rootBundle.loadString(_kPromptEnhanceWorkflowAsset),
+    );
+    return _promptEnhanceTemplate!.clone();
+  }
+
+  Future<ComfyWorkflowDocument> _loadImg2PromptWorkflow() async {
+    _img2PromptTemplate ??= ComfyWorkflowDocument.parse(
+      await rootBundle.loadString(_kImg2PromptWorkflowAsset),
+    );
+    return _img2PromptTemplate!.clone();
+  }
+
+  /// Rewrites [prompt] through the bundled QwenVL prompt-enhancer workflow.
+  Future<String> enhancePrompt(String prompt) async {
+    final doc = await _loadPromptEnhanceWorkflow();
+
+    ComfyEditorNode? enhancerNode;
+    for (final node in doc.nodes) {
+      if (node.type == 'AILab_QwenVL_GGUF_PromptEnhancer') enhancerNode = node;
+    }
+    if (enhancerNode == null) {
+      throw const BackendException(
+        'Bundled prompt-enhance workflow is missing its enhancer node',
+        kind: BackendErrorKind.validation,
+      );
+    }
+
+    final schemaProvider = HttpComfyNodeSchemaProvider(profile);
+    final schema = await schemaProvider.schemaFor(enhancerNode.type);
+    if (!schema.known || schema.inputByName('prompt_text') == null) {
+      throw const BackendException(
+        'AILab_QwenVL_GGUF_PromptEnhancer node is not available on this ComfyUI server. '
+        'Install 1038lab/ComfyUI-QwenVL and its GGUF models.',
+        kind: BackendErrorKind.unsupported,
+      );
+    }
+
+    return _runTextWorkflow(doc, schemaProvider, {
+      '${enhancerNode.id}:prompt_text': prompt,
+    });
+  }
+
+  /// Captions [imageBytes] through the bundled QwenVL image-to-prompt
+  /// workflow.
+  Future<String> describeImage(Uint8List imageBytes) async {
+    final doc = await _loadImg2PromptWorkflow();
+
+    ComfyEditorNode? loadImageNode;
+    ComfyEditorNode? captionNode;
+    for (final node in doc.nodes) {
+      if (node.type == 'LoadImage') loadImageNode = node;
+      if (node.type == 'AILab_QwenVL_GGUF_Advanced') captionNode = node;
+    }
+    if (loadImageNode == null || captionNode == null) {
+      throw const BackendException(
+        'Bundled img2prompt workflow is missing required nodes',
+        kind: BackendErrorKind.validation,
+      );
+    }
+
+    final schemaProvider = HttpComfyNodeSchemaProvider(profile);
+    final schema = await schemaProvider.schemaFor(captionNode.type);
+    if (!schema.known) {
+      throw const BackendException(
+        'AILab_QwenVL_GGUF_Advanced node is not available on this ComfyUI server. '
+        'Install 1038lab/ComfyUI-QwenVL and its GGUF models.',
+        kind: BackendErrorKind.unsupported,
+      );
+    }
+
+    final uploadedFilename = await _uploadImage(imageBytes, loadImageNode.id);
+    return _runTextWorkflow(doc, schemaProvider, {
+      '${loadImageNode.id}:image': uploadedFilename,
+    });
+  }
+
+  /// Shared queue/history plumbing for the two text-output workflows above.
+  Future<String> _runTextWorkflow(
+    ComfyWorkflowDocument doc,
+    ComfyNodeSchemaProvider schemaProvider,
+    Map<String, dynamic> overrides,
+  ) async {
+    final clientId = progressService.ensureClientId();
+    await progressService.connect(profile, force: true);
+
+    final converter = ComfyGraphConverter(schemaProvider);
+    final ComfyGraphConversionResult conversion;
+    try {
+      conversion = await converter.convert(doc, overrides: overrides);
+    } on ComfyWorkflowParseException catch (e) {
+      throw BackendException(e.message, kind: BackendErrorKind.validation);
+    }
+
+    final promptId = await _queuePrompt(conversion.apiGraph, clientId);
+    progressService.beginTracking(promptId);
+    try {
+      final history = await _awaitHistory(promptId);
+      final text = _extractOutputText(history);
+      if (text == null || text.trim().isEmpty) {
+        throw const BackendException(
+          'ComfyUI finished but returned no text output',
+          kind: BackendErrorKind.server,
+        );
+      }
+      return text.trim();
+    } finally {
+      progressService.endTracking();
+    }
+  }
+
+  String? _extractOutputText(Map<String, dynamic> history) {
+    final outputs = (history['outputs'] as Map?)?.cast<String, dynamic>() ?? {};
+    for (final nodeOutputs in outputs.values) {
+      final textList = (nodeOutputs as Map<String, dynamic>?)?['text'] as List?;
+      if (textList != null && textList.isNotEmpty) {
+        return textList.first?.toString();
+      }
+    }
+    return null;
+  }
+
+  /// A fresh seed for a "randomize" widget. ComfyUI reports seed's range as
+  /// up to 2^64-1, but that doesn't fit safely in Dart's 64-bit signed int
+  /// and Random.nextInt is capped at 2^32 anyway - a 32-bit seed space is
+  /// still effectively unlimited entropy for the sole purpose here (making
+  /// sure the submitted graph differs from the last run).
+  int _randomSeedValue() => Random().nextInt(0xFFFFFFFF);
 
   /// ComfyUI's `LoadImage` derives its MASK output from the uploaded PNG's
   /// alpha channel (`mask = 1 - alpha/255`), the same convention its own

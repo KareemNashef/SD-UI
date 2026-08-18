@@ -4,9 +4,14 @@
 import 'package:flutter/material.dart';
 
 // Local imports - Elements
+import 'package:sd_companion/elements/modals/comfy_server_library_modal.dart';
 import 'package:sd_companion/elements/ui/progress_overlay.dart';
 import 'package:sd_companion/elements/ui/results_carousel.dart';
 import 'package:sd_companion/elements/widgets/glass_app_bar.dart';
+import 'package:sd_companion/elements/widgets/theme_constants.dart';
+
+// Local imports - Logic
+import 'package:sd_companion/logic/globals.dart';
 
 // Results Page Implementation
 
@@ -30,12 +35,29 @@ class ResultsPageState extends State<ResultsPage>
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
-      child: const Scaffold(
+      child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBody: true,
         extendBodyBehindAppBar: true,
-        appBar: GlassAppBar(title: 'LIBRARY'),
-        body: Stack(
+        appBar: GlassAppBar(
+          title: 'LIBRARY',
+          actions: [
+            // Only Comfy currently has a real server-side endpoint this can
+            // be built against - see BackendCapabilities.serverLibrary.
+            ValueListenableBuilder(
+              valueListenable: globalActiveBackendKind,
+              builder: (context, kind, child) {
+                if (!globalBackend.capabilities.serverLibrary) return const SizedBox.shrink();
+                return IconButton(
+                  tooltip: 'Browse server library',
+                  onPressed: () => showComfyServerLibraryModal(context),
+                  icon: Icon(Icons.cloud_download_rounded, color: AppTheme.accentPrimary),
+                );
+              },
+            ),
+          ],
+        ),
+        body: const Stack(
           fit: StackFit.expand,
           children: [
             SingleChildScrollView(

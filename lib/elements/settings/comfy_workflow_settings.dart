@@ -12,7 +12,9 @@ import 'package:flutter/material.dart';
 
 import 'package:sd_companion/elements/modals/generic_option_select_modal.dart';
 import 'package:sd_companion/elements/widgets/glass_container.dart';
+import 'package:sd_companion/elements/widgets/glass_header.dart';
 import 'package:sd_companion/elements/widgets/glass_input.dart';
+import 'package:sd_companion/elements/widgets/glass_modal.dart';
 import 'package:sd_companion/elements/widgets/glass_slider.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 import 'package:sd_companion/logic/comfy/comfy_node_schema.dart';
@@ -253,7 +255,11 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
     );
   }
 
-  Widget _buildWorkflowList(List<ComfyWorkflowRecord> workflows, String? activeId) {
+  /// A single dropdown tile showing the active workflow, mirroring
+  /// CheckpointSettings' Sampler/Scheduler tiles - tapping it opens a picker
+  /// instead of listing every saved workflow inline, which used to eat a lot
+  /// of vertical space once more than a couple were imported.
+  Widget _buildWorkflowSelector(List<ComfyWorkflowRecord> workflows, ComfyWorkflowRecord? active) {
     if (workflows.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),
@@ -277,106 +283,115 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
       );
     }
 
-    return Column(
-      children: workflows.map((record) {
-        final isActive = record.id == activeId;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Material(
-            color: isActive ? AppTheme.comfyAccentPrimary.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.03),
-            borderRadius: BorderRadius.circular(14),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: () => ComfyWorkflowService.instance.selectWorkflow(record.id),
-              onLongPress: () => _showWorkflowActions(record),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                child: Row(
-                  children: [
-                    Icon(
-                      isActive ? Icons.radio_button_checked : Icons.radio_button_off,
-                      color: isActive ? AppTheme.comfyAccentPrimary : Colors.white24,
-                      size: 20,
+    return InkWell(
+      onTap: () => _openWorkflowPicker(workflows, active?.id),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.account_tree_rounded, color: AppTheme.comfyAccentSecondary, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ACTIVE WORKFLOW',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    active?.name ?? 'Select a workflow',
+                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (active != null)
+                    Text(
+                      '${active.workflowType.displayName} · ${workflows.length} saved',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 11),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            record.name,
-                            style: TextStyle(
-                              color: isActive ? Colors.white : Colors.white70,
-                              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            record.workflowType.displayName,
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.more_vert, color: Colors.white38, size: 18),
-                      onPressed: () => _showWorkflowActions(record),
-                    ),
-                  ],
-                ),
+                ],
               ),
             ),
-          ),
-        );
-      }).toList(),
+            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 14),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildBindingsSummary(DetectedWorkflowSettings detected) {
-    String describe(DetectedWidget? w) => w == null ? 'not available' : 'node ${w.node.id}';
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+  void _openWorkflowPicker(List<ComfyWorkflowRecord> workflows, String? activeId) {
+    GlassModal.show(
+      context,
+      heightFactor: 0.75,
+      child: _WorkflowPickerModal(
+        workflows: workflows,
+        activeId: activeId,
+        itemBuilder: _buildWorkflowListItem,
+      ),
+    );
+  }
+
+  Widget _buildWorkflowListItem(ComfyWorkflowRecord record, String? activeId) {
+    final isActive = record.id == activeId;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: isActive ? AppTheme.comfyAccentPrimary.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'DETECTED BINDINGS (edited on the main page)',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8),
-          ),
-          const SizedBox(height: 8),
-          _bindingRow('Prompt', describe(detected.positivePrompt)),
-          _bindingRow('Negative prompt', describe(detected.negativePrompt)),
-          _bindingRow('Input image', describe(detected.primaryImage)),
-          if (detected.additionalImages.isNotEmpty)
-            _bindingRow('Additional images', '${detected.additionalImages.length}'),
-          _bindingRow('Mask', detected.maskSupported ? 'supported' : 'not available'),
-          if (detected.warnings.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                detected.warnings.join('\n'),
-                style: const TextStyle(color: AppTheme.warning, fontSize: 11),
-              ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {
+            ComfyWorkflowService.instance.selectWorkflow(record.id);
+            Navigator.pop(context);
+          },
+          onLongPress: () => _showWorkflowActions(record),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Icon(
+                  isActive ? Icons.radio_button_checked : Icons.radio_button_off,
+                  color: isActive ? AppTheme.comfyAccentPrimary : Colors.white24,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        record.name,
+                        style: TextStyle(
+                          color: isActive ? Colors.white : Colors.white70,
+                          fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        record.workflowType.displayName,
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.more_vert, color: Colors.white38, size: 18),
+                  onPressed: () => _showWorkflowActions(record),
+                ),
+              ],
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
-
-  Widget _bindingRow(String label, String value) => Padding(
-    padding: const EdgeInsets.only(bottom: 4),
-    child: Row(
-      children: [
-        SizedBox(width: 120, child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12))),
-        Expanded(child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 12))),
-      ],
-    ),
-  );
 
   // ===== Workflow Settings (Forge-styled controls) ===== //
 
@@ -743,13 +758,20 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
           return ValueListenableBuilder<String?>(
             valueListenable: ComfyWorkflowService.instance.activeWorkflowId,
             builder: (context, activeId, child) {
+              ComfyWorkflowRecord? active;
+              for (final w in workflows) {
+                if (w.id == activeId) {
+                  active = w;
+                  break;
+                }
+              }
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildHeader(),
                   const SizedBox(height: 20),
-                  _buildWorkflowList(workflows, activeId),
+                  _buildWorkflowSelector(workflows, active),
                   if (activeId != null)
                     ValueListenableBuilder<DetectedWorkflowSettings?>(
                       valueListenable: ComfyWorkflowService.instance.activeDetected,
@@ -759,7 +781,6 @@ class _ComfyWorkflowSettingsState extends State<ComfyWorkflowSettings> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 20),
-                            _buildBindingsSummary(detected),
                             _buildSettingsGroup('Diffusion Model', Icons.memory_rounded, detected.modelSettings),
                             _buildSettingsGroup('CLIP', Icons.text_fields_rounded, detected.clipSettings),
                             _buildSettingsGroup('VAE', Icons.image_outlined, detected.vaeSettings),
@@ -822,6 +843,87 @@ class _WorkflowTypeDialogState extends State<_WorkflowTypeDialog> {
           onPressed: () => Navigator.pop(context, _selected),
           style: ElevatedButton.styleFrom(backgroundColor: AppTheme.comfyAccentPrimary),
           child: const Text('Continue', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    );
+  }
+}
+
+/// The picker sheet opened by the workflow dropdown tile - same shape as
+/// GenericOptionSelectModal (header + optional search + list), but over
+/// ComfyWorkflowRecord instead of plain strings so each row can carry a
+/// type subtitle and a "more" action button.
+class _WorkflowPickerModal extends StatefulWidget {
+  final List<ComfyWorkflowRecord> workflows;
+  final String? activeId;
+  final Widget Function(ComfyWorkflowRecord record, String? activeId) itemBuilder;
+
+  const _WorkflowPickerModal({
+    required this.workflows,
+    required this.activeId,
+    required this.itemBuilder,
+  });
+
+  @override
+  State<_WorkflowPickerModal> createState() => _WorkflowPickerModalState();
+}
+
+class _WorkflowPickerModalState extends State<_WorkflowPickerModal> {
+  final TextEditingController _searchController = TextEditingController();
+  late List<ComfyWorkflowRecord> _filtered = widget.workflows;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filtered = query.isEmpty
+          ? widget.workflows
+          : widget.workflows.where((w) => w.name.toLowerCase().contains(query)).toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GlassHeader(
+          title: 'Workflows',
+          subtitle: '${widget.workflows.length} saved',
+          iconColor: AppTheme.comfyAccentPrimary,
+          trailing: IconButton(
+            icon: const Icon(Icons.close, color: Colors.white54),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        if (widget.workflows.length > 8)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: GlassInput(
+              controller: _searchController,
+              hintText: 'Search...',
+              prefixIcon: Icons.search,
+              maxLines: 1,
+              accentColor: AppTheme.comfyAccentPrimary,
+            ),
+          ),
+        Expanded(
+          child: ListView.builder(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            itemCount: _filtered.length,
+            itemBuilder: (context, index) => widget.itemBuilder(_filtered[index], widget.activeId),
+          ),
         ),
       ],
     );

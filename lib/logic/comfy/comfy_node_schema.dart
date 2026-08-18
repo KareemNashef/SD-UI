@@ -192,7 +192,19 @@ class ComfyNodeSchema {
         ),
       );
 
-      if (options['control_after_generate'] == true) {
+      // ComfyUI's own frontend adds the "fixed/increment/decrement/randomize"
+      // companion widget to ANY INT widget literally named "seed" or
+      // "noise_seed", purely by name convention - independent of whether the
+      // node's Python schema sets `control_after_generate: true` (that flag
+      // is one way to opt in, not the only one; e.g. KSampler's schema sets
+      // it explicitly, but plenty of custom nodes - SeedVR2TilingUpscaler
+      // among them - rely on the name convention instead). Missing this
+      // meant the exported workflow's widgets_values had one more entry
+      // than this schema accounted for, silently shifting every widget
+      // after "seed" onto the wrong value.
+      final looksLikeSeedWidget =
+          baseType == 'INT' && (name == 'seed' || name == 'noise_seed');
+      if (options['control_after_generate'] == true || looksLikeSeedWidget) {
         widgetSlots.add(
           ComfyWidgetSlot(
             name: '$name.control_after_generate',

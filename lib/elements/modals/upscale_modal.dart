@@ -12,13 +12,14 @@ import 'package:sd_companion/elements/widgets/glass_container.dart';
 import 'package:sd_companion/elements/widgets/theme_constants.dart';
 
 // Local imports - Logic
+import 'package:sd_companion/logic/backend/backend_kind.dart';
 import 'package:sd_companion/logic/globals.dart';
 import 'package:sd_companion/logic/models/generation_models.dart';
 
 // Upscale Modal Implementation
 
-// Follows the active backend's accent (this modal is Forge-only today via
-// capability gating, but keep it consistent rather than hardcoded).
+// Follows the active backend's accent - reachable from both Forge (its own
+// SeedVR2 endpoint) and Comfy (the bundled SeedVR2 workflow) now.
 Color get _accentColor => AppTheme.accentPrimary;
 Color get _accentDim => AppTheme.accentPrimary.withValues(alpha: 0.133);
 Color get _accentBorder => AppTheme.accentPrimary.withValues(alpha: 0.267);
@@ -144,24 +145,35 @@ class _UpscaleModalContentState extends State<_UpscaleModalContent> {
     });
 
     try {
-      final upscaledDataUrl = await globalForgeBackend.upscaleSeedVR2(
-        imageBytes: _originalBytes!,
-        resolution: _resolutionNotifier.value,
-        onProgress: (progressData) {
-          if (mounted) {
-            setState(() {
-              _progress = (progressData['progress'] as num?)?.toDouble();
-              _statusText = progressData['status'] as String?;
-            });
-          }
-        },
-      );
+      void onProgress(Map<String, dynamic> progressData) {
+        if (mounted) {
+          setState(() {
+            _progress = (progressData['progress'] as num?)?.toDouble();
+            _statusText = progressData['status'] as String?;
+          });
+        }
+      }
+
+      // Same UI, same "image + resolution" contract either way - Forge
+      // hits a dedicated SeedVR2 endpoint, Comfy runs the bundled SeedVR2
+      // workflow through the normal queue/history pipeline.
+      final upscaledImageUrl = globalActiveBackendKind.value == BackendKind.comfy
+          ? await globalComfyBackend.upscaleSeedVR2(
+              imageBytes: _originalBytes!,
+              resolution: _resolutionNotifier.value,
+              onProgress: onProgress,
+            )
+          : await globalForgeBackend.upscaleSeedVR2(
+              imageBytes: _originalBytes!,
+              resolution: _resolutionNotifier.value,
+              onProgress: onProgress,
+            );
 
       if (!mounted) return;
 
       globalResultImages.value = [
         ...globalResultImages.value,
-        GeneratedImage.local(upscaledDataUrl, globalActiveBackendKind.value),
+        GeneratedImage.local(upscaledImageUrl, globalActiveBackendKind.value),
       ];
 
       _snack('Image upscaled successfully!');
