@@ -22,7 +22,52 @@
 // widgetSlots length matches widgets_values.length for every node in
 // test/fixtures/krea2_identity_edit_workflow.json.
 
+import 'package:sd_companion/data/engines/comfy/comfy_workflow.dart';
+
 const _widgetPrimitiveTypes = {'INT', 'FLOAT', 'STRING', 'BOOLEAN'};
+
+/// Where [widgetName] sits in *this node's* `widgets_values`, or null when
+/// it has no slot there at all.
+///
+/// The schema alone is not enough, and the difference is not cosmetic. An
+/// optional input of a primitive type is a widget by default, but a graph
+/// can also declare it as a plain socket - and then the frontend gives it no
+/// `widgets_values` entry, shifting everything after it by one. The two
+/// cases look identical in `/object_info`; only the node tells them apart,
+/// by whether its own `inputs` entry carries a `widget` marker:
+///
+///   * absent from `inputs`            -> an ordinary widget, has a slot
+///   * present *with* `widget: {...}`  -> a widget converted to an input,
+///                                        keeps its slot (`ref_boost`)
+///   * present *without* it            -> a socket, and has never had one
+///                                        (`PromptGenerator.prompt_input`)
+///
+/// Reading the third case as a widget is how a prompt generator ends up
+/// being sent the name of a model as its input text, with every widget after
+/// it reading one place early.
+int? widgetSlotIndexFor(
+  ComfyNodeSchema schema,
+  ComfyEditorNode node,
+  String widgetName,
+) {
+  var index = 0;
+  for (final slot in schema.widgetSlots) {
+    // Synthetic companions belong to the widget before them, and share its
+    // fate; the base name is what the node knows about.
+    final base = slot.name.split('.').first;
+    if (isSocketOnly(node, base)) continue;
+    if (slot.name == widgetName) return index;
+    index++;
+  }
+  return null;
+}
+
+/// True when the graph declares [inputName] as a plain socket rather than a
+/// widget - see [widgetSlotIndexFor].
+bool isSocketOnly(ComfyEditorNode node, String inputName) {
+  final entry = node.inputEntry(inputName);
+  return entry != null && entry['widget'] == null;
+}
 
 class ComfyInputSpec {
   final String name;

@@ -210,6 +210,16 @@ abstract final class Motion {
   static const settle = Curves.easeOutBack;
   static const ease = Curves.easeOutCubic;
   static const snap = Curves.easeOutQuart;
+
+  /// A full-screen page arriving. Overshoots its resting position by a few
+  /// percent and settles back, so a page reads as a sheet drawn across the
+  /// desk with real weight rather than a panel snapped into place.
+  /// `easeOutBack` overshoots roughly twice as far, which at full screen
+  /// width is a visible lurch.
+  static const pageIn = Cubic(0.34, 1.28, 0.40, 1.0);
+
+  /// How long a page takes to arrive.
+  static const page = Duration(milliseconds: 440);
 }
 
 // ===== Type ===== //

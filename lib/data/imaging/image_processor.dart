@@ -4,7 +4,9 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 
 // Image Processor Implementation
 
@@ -287,3 +289,77 @@ Future<List<Uint8List>> generateOutpaintData({
 
   return [outImgBytes, outMaskBytes];
 }
+
+// ===== Crop and resize ===== //
+//
+// Both run on a background isolate via `compute`. `img.copyCrop` and
+// `img.copyResize` are pure CPU work over every pixel, and a phone photo is
+// tens of megapixels - doing that on the UI isolate drops frames for as long
+// as it takes, which on a large image is visible as a hard freeze.
+
+class _CropRequest {
+  final Uint8List bytes;
+  final int x, y, width, height;
+  const _CropRequest(this.bytes, this.x, this.y, this.width, this.height);
+}
+
+class _ResizeRequest {
+  final Uint8List bytes;
+  final int width, height;
+  const _ResizeRequest(this.bytes, this.width, this.height);
+}
+
+/// `img.decodeImage` sniffs formats by trying decoders in turn, and some of
+/// them read past the end of a short or corrupt buffer and *throw* rather
+/// than returning null. Since these run on a background isolate, an escaped
+/// exception surfaces as an unhandled error rather than a failed edit - so
+/// the decode is guarded and a failure is reported as "couldn't read it".
+img.Image? _tryDecode(Uint8List bytes) {
+  try {
+    return img.decodeImage(bytes);
+  } catch (_) {
+    return null;
+  }
+}
+
+Uint8List? _cropSync(_CropRequest r) {
+  final src = _tryDecode(r.bytes);
+  if (src == null) return null;
+  // Clamp into the source: a crop rect derived from a gesture can round a
+  // pixel past the edge, and the `image` package throws rather than clipping.
+  final x = r.x.clamp(0, src.width - 1);
+  final y = r.y.clamp(0, src.height - 1);
+  final w = r.width.clamp(1, src.width - x);
+  final h = r.height.clamp(1, src.height - y);
+  return Uint8List.fromList(
+      img.encodePng(img.copyCrop(src, x: x, y: y, width: w, height: h)));
+}
+
+Uint8List? _resizeSync(_ResizeRequest r) {
+  final src = _tryDecode(r.bytes);
+  if (src == null) return null;
+  return Uint8List.fromList(img.encodePng(img.copyResize(
+    src,
+    width: r.width,
+    height: r.height,
+    interpolation: img.Interpolation.cubic,
+  )));
+}
+
+/// Crops [bytes] to the given pixel rect. Returns null if it can't be decoded.
+Future<Uint8List?> cropImageBytes({
+  required Uint8List bytes,
+  required int x,
+  required int y,
+  required int width,
+  required int height,
+}) =>
+    compute(_cropSync, _CropRequest(bytes, x, y, width, height));
+
+/// Resizes [bytes] to exactly [width]x[height].
+Future<Uint8List?> resizeImageBytes({
+  required Uint8List bytes,
+  required int width,
+  required int height,
+}) =>
+    compute(_resizeSync, _ResizeRequest(bytes, width.clamp(1, 16384), height.clamp(1, 16384)));

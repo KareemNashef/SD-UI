@@ -64,3 +64,54 @@ Offset convertScreenToImageCoordinates({
 
   return Offset(imageX, imageY);
 }
+
+/// How many image pixels one display pixel of brush width covers.
+///
+/// A stroke's width is stored in display units - that is what keeps the
+/// brush a constant size under the finger - so it has to be scaled by this
+/// to be painted into the mask, and divided by it to be restored into a
+/// canvas of a different size.
+double maskStrokeScale({
+  required Size imageSize,
+  required Size containerSize,
+}) {
+  final display = displayRectFor(
+    imageSize: imageSize,
+    containerSize: containerSize,
+  );
+  if (display.width <= 0 || display.height <= 0) return 1;
+  return ((imageSize.width / display.width) +
+          (imageSize.height / display.height)) /
+      2;
+}
+
+/// Where a [BoxFit.contain] image actually lands inside its container.
+///
+/// This letterbox calculation was duplicated in the painter, the mask
+/// generator and the coordinate converter, which is precisely the kind of
+/// triplication that lets a mask drift out of alignment with what was drawn
+/// when only two of the three get fixed. One definition, three callers.
+Rect displayRectFor({
+  required Size imageSize,
+  required Size containerSize,
+}) {
+  final imageAspect = imageSize.width / imageSize.height;
+  final containerAspect = containerSize.width / containerSize.height;
+
+  if (imageAspect > containerAspect) {
+    final height = containerSize.width / imageAspect;
+    return Rect.fromLTWH(
+      0,
+      (containerSize.height - height) / 2,
+      containerSize.width,
+      height,
+    );
+  }
+  final width = containerSize.height * imageAspect;
+  return Rect.fromLTWH(
+    (containerSize.width - width) / 2,
+    0,
+    width,
+    containerSize.height,
+  );
+}

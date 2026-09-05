@@ -43,9 +43,32 @@ void main() {
       // Node 90 is bypassed (mode 4) - must not show up as a second image slot.
       expect(result.additionalImages, isEmpty);
 
-      // Model/CLIP/VAE are trimmed to just the essential widget now.
-      expect(result.modelSettings, hasLength(1));
+      // The loader is trimmed to its file, but everything the model is
+      // patched through on the way to the sampler contributes its dials -
+      // otherwise a Krea2 edit node's ref_boost, which is the whole point of
+      // that workflow, would be unreachable from the app.
       expect(_valueOf(result.modelSettings, 'unet_name'), 'krea2_turbo_fp8_scaled.safetensors');
+      expect(_has(result.modelSettings, 'weight_dtype'), isFalse,
+          reason: 'loader plumbing stays hidden');
+      expect(_valueOf(result.modelSettings, 'ref_boost'), 4);
+      expect(_valueOf(result.modelSettings, 'ref_boost_a'), 1);
+      expect(_valueOf(result.modelSettings, 'fit_mode'), 'fit');
+      expect(result.modelSettings, hasLength(4));
+      // Loader first, then each patch in the order the model flows through.
+      expect(result.modelSettings.map((w) => w.node.id).toList(),
+          [55, 79, 79, 79]);
+
+      // The LoRA is a list entry, not a model setting - it is added and
+      // removed rather than tuned, so it must not appear in both places.
+      expect(_has(result.modelSettings, 'lora_name'), isFalse);
+      expect(result.loras, hasLength(1));
+      expect(result.loras.single.nodeId, 71);
+      expect(result.loras.single.fileName,
+          'Krea2/krea2_identity_edit_v1_2.safetensors');
+      expect(result.loras.single.strengthValue, 1);
+      expect(result.modelChain, [55, 71, 79, 53],
+          reason: 'loader, LoRA, patch, sampler - the order the model flows');
+      expect(result.loraLoaderType, 'LoraLoaderModelOnly');
       expect(result.clipSettings, hasLength(2));
       expect(_valueOf(result.clipSettings, 'clip_name'), 'qwen3vl_4b_fp8_scaled.safetensors');
       expect(_has(result.clipSettings, 'type'), isTrue);
@@ -89,10 +112,17 @@ void main() {
       expect(result.primaryImage?.node.id, 78);
 
       // Model chain: KSampler <- CFGNorm <- ModelSamplingAuraFlow <- NunchakuQwenImageDiTLoader.
-      // Trimmed to just the model file - not cpu_offload/num_blocks_on_gpu/etc.
-      expect(result.modelSettings, hasLength(1));
+      // The loader is trimmed to just the model file - not
+      // cpu_offload/num_blocks_on_gpu/etc - while the two patch nodes in
+      // between contribute their own dials.
       expect(_valueOf(result.modelSettings, 'model_name'),
           'qwen\\svdq-int4_r32-qwen-image-edit-lightningv1.0-8steps.safetensors');
+      expect(_has(result.modelSettings, 'cpu_offload'), isFalse);
+      expect(result.loras, isEmpty, reason: 'this graph has no LoRA at all');
+      expect(_valueOf(result.modelSettings, 'shift'), 3);
+      expect(_valueOf(result.modelSettings, 'strength'), 1);
+      expect(_valueOf(result.modelSettings, 'pre_cfg'), false);
+      expect(result.modelSettings, hasLength(4));
 
       expect(_valueOf(result.clipSettings, 'clip_name'), 'TE-Qwen.safetensors');
       expect(_valueOf(result.vaeSettings, 'vae_name'), 'qwen_image_vae.safetensors');
@@ -103,6 +133,24 @@ void main() {
       // latent_image comes from VAEEncode(88), which has no width/height -
       // dimensions are driven by the (pre-scaled) input image instead.
       expect(result.latentSettings, isEmpty);
+    });
+  });
+
+  group('krea-edit-multi-lora (three LoRAs stacked in the model chain)', () {
+    test('lists them in flow order, out of the model settings', () async {
+      final result = await _detector.detect(_loadDoc('krea-edit-multi-lora.json'));
+
+      // UNETLoader(26) -> Lora(6) -> Lora(30) -> Lora(31) -> Krea2(9) -> KSampler(2)
+      expect(result.modelChain, [26, 6, 30, 31, 9, 2]);
+      expect(result.loras.map((l) => l.nodeId).toList(), [6, 30, 31]);
+      expect(result.loras.map((l) => l.strengthValue).toList(), [1, 1, 0.8],
+          reason: 'each LoRA keeps its own strength');
+      expect(result.loras.last.fileName, 'k_bitinglips.safetensors');
+
+      // The three loaders contribute nothing to the model settings; only the
+      // file and the Krea2 patch dials belong there.
+      expect(result.modelSettings.map((w) => w.input.name).toList(),
+          ['unet_name', 'ref_boost', 'ref_boost_a', 'fit_mode']);
     });
   });
 

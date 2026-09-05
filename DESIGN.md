@@ -123,6 +123,11 @@ Rules:
   prose.
 - One `deskTitle` per screen. Two competing titles means the screen is two
   screens.
+- **Never set title text directly on `desk`.** At night `ink` (#14110C) and
+  `desk` (#2A241B) are nearly the same colour, so a title written straight
+  onto the work surface is legible by day and almost invisible after dark.
+  Full-screen editors put their header on a paper strip (`DeskPageHeader`),
+  which restores the ink-on-paper contrast everything else relies on.
 
 ---
 
@@ -195,7 +200,7 @@ settle. Nothing fades in place — things arrive from somewhere.
 | `press` | 420 | 26 | Button down/up |
 | `settle` | 300 | 22 | A print landing, a drawer opening |
 | `snap` | 520 | 30 | Tool selection, toggle travel |
-| `drift` | 140 | 18 | Idle hints, handle pulse |
+| `drift` | 140 | 18 | Reserved for a future idle hint - unused since the handle pulse was retired |
 
 Durations, where a spring is not appropriate: **90ms** press-in, **220ms**
 cross-fade, **320ms** drawer, **420ms** print arrival.
@@ -211,9 +216,13 @@ cross-fade, **320ms** drawer, **420ms** print arrival.
    `+20°` rotation, travels on the `settle` spring to its resting angle, and
    nudges its neighbours aside. Batches stagger by **80ms** per print.
 
-3. **Handle pulse.** Outpaint handles scale `1.0 → 1.35 → 1.0` on the `drift`
-   spring over 4.4s, forever, until touched. This is the only permanently
-   animating element in the app and it exists to teach one non-obvious gesture.
+3. **Corner brackets, not a pulse.** The mounted sheet's corners carry small
+   static ink brackets (a viewfinder mark, not a handle) instead of the
+   pulsing squares this section originally specified. Nothing is wired to
+   drag them yet, and a permanent animation for an affordance that doesn't
+   do anything read as noise rather than a taught gesture. The app currently
+   has no permanently-animating element; if outpainting gets built, revisit
+   whether the drag affordance needs motion back.
 
 4. **Drawer rise.** Modals translate up from the bottom edge on `settle`, with
    the desk behind them darkening to `ink @ 32%` — a flat scrim, never a blur.
@@ -224,8 +233,8 @@ cross-fade, **320ms** drawer, **420ms** print arrival.
 ### Reduced motion
 
 When `MediaQuery.disableAnimations` is true: press-into-shadow becomes an
-instant state change, print arrival becomes a 120ms fade, and the handle pulse
-stops entirely. Layout never depends on an animation having run.
+instant state change and print arrival becomes a 120ms fade. Layout never
+depends on an animation having run.
 
 ### Rotation is deterministic
 
@@ -238,6 +247,39 @@ double restAngleFor(String id) => ((id.hashCode % 9) - 4) * 0.9 * pi / 180;
 Range −3.6° to +3.6°. Computing it per build from a stable input means a print
 never jitters when the list rebuilds — the single most common way this kind of
 design goes wrong.
+
+---
+
+## 6b. App icon and launch screen
+
+The mark is a camera iris: a `clay` disc with a hexagonal opening and six
+blade cuts. It carries the app's name without a word of text, and it holds
+together at 48px, which rules out anything finer.
+
+Both are generated from the palette by `tool/generate_icons.py` rather than
+drawn once by hand, so a change to `desk` or `clay` can be pushed through to
+the icon instead of quietly leaving it stale.
+
+| Surface | Treatment |
+|---|---|
+| Adaptive background | `desk`, with the same diagonal grain the app uses |
+| Adaptive foreground | The iris, sized inside the safe circle with **no** extra inset |
+| Monochrome | The silhouette, for Android 13 themed icons |
+| Launch screen | `desk` (day or night), with the iris in `clay` and no plate behind it |
+
+Two rules that matter more than they look:
+
+- **The launch background is `@color/desk`, never a theme default.** Android
+  12+ draws its own launch screen and ignores `windowBackground`, so the
+  splash has to be set through `windowSplashScreenBackground` in
+  `values-v31`. `NormalTheme` needs it too, or the hand-off to Flutter's
+  first frame flashes the platform colour.
+- **`windowSplashScreenIconBackgroundColor` stays unset.** Setting it puts
+  the icon on a filled plate — the white box the Desk theme exists to avoid.
+  Unset, the mark sits directly on the work surface.
+
+The splash mark carries no ink outline: `ink` against the night desk is very
+nearly the same colour, so `clay` alone is what reads in both modes.
 
 ---
 
@@ -258,9 +300,16 @@ paper reads as a mat board around a photograph.
 - Corner radius `0`. It is paper.
 - Micro caption `SOURCE` bottom-left, inside the image, in `paper` over the
   photograph.
-- Four **outpaint handles** at the corners: 16×16, `paper` fill, `2.5px clay`
-  border, pulsing on `drift`. Dragging one extends the canvas.
-- Mask strokes are painted directly on the image area in `clay @ 45%`.
+- Four small **corner brackets** (an L-shaped viewfinder mark, `clay`,
+  `2.5px live` stroke, inset flush with the frame) where outpaint handles
+  will eventually go. Static until dragging is actually wired to something.
+- Mask strokes are painted directly on the image area in `clay @ 45%`. The
+  same overlay marks a masked source image wherever it appears (main
+  display and shelf card), so an applied mask is never invisible state.
+- The front page uses this as its single large **main display**
+  (`showHandles: false`): the live preview while generating, whichever card
+  was tapped on the shelf, or a "nothing yet" placeholder. The source image
+  is *not* a second sheet — it is a card on the shelf (see 7.3).
 
 ### 7.3 Print — a result
 
@@ -270,8 +319,27 @@ the image at radius `0`, carries `rest` elevation, and sits at its
 deterministic angle.
 
 - Selected: the ink border thickens to 2px and elevation goes to `raised`.
+  The border tracks **selection only** — never lift — or a card that merely
+  rose alongside its neighbour reads as the selected one.
 - Prints overlap by about a third of their width along the shelf.
 - Batch count appears as a micro stamp on the shelf's left end (`×4`).
+
+**Lift is driven by selection, not scroll position.** The focused index
+animates to whatever the user tapped, and each card's rise falls off with
+its distance from it — so the selected card lifts highest with its
+neighbours rising in a parabola around it, and the whole arc slides along
+the shelf as the selection moves. Deriving it from scroll position instead
+meant a shelf too short to scroll never animated at all, and the raised card
+was whichever happened to sit near the viewport centre rather than the one
+the user picked.
+
+**The source image lives on the same shelf**, pinned left of a hairline
+divider: `[input] │ [out] [out] [out] …`. It is selectable exactly like a
+result — tapping promotes it to the main display — because "compare this
+result against what I fed in" is one gesture between two adjacent cards, not
+a trip to a separate panel. It does not overlap the result stack, so the
+divider reads as a real separation rather than a gap in one deck. A txt2img
+workflow has no input card at all.
 
 ### 7.4 Tool tray
 
@@ -375,7 +443,11 @@ fill, **3px ink** top border, radius `12` on the top corners only, `drawer`
 elevation. A 40×4 ink handle sits centred at the top.
 
 - Rises on `settle` over 320ms; the desk behind darkens to a flat `ink @ 32%`.
-- Drag down to dismiss, with velocity carried.
+- Drag down to dismiss, with velocity carried. The grip **and the title row**
+  are the drag surface; the scrolling body below is not, so dragging a long
+  list never fights the dismiss gesture. Past ~110px, or on a firm flick, it
+  dismisses; anything less springs back. Upward travel is clamped — the sheet
+  is anchored to the bottom edge and must never lift off it.
 - Maximum height 88% of the screen. A drawer that would exceed it scrolls
   internally, keeping its head and its primary action pinned.
 
@@ -472,7 +544,8 @@ No screen may branch on the engine enum. Every branch reads a flag.
 - No placeholder-as-label.
 - No native Material dropdowns, switches or dialogs — every one is replaced.
 - No ripple effects. The press-into-shadow is the feedback.
-- No permanently animating element except the outpaint handles.
+- No permanently animating element. (The corner brackets are static; a
+  shimmer sweep exists only on a print that's actually generating.)
 - No bottom navigation bar.
 
 ---

@@ -91,7 +91,7 @@ class _DeskLabState extends State<DeskLab> {
           note: 'Drag through the deck — the nearest print rises to meet '
               'your finger, then snaps to centre on release.',
           child: PrintShelf(
-            stamp: '×${_demoPrints.length}',
+
             selectedId: _selectedPrint,
             onSelect: (id) => setState(() => _selectedPrint = id),
             entries: [

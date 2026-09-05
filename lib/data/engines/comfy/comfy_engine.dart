@@ -27,6 +27,7 @@ import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 
 import 'package:sd_companion/core/app_error.dart';
+import 'package:sd_companion/core/diagnostics.dart';
 import 'package:sd_companion/core/result.dart';
 import 'package:sd_companion/data/engines/comfy/comfy_graph_converter.dart';
 import 'package:sd_companion/data/engines/comfy/comfy_node_schema.dart';
@@ -46,6 +47,7 @@ class ComfyEngine
     implements
         ImageEngine,
         PromptRewriteCapable,
+        PromptGenerateCapable,
         ImageToTextCapable,
         UpscaleCapable {
   @override
@@ -221,6 +223,14 @@ class ComfyEngine
     await progressService.connect(endpoint, force: true);
     final promptId = await _queuePrompt(conversion.apiGraph, clientId);
 
+    // Previews are unicast to the client_id on the /prompt request. If the
+    // socket ever registered a different id, the server sends them into a
+    // black hole and it looks exactly like previews being switched off - so
+    // the pairing is logged on every run.
+    trace('preview',
+        'queued promptId=$promptId with clientId=$clientId '
+        '(socket uses ${progressService.ensureClientId()})');
+
     progressService.beginTracking(promptId);
     try {
       final history = await _awaitHistory(promptId);
@@ -356,8 +366,11 @@ class ComfyEngine
 
   static const _kPromptEnhanceWorkflowAsset = 'assets/comfy/prompt_enhance.json';
   static const _kImg2PromptWorkflowAsset = 'assets/comfy/img2prompt.json';
+  static const _kPromptGenerateWorkflowAsset =
+      'assets/comfy/prompt_generate.json';
   ComfyWorkflowDocument? _promptEnhanceTemplate;
   ComfyWorkflowDocument? _img2PromptTemplate;
+  ComfyWorkflowDocument? _promptGenerateTemplate;
 
   @override
   Future<Result<String>> rewritePrompt(String prompt) => guard(() async {
@@ -386,6 +399,49 @@ class ComfyEngine
         return _runTextWorkflow(doc, schemaProvider, {
           '${enhancerNode.id}:prompt_text': prompt,
         });
+      });
+
+  @override
+  Future<Result<String>> generatePrompt({required int intensity}) =>
+      guard(() async {
+        final doc = await _loadBundled(
+          _kPromptGenerateWorkflowAsset,
+          _promptGenerateTemplate,
+          (d) => _promptGenerateTemplate = d,
+        );
+
+        final generatorNode = _findNode(doc, 'PromptGenerator');
+        if (generatorNode == null) {
+          throw const ValidationError(
+            'Bundled prompt-generate workflow is missing its generator node',
+          );
+        }
+
+        final schemaProvider = HttpComfyNodeSchemaProvider(endpoint);
+        final schema = await schemaProvider.schemaFor(generatorNode.type);
+        if (!schema.known) {
+          throw const CapabilityError(
+            'PromptGenerator node is not available on this ComfyUI server. '
+            'Install the prompt-manager custom nodes and an LLM model.',
+          );
+        }
+
+        // The whole point of this button is a *different* prompt each press,
+        // and ComfyUI caches node outputs by their resolved inputs - so the
+        // workflow's stored seed would hand back the same sentence forever.
+        // Same reasoning as the sampler seed in `generate`.
+        final overrides = <String, dynamic>{};
+        if (schema.inputByName('seed') != null) {
+          overrides['${generatorNode.id}:seed'] = _randomSeedValue();
+        }
+        // The node's user prompt, which the bundled system prompt reads as
+        // an intensity from 1 to 10 and nothing else. A string, because that
+        // is the widget's declared type - sending an int would be rejected.
+        if (schema.inputByName('prompt') != null) {
+          overrides['${generatorNode.id}:prompt'] =
+              '${intensity.clamp(1, 10)}';
+        }
+        return _runTextWorkflow(doc, schemaProvider, overrides);
       });
 
   @override

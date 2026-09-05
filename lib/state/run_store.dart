@@ -3,6 +3,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:sd_companion/core/app_error.dart';
+import 'package:sd_companion/core/diagnostics.dart';
 import 'package:sd_companion/core/store.dart';
 import 'package:sd_companion/domain/generation/generation_spec.dart';
 import 'package:sd_companion/domain/generation/run_progress.dart';
@@ -76,6 +77,19 @@ class RunStore extends Store<RunState> {
 
   bool get isActive => state.isActive;
 
+  /// Marks non-generation work as in flight - upscaling, principally.
+  ///
+  /// An upscale is a run in every way that matters here: it occupies the
+  /// engine, it reports progress, it produces an image, and nothing else
+  /// may start while it is going. It simply has no [GenerationSpec], so
+  /// [begin] cannot describe it. [label] rides on `RunProgress.stage`, which
+  /// the UI already prefers over the phase name - so the bar reads
+  /// "UPSCALING" rather than "GENERATING" with no special-casing on screen.
+  void beginTask(String label) => emit(RunState(
+        progress: RunProgress(phase: RunPhase.queued, stage: label),
+        startedAt: DateTime.now(),
+      ));
+
   /// Marks a run as accepted and waiting on the engine.
   void begin(GenerationSpec spec) => emit(RunState(
         progress: const RunProgress(phase: RunPhase.queued),
@@ -86,8 +100,21 @@ class RunStore extends Store<RunState> {
   /// Feeds an engine progress event in. Late events for a run that already
   /// finished are dropped, so a slow WebSocket frame can't resurrect a
   /// completed run - which is what made the old overlay stick.
+  ///
+  /// The drop is traced rather than silent: this guard is correct, but when
+  /// something upstream wrongly ends the run early it turns into "progress
+  /// never updates again", and a silent drop made that invisible.
   void report(RunProgress progress) {
-    if (!state.isActive && progress.isActive) return;
+    if (!state.isActive && progress.isActive) {
+      trace(
+        'run',
+        'DROPPED ${progress.phase.name} frame - store is not active '
+            '(store phase=${state.phase.name}). Something ended the run early.',
+      );
+      return;
+    }
+    trace('run', 'report ${progress.phase.name} '
+        'frac=${progress.fraction?.toStringAsFixed(3) ?? "null"}');
     emit(state.copyWith(progress: progress));
   }
 

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Desk palette, mirrored from DESIGN.md section 2 so the launch window
+     matches the app's own surface. Only the desk tone is needed here: the
+     splash is the work surface with the mark on it, nothing else. -->
+<resources>
+    <color name="desk">#DED2BC</color>
+</resources>

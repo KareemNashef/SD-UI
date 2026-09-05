@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 // Local imports - Logic
+import 'package:sd_companion/domain/drawing/canvas_geometry.dart';
 import 'package:sd_companion/domain/drawing/stroke.dart';
 
 // Mask Generator Implementation
@@ -33,27 +34,12 @@ Future<Uint8List?> generateDrawingMask({
     Paint(),
   );
 
-  // Calculate Aspect Ratios for scaling
-  final imageAspectRatio = imageSize.width / imageSize.height;
-  final containerAspectRatio =
-      canvasRenderedSize.width / canvasRenderedSize.height;
-  late final Size displaySize;
-
-  if (imageAspectRatio > containerAspectRatio) {
-    displaySize = Size(
-      canvasRenderedSize.width,
-      canvasRenderedSize.width / imageAspectRatio,
-    );
-  } else {
-    displaySize = Size(
-      canvasRenderedSize.height * imageAspectRatio,
-      canvasRenderedSize.height,
-    );
-  }
-
-  final double scaleFactorX = imageSize.width / displaySize.width;
-  final double scaleFactorY = imageSize.height / displaySize.height;
-  final double averageScaleFactor = (scaleFactorX + scaleFactorY) / 2;
+  // One definition of the letterbox maths, shared with the coordinate
+  // converter and the painter - see the note on `displayRectFor`.
+  final averageScaleFactor = maskStrokeScale(
+    imageSize: imageSize,
+    containerSize: canvasRenderedSize,
+  );
 
   for (final pathData in paths) {
     if (pathData.points.isEmpty) continue;

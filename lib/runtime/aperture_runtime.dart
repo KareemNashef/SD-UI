@@ -3,6 +3,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:sd_companion/core/app_error.dart';
+import 'package:sd_companion/core/diagnostics.dart';
 import 'package:sd_companion/core/result.dart';
 import 'package:sd_companion/domain/engine/image_engine.dart';
 import 'package:sd_companion/domain/generation/generated_image.dart';
@@ -146,14 +147,28 @@ class ApertureRuntime {
       checkpoint: catalog.state.active,
     );
 
+    trace('submit', 'BEGIN $spec');
     run.begin(spec);
     final engineInstance = activeEngine;
 
-    // Mirror engine progress into the store for as long as this run lasts.
-    final subscription = engineInstance.progress.listen(run.report);
+    // Mirror engine progress into the store for as long as this run lasts,
+    // but only the *in-flight* frames. How a run ends is decided here, from
+    // generate()'s Result - never by a stream frame. Letting terminal
+    // phases through meant any stray `completed`/`idle` frame (e.g. a
+    // stale one emitted as the socket opened) flipped the store inactive
+    // mid-run, after which RunStore's late-frame guard correctly - and
+    // permanently - dropped every real update that followed.
+    final subscription = engineInstance.progress.listen((progress) {
+      if (progress.isFinished) {
+        trace('submit', 'ignoring terminal ${progress.phase.name} from stream');
+        return;
+      }
+      run.report(progress);
+    });
 
     final result = await engineInstance.generate(spec);
     await subscription.cancel();
+    trace('submit', 'generate() returned ok=${result.isOk}');
 
     return result.fold(
       (images) {

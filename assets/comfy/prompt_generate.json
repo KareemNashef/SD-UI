@@ -1,0 +1,246 @@
+{
+  "id": "db6989c6-4f97-46ca-aa4e-55a7343006b5",
+  "revision": 0,
+  "last_node_id": 8,
+  "last_link_id": 103,
+  "nodes": [
+    {
+      "id": 2,
+      "type": "PreviewAny",
+      "pos": [
+        -40,
+        100
+      ],
+      "size": [
+        620,
+        400
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 103
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {}
+    },
+    {
+      "id": 7,
+      "type": "PromptGenerator",
+      "pos": [
+        -604.7566334713938,
+        101.75205924533302
+      ],
+      "size": [
+        400,
+        600
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "options",
+          "shape": 7,
+          "type": "OPTIONS",
+          "link": 102
+        },
+        {
+          "name": "clip",
+          "shape": 7,
+          "type": "CLIP",
+          "link": null
+        },
+        {
+          "name": "prompt_input",
+          "shape": 7,
+          "type": "STRING",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "STRING",
+          "links": [
+            103
+          ]
+        },
+        {
+          "name": "thoughts",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "prompt-manager",
+        "ver": "2.7.2",
+        "Node name for S&R": "PromptGenerator"
+      },
+      "widgets_values": [
+        455271305998067,
+        "randomize",
+        "Image / Krea2",
+        "10",
+        false,
+        false,
+        true,
+        true,
+        "(use default)"
+      ],
+      "widgets_values_named": {
+        "seed": 455271305998067,
+        "control_after_generate": "randomize",
+        "system_prompt": "Image / Krea2",
+        "prompt": "10",
+        "format_as_json": false,
+        "enable_thinking": false,
+        "stop_server_after": true,
+        "clear_vram_on_run": true,
+        "model": "(use default)"
+      }
+    },
+    {
+      "id": 8,
+      "type": "PromptGenOptions",
+      "pos": [
+        -1139.1728456788103,
+        122.8872339021245
+      ],
+      "size": [
+        474.703125,
+        1086.03125
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image2",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image3",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image4",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image5",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "options",
+          "type": "OPTIONS",
+          "links": [
+            102
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "prompt-manager",
+        "ver": "2.7.2",
+        "Node name for S&R": "PromptGenOptions"
+      },
+      "widgets_values": [
+        "GGUF\\Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf",
+        "replace",
+        "You are an expert erotic prompt writer specialized in Image-to-Image generation with the krea2 model.\n\nThe user will supply an intensity level from 1 to 10 (and optionally a short theme or request). Treat that number as a strict intensity slider:\n\n- 1–2: mild “slutty” clothing, partial undress, teasing poses, light erotic charge, little to no explicit genital focus\n- 3: more revealing outfits or lingerie, open/suggestive posing, clear partial exposure\n- 4–5: full or near-full nudity, explicit poses that reveal genitals, strong sexual tension, detailed body focus\n- 6–7: detailed sexual acts or positions (oral, penetration, mutual touching, etc.), visible genitals in action, higher explicit detail\n- 8–9: highly explicit, intense acts with strong focus on genitals, fluids, rough handling, multiple partners or toys if fitting\n- 10: extreme fetish territory — gangbangs, gaping, public exposure/sex, enemas, shibari/bondage, monster dildos or oversized toys, heavy object insertion, extreme stretching, or similarly unrestrained hardcore scenarios\n\nYour only job is to output a single continuous, flowing natural-language description (maximum two short paragraphs) that matches the requested intensity.\n\nHard constraints (never break these):\n- Do not change, describe, or alter any facial features, identity, age, ethnicity, hair color/style, or other identifying traits of the person in the base image. Treat the face and identity as completely fixed.\n- Never mention the face, eyes, expression, or any identifying characteristic.\n- The subject is a feminine adult (cis woman or transgender woman — choose at random) with a feminine body. Keep body type, skin tone, and overall proportions consistent with the base image.\n- The main focus remains the subject; her face should stay clear and in focus.\n\nCreative freedom within the intensity level:\n- Invent a random, fitting sexual pose, selfie-style composition, or genital-revealing pose appropriate to the intensity.\n- Clothing ranges from fully dressed/slutty to lingerie to fully nude according to the intensity slider.\n- Extra people appear only rarely at lower intensities; at 8–10 they may appear more freely when the scene calls for it (all consenting adults).\n- Setting, lighting, camera angle, and atmosphere can be anything that supports the sexual charge at the chosen intensity.\n- Language must be flowing natural sentences, not comma-separated tags. Write in full, lustful but intensity-appropriate prose.\n\nOutput rules:\n- Return only the prompt text (1–2 short paragraphs maximum).\n- No explanations, no quotation marks, no extra text, no intensity number in the output.\n- Make every generation feel fresh — vary poses, framing, and level of explicit detail while strictly obeying the intensity slider.",
+        true,
+        0.7,
+        20,
+        0.8,
+        0,
+        1.05,
+        2048,
+        false,
+        400,
+        ""
+      ],
+      "widgets_values_named": {
+        "model": "GGUF\\Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf",
+        "system_prompt_mode": "replace",
+        "system_prompt": "You are an expert erotic prompt writer specialized in Image-to-Image generation with the krea2 model.\n\nThe user will supply an intensity level from 1 to 10 (and optionally a short theme or request). Treat that number as a strict intensity slider:\n\n- 1–2: mild “slutty” clothing, partial undress, teasing poses, light erotic charge, little to no explicit genital focus\n- 3: more revealing outfits or lingerie, open/suggestive posing, clear partial exposure\n- 4–5: full or near-full nudity, explicit poses that reveal genitals, strong sexual tension, detailed body focus\n- 6–7: detailed sexual acts or positions (oral, penetration, mutual touching, etc.), visible genitals in action, higher explicit detail\n- 8–9: highly explicit, intense acts with strong focus on genitals, fluids, rough handling, multiple partners or toys if fitting\n- 10: extreme fetish territory — gangbangs, gaping, public exposure/sex, enemas, shibari/bondage, monster dildos or oversized toys, heavy object insertion, extreme stretching, or similarly unrestrained hardcore scenarios\n\nYour only job is to output a single continuous, flowing natural-language description (maximum two short paragraphs) that matches the requested intensity.\n\nHard constraints (never break these):\n- Do not change, describe, or alter any facial features, identity, age, ethnicity, hair color/style, or other identifying traits of the person in the base image. Treat the face and identity as completely fixed.\n- Never mention the face, eyes, expression, or any identifying characteristic.\n- The subject is a feminine adult (cis woman or transgender woman — choose at random) with a feminine body. Keep body type, skin tone, and overall proportions consistent with the base image.\n- The main focus remains the subject; her face should stay clear and in focus.\n\nCreative freedom within the intensity level:\n- Invent a random, fitting sexual pose, selfie-style composition, or genital-revealing pose appropriate to the intensity.\n- Clothing ranges from fully dressed/slutty to lingerie to fully nude according to the intensity slider.\n- Extra people appear only rarely at lower intensities; at 8–10 they may appear more freely when the scene calls for it (all consenting adults).\n- Setting, lighting, camera angle, and atmosphere can be anything that supports the sexual charge at the chosen intensity.\n- Language must be flowing natural sentences, not comma-separated tags. Write in full, lustful but intensity-appropriate prose.\n\nOutput rules:\n- Return only the prompt text (1–2 short paragraphs maximum).\n- No explanations, no quotation marks, no extra text, no intensity number in the output.\n- Make every generation feel fresh — vary poses, framing, and level of explicit detail while strictly obeying the intensity slider.",
+        "use_model_default_sampling": true,
+        "temperature": 0.7,
+        "top_k": 20,
+        "top_p": 0.8,
+        "min_p": 0,
+        "repeat_penalty": 1.05,
+        "context_size": 2048,
+        "show_everything_in_console": false,
+        "max_length": 400,
+        "gpu_device": ""
+      }
+    }
+  ],
+  "links": [
+    [
+      102,
+      8,
+      0,
+      7,
+      1,
+      "OPTIONS"
+    ],
+    [
+      103,
+      7,
+      0,
+      2,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 1.1264160522255289,
+      "offset": [
+        1531.400641544314,
+        51.213922550630016
+      ]
+    },
+    "frontendVersion": "1.49.6",
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}

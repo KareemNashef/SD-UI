@@ -46,11 +46,39 @@ enum DetectedRole {
   negativePrompt,
   primaryImage,
   additionalImage,
+
+  /// The loader's own file widget - the checkpoint or diffusion model
+  /// itself, as opposed to a dial on some node the model passes through.
+  /// Split out because it is the one setting worth a whole browser.
+  modelFile,
   model,
+  lora,
   clip,
   vae,
   sampler,
   latent,
+}
+
+/// Node types this detector will *create* when asked to add a LoRA. Every
+/// other part of detection is shape-based, but creating a node means naming
+/// one, so this is the single unavoidable allowlist - kept to loaders that
+/// take a MODEL and give a MODEL back, since anything touching CLIP would
+/// need the text-encoder chain rewired too.
+const _loraLoaderCandidates = ['LoraLoaderModelOnly'];
+
+/// One LoRA in the model chain, as the two widgets that describe it. Both
+/// are ordinary [DetectedWidget]s, so editing either goes through the same
+/// persistence path as any other setting.
+class DetectedLora {
+  final DetectedWidget file;
+  final DetectedWidget strength;
+
+  const DetectedLora({required this.file, required this.strength});
+
+  ComfyEditorNode get node => file.node;
+  int get nodeId => node.id;
+  String get fileName => '${file.currentValue ?? ''}';
+  double get strengthValue => (strength.currentValue as num?)?.toDouble() ?? 1;
 }
 
 class DetectedWidget {
@@ -97,6 +125,21 @@ class DetectedWorkflowSettings {
   final bool maskSupported;
   final ComfyEditorNode? maskSourceNode;
   final List<DetectedWidget> modelSettings;
+
+  /// The LoRAs currently spliced into the model chain, loader-first.
+  final List<DetectedLora> loras;
+
+  /// Node ids from the model loader to the sampler inclusive, in the order
+  /// the model flows through them. This is what a LoRA is spliced into.
+  final List<int> modelChain;
+
+  /// The node type to create when adding a LoRA, or null when the server
+  /// offers none that this app can wire up on its own.
+  final String? loraLoaderType;
+
+  /// LoRA files the server reports for [loraLoaderType].
+  final List<String> availableLoras;
+
   final List<DetectedWidget> clipSettings;
   final List<DetectedWidget> vaeSettings;
   final List<DetectedWidget> samplerSettings;
@@ -110,6 +153,10 @@ class DetectedWorkflowSettings {
     required this.maskSupported,
     required this.maskSourceNode,
     required this.modelSettings,
+    this.loras = const [],
+    this.modelChain = const [],
+    this.loraLoaderType,
+    this.availableLoras = const [],
     required this.clipSettings,
     required this.vaeSettings,
     required this.samplerSettings,
@@ -131,6 +178,8 @@ class DetectedWorkflowSettings {
         latentSettings: const [],
         warnings: warnings,
       );
+
+  bool get canEditLoras => loraLoaderType != null && modelChain.length >= 2;
 
   DetectedWidget? get primaryImage => images.isEmpty ? null : images.first;
   List<DetectedWidget> get additionalImages =>
@@ -189,15 +238,65 @@ class WorkflowAutoDetector {
     // (weight_dtype, cpu_offload, ...) - it's always the first widget a
     // loader declares. ----
     final modelSettings = <DetectedWidget>[];
-    final modelSource = await _traceInput(doc, samplerNode, samplerSchema, 'model', 'MODEL');
+    final loras = <DetectedLora>[];
+    final modelChain = <int>[];
+    final modelPatches = <ComfyEditorNode>[];
+    final modelSource = await _traceInput(doc, samplerNode, samplerSchema, 'model', 'MODEL',
+        passedThrough: modelPatches);
     if (modelSource != null) {
+      modelChain
+        ..add(modelSource.id)
+        ..addAll(modelPatches.reversed.map((n) => n.id))
+        ..add(samplerNode.id);
+
       final schema = await schemaProvider.schemaFor(modelSource.type);
       final widgetInputs = schema.inputs.where((i) => i.isWidgetCapable).toList();
       if (widgetInputs.isNotEmpty) {
-        modelSettings.add(_build(DetectedRole.model, modelSource, schema, widgetInputs.first));
+        modelSettings.add(
+            _build(DetectedRole.modelFile, modelSource, schema, widgetInputs.first));
+      }
+      // The nodes the model passes through on its way to the sampler carry
+      // dials that *are* model settings and have nowhere else to appear: a
+      // Krea2 edit node's `ref_boost`, a CFGNorm's strength. Unlike the
+      // loader - whose secondary widgets are plumbing (weight_dtype,
+      // cpu_offload) - a patch node has nothing but dials, so all of them
+      // are worth showing. Listed loader-first, in the order the model
+      // actually flows through them. LoRA loaders are pulled out instead:
+      // they are a list the user adds to and removes from, not a fixed set
+      // of settings, so they get a section of their own.
+      for (final patch in modelPatches.reversed) {
+        final patchSchema = await schemaProvider.schemaFor(patch.type);
+        final lora = _asLora(patch, patchSchema);
+        if (lora != null) {
+          loras.add(lora);
+          continue;
+        }
+        for (final input in patchSchema.inputs.where((i) => i.isWidgetCapable)) {
+          modelSettings.add(_build(DetectedRole.model, patch, patchSchema, input));
+        }
       }
     } else {
       warnings.add('Could not trace the sampler\'s model input to a loader');
+    }
+
+    // What "add a LoRA" would create: whatever the workflow already uses if
+    // it uses one, so a graph built around a GGUF/Nunchaku LoRA loader keeps
+    // using that, and only otherwise a known core loader.
+    String? loraLoaderType = loras.isEmpty ? null : loras.first.node.type;
+    if (loraLoaderType == null && modelSource != null) {
+      for (final candidate in _loraLoaderCandidates) {
+        final schema = await schemaProvider.schemaFor(candidate);
+        if (schema.known && _loraFileInput(schema) != null) {
+          loraLoaderType = candidate;
+          break;
+        }
+      }
+    }
+    var availableLoras = const <String>[];
+    if (loraLoaderType != null) {
+      final schema = await schemaProvider.schemaFor(loraLoaderType);
+      final options = _loraFileInput(schema)?.comboOptions ?? const [];
+      availableLoras = [for (final option in options) '$option'];
     }
 
     // ---- CLIP chain (from the positive prompt's encoder node): loader
@@ -304,6 +403,10 @@ class WorkflowAutoDetector {
       maskSupported: maskSupported,
       maskSourceNode: maskSourceNode,
       modelSettings: modelSettings,
+      loras: loras,
+      modelChain: modelChain,
+      loraLoaderType: loraLoaderType,
+      availableLoras: availableLoras,
       clipSettings: clipSettings,
       vaeSettings: vaeSettings,
       samplerSettings: samplerSettings,
@@ -353,6 +456,50 @@ class WorkflowAutoDetector {
     return result;
   }
 
+  // ===== LoRA shape ===== //
+
+  /// A model-only LoRA loader, by shape: one MODEL socket in, one MODEL out,
+  /// a combo naming the LoRA file and a float for its strength. That covers
+  /// `LoraLoaderModelOnly` and the GGUF/Nunchaku equivalents without naming
+  /// any of them. Loaders that also patch CLIP have a second socket and are
+  /// deliberately not matched - splicing one in would mean rewiring the text
+  /// encoder chain as well, which this cannot do.
+  static ComfyInputSpec? _loraFileInput(ComfyNodeSchema schema) {
+    final sockets = schema.inputs.where((i) => !i.isWidgetCapable).toList();
+    if (sockets.length != 1 || sockets.first.type != 'MODEL') return null;
+    if (schema.outputTypes.length != 1 || schema.outputTypes.first != 'MODEL') {
+      return null;
+    }
+    ComfyInputSpec? file;
+    var hasStrength = false;
+    for (final input in schema.inputs.where((i) => i.isWidgetCapable)) {
+      if (file == null &&
+          input.type == 'COMBO' &&
+          input.name.toLowerCase().contains('lora')) {
+        file = input;
+      }
+      if (input.type == 'FLOAT') hasStrength = true;
+    }
+    return hasStrength ? file : null;
+  }
+
+  static ComfyInputSpec? _loraStrengthInput(ComfyNodeSchema schema) {
+    for (final input in schema.inputs.where((i) => i.isWidgetCapable)) {
+      if (input.type == 'FLOAT') return input;
+    }
+    return null;
+  }
+
+  DetectedLora? _asLora(ComfyEditorNode node, ComfyNodeSchema schema) {
+    final file = _loraFileInput(schema);
+    final strength = _loraStrengthInput(schema);
+    if (file == null || strength == null) return null;
+    return DetectedLora(
+      file: _build(DetectedRole.lora, node, schema, file),
+      strength: _build(DetectedRole.lora, node, schema, strength),
+    );
+  }
+
   // ===== Graph walking helpers ===== //
 
   DetectedWidget _build(
@@ -361,7 +508,7 @@ class WorkflowAutoDetector {
     ComfyNodeSchema schema,
     ComfyInputSpec input,
   ) {
-    final slotIndex = schema.widgetSlotIndex(input.name);
+    final slotIndex = widgetSlotIndexFor(schema, node, input.name);
     final values = node.widgetsValues;
     final value = (slotIndex != null && slotIndex < values.length)
         ? values[slotIndex]
@@ -372,7 +519,8 @@ class WorkflowAutoDetector {
     int? controlSlotIndex;
     String? controlValue;
     if (input.options['control_after_generate'] == true) {
-      controlSlotIndex = schema.widgetSlotIndex('${input.name}.control_after_generate');
+      controlSlotIndex =
+          widgetSlotIndexFor(schema, node, '${input.name}.control_after_generate');
       if (controlSlotIndex != null && controlSlotIndex < values.length) {
         controlValue = values[controlSlotIndex]?.toString();
       }
@@ -398,23 +546,29 @@ class WorkflowAutoDetector {
     ComfyEditorNode node,
     ComfyNodeSchema schema,
     String inputName,
-    String socketType,
-  ) async {
+    String socketType, {
+    List<ComfyEditorNode>? passedThrough,
+  }) async {
     final input = schema.inputByName(inputName) ?? schema.firstSocketOfType(socketType);
     if (input == null) return null;
     final entry = node.inputEntry(input.name);
     if (entry == null || entry['link'] == null) return null;
     final link = _linkById(doc, entry['link'] as num);
     if (link == null) return null;
-    return _traceToSource(doc, link.originNodeId, link.originSlot, socketType);
+    return _traceToSource(doc, link.originNodeId, link.originSlot, socketType,
+        passedThrough: passedThrough);
   }
 
+  /// Walks a socket chain back to its origin. When [passedThrough] is given,
+  /// every node the chain passes *through* on the way (i.e. everything but
+  /// the terminus) is appended to it, nearest-the-consumer first.
   Future<ComfyEditorNode?> _traceToSource(
     ComfyWorkflowDocument doc,
     int nodeId,
     int outputSlot, // ignore: unused element warning guard
     String socketType, {
     int depth = 0,
+    List<ComfyEditorNode>? passedThrough,
   }) async {
     if (depth > 16) return null;
     final node = doc.nodeById(nodeId);
@@ -434,7 +588,9 @@ class WorkflowAutoDetector {
     final link = _linkById(doc, entry['link'] as num);
     if (link == null) return node;
 
-    return _traceToSource(doc, link.originNodeId, link.originSlot, socketType, depth: depth + 1);
+    passedThrough?.add(node);
+    return _traceToSource(doc, link.originNodeId, link.originSlot, socketType,
+        depth: depth + 1, passedThrough: passedThrough);
   }
 
   ComfyEditorLink? _linkById(ComfyWorkflowDocument doc, num id) {

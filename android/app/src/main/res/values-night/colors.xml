@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Night desk. Referencing @color/desk everywhere lets the system pick the
+     right one, so no theme needs a night-specific copy. -->
+<resources>
+    <color name="desk">#2A241B</color>
+</resources>

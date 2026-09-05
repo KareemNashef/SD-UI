@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import 'package:sd_companion/core/store.dart';
+import 'package:sd_companion/domain/drawing/stroke.dart';
 import 'package:sd_companion/domain/generation/generation_spec.dart';
 import 'package:sd_companion/domain/generation/sampling_params.dart';
 
@@ -33,6 +34,12 @@ class SessionState {
   /// user paints; null when there is nothing masked.
   final Uint8List? mask;
 
+  /// The strokes behind [mask], when it was painted by hand. Kept so the
+  /// editor can be reopened on an existing mask instead of making the user
+  /// redraw it; null for a mask that has no strokes to reopen (an outpaint
+  /// border, say).
+  final MaskDraft? maskDraft;
+
   final SamplingParams sampling;
 
   /// Forge only: extra images for the stitch script.
@@ -46,6 +53,7 @@ class SessionState {
     this.negativePrompt = '',
     this.sourceImage,
     this.mask,
+    this.maskDraft,
     this.sampling = const SamplingParams(),
     this.stitchImages = const [],
     this.namedImages = const {},
@@ -66,6 +74,7 @@ class SessionState {
     String? negativePrompt,
     File? sourceImage,
     Uint8List? mask,
+    MaskDraft? maskDraft,
     SamplingParams? sampling,
     List<File>? stitchImages,
     Map<String, Uint8List>? namedImages,
@@ -77,6 +86,10 @@ class SessionState {
         negativePrompt: negativePrompt ?? this.negativePrompt,
         sourceImage: clearSourceImage ? null : (sourceImage ?? this.sourceImage),
         mask: clearMask ? null : (mask ?? this.mask),
+        // The draft belongs to the mask: it is replaced whenever the mask
+        // is, so a stale set of strokes can never be reopened over a
+        // different mask.
+        maskDraft: clearMask ? null : (mask != null ? maskDraft : this.maskDraft),
         sampling: sampling ?? this.sampling,
         stitchImages: stitchImages ?? this.stitchImages,
         namedImages: namedImages ?? this.namedImages,
@@ -89,6 +102,7 @@ class SessionState {
       other.negativePrompt == negativePrompt &&
       other.sourceImage?.path == sourceImage?.path &&
       identical(other.mask, mask) &&
+      identical(other.maskDraft, maskDraft) &&
       other.sampling == sampling &&
       listEquals(other.stitchImages, stitchImages) &&
       mapEquals(other.namedImages, namedImages);
@@ -121,8 +135,13 @@ class SessionStore extends Store<SessionState> {
             : s.copyWith(sourceImage: file, clearMask: true),
       );
 
-  void setMask(Uint8List? mask) => update(
-        (s) => mask == null ? s.copyWith(clearMask: true) : s.copyWith(mask: mask),
+  /// [draft] is the strokes that produced [mask], when there are any.
+  /// Passing a mask without one (an outpaint border) deliberately drops any
+  /// previous draft rather than leaving strokes that no longer match.
+  void setMask(Uint8List? mask, {MaskDraft? draft}) => update(
+        (s) => mask == null
+            ? s.copyWith(clearMask: true)
+            : s.copyWith(mask: mask, maskDraft: draft),
       );
 
   void clearCanvas() => update(

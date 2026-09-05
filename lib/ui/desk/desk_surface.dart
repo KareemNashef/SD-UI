@@ -113,10 +113,11 @@ class Paper extends StatelessWidget {
 /// The mounted source sheet - the single most important object on screen.
 ///
 /// Paper with a 3px ink frame, the image inset by 12 so the paper reads as a
-/// mat board around a photograph, and four pulsing outpaint handles at the
-/// corners. Those handles are the only permanently animating element in the
-/// app; they exist to teach one gesture that is otherwise undiscoverable.
-class MountedSheet extends StatefulWidget {
+/// mat board around a photograph, and four small corner brackets - a
+/// viewfinder mark rather than a draggable handle, since nothing here is
+/// wired to a drag gesture yet. Static, in ink's live accent, and inset
+/// flush with the frame rather than overhanging it.
+class MountedSheet extends StatelessWidget {
   final Widget image;
   final String caption;
   final bool showHandles;
@@ -131,37 +132,12 @@ class MountedSheet extends StatefulWidget {
   });
 
   @override
-  State<MountedSheet> createState() => _MountedSheetState();
-}
-
-class _MountedSheetState extends State<MountedSheet>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse = AnimationController(
-    vsync: this,
-    duration: Motion.pulse,
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _pulse.repeat();
-  }
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final p = DeskTheme.of(context);
-    final still = reduceMotion(context);
 
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: onTap,
       child: Stack(
-        clipBehavior: Clip.none,
         children: [
           Container(
             decoration: BoxDecoration(
@@ -173,52 +149,67 @@ class _MountedSheetState extends State<MountedSheet>
             child: Stack(
               fit: StackFit.expand,
               children: [
-                ColoredBox(color: p.paperEdge, child: widget.image),
+                ColoredBox(color: p.paperEdge, child: image),
                 Positioned(
                   left: Space.sm,
                   bottom: Space.sm - 1,
                   child: Text(
-                    widget.caption,
+                    caption,
                     style: Type.micro.copyWith(color: p.paper),
                   ),
                 ),
               ],
             ),
           ),
-          if (widget.showHandles)
+          if (showHandles)
             for (final corner in _Corner.values)
               Positioned(
-                left: corner.isLeft ? -8 : null,
-                right: corner.isLeft ? null : -8,
-                top: corner.isTop ? -8 : null,
-                bottom: corner.isTop ? null : -8,
-                child: still
-                    ? _handle(p, 1)
-                    : AnimatedBuilder(
-                        animation: _pulse,
-                        builder: (context, _) {
-                          // 1.0 -> 1.35 -> 1.0 across the period.
-                          final t = math.sin(_pulse.value * 2 * math.pi);
-                          return _handle(p, 1 + 0.175 * (t + 1) / 2 * 2);
-                        },
-                      ),
+                left: corner.isLeft ? Space.xs : null,
+                right: corner.isLeft ? null : Space.xs,
+                top: corner.isTop ? Space.xs : null,
+                bottom: corner.isTop ? null : Space.xs,
+                child: SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CustomPaint(
+                    painter: _BracketPainter(
+                      isLeft: corner.isLeft,
+                      isTop: corner.isTop,
+                      color: p.clay,
+                    ),
+                  ),
+                ),
               ),
         ],
       ),
     );
   }
+}
 
-  Widget _handle(DeskPalette p, double scale) => Transform.scale(
-        scale: scale,
-        child: Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            color: p.paper,
-            border: Border.all(color: p.clay, width: Stroke.live),
-          ),
-        ),
-      );
+class _BracketPainter extends CustomPainter {
+  final bool isLeft;
+  final bool isTop;
+  final Color color;
+
+  const _BracketPainter({required this.isLeft, required this.isTop, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = Stroke.live
+      ..strokeCap = StrokeCap.square;
+    final x = isLeft ? 0.0 : size.width;
+    final y = isTop ? 0.0 : size.height;
+    final dx = isLeft ? size.width : -size.width;
+    final dy = isTop ? size.height : -size.height;
+    canvas.drawLine(Offset(x, y), Offset(x + dx, y), paint);
+    canvas.drawLine(Offset(x, y), Offset(x, y + dy), paint);
+  }
+
+  @override
+  bool shouldRepaint(_BracketPainter old) =>
+      old.color != color || old.isLeft != isLeft || old.isTop != isTop;
 }
 
 enum _Corner {
@@ -248,6 +239,7 @@ class Print extends StatelessWidget {
   final bool selected;
   final double? lift;
   final VoidCallback? onTap;
+  final VoidCallback? onDoubleTap;
   final double width;
 
   const Print({
@@ -257,6 +249,7 @@ class Print extends StatelessWidget {
     this.selected = false,
     this.lift,
     this.onTap,
+    this.onDoubleTap,
     this.width = 74,
   });
 
@@ -265,32 +258,41 @@ class Print extends StatelessWidget {
     final p = DeskTheme.of(context);
     final t = (lift ?? (selected ? 1.0 : 0.0)).clamp(0.0, 1.0);
     final elevation = Elevation.lerp(Elevation.rest, Elevation.lifted, t);
-    final flat = selected || t > 0.5;
 
     return Transform.translate(
-      // A card picked out of a deck rises, it doesn't slide sideways.
-      offset: Offset(0, -16 * t),
-      child: Transform.rotate(
-        // It also straightens as it comes up - by the time it's fully
-        // risen it reads as squared to the shelf, not tilted like the rest.
-        angle: restAngleFor(id) * (1 - t),
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: width,
-            decoration: BoxDecoration(
-              color: p.paper,
-              border: flat
-                  ? Border.all(color: p.ink, width: Stroke.standard)
-                  : null,
-              boxShadow: elevation.shadows(p.ink),
-            ),
-            padding: const EdgeInsets.fromLTRB(5, 5, 5, 14),
-            child: AspectRatio(
-              aspectRatio: 1,
-              child: ColoredBox(
-                color: p.paperEdge,
-                child: image,
+      // A card picked out of a deck rises, it doesn't slide sideways - and
+      // rises a lot, so the shelf reads as a hand fanning through a deck
+      // rather than a row of thumbnails nudging apart.
+      offset: Offset(0, -26 * t),
+      child: Transform.scale(
+        scale: 1 + 0.14 * t,
+        child: Transform.rotate(
+          // It also straightens as it comes up - by the time it's fully
+          // risen it reads as squared to the shelf, not tilted like the rest.
+          angle: restAngleFor(id) * (1 - t),
+          child: GestureDetector(
+            onTap: onTap,
+            onDoubleTap: onDoubleTap,
+            child: Container(
+              width: width,
+              decoration: BoxDecoration(
+                color: p.paper,
+                // The border tracks selection and *only* selection. It used
+                // to also switch on `lift > 0.5`, so a card that merely rose
+                // as its neighbour was picked grew a border too - which read
+                // as the shelf highlighting the wrong print.
+                border: selected
+                    ? Border.all(color: p.ink, width: Stroke.standard)
+                    : null,
+                boxShadow: elevation.shadows(p.ink),
+              ),
+              padding: const EdgeInsets.fromLTRB(5, 5, 5, 14),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: ColoredBox(
+                  color: p.paperEdge,
+                  child: image,
+                ),
               ),
             ),
           ),
@@ -306,30 +308,44 @@ class Print extends StatelessWidget {
 class PrintEntry {
   final String id;
   final Widget? image;
-  const PrintEntry({required this.id, this.image});
+
+  /// Optional secondary action for this card. The input card uses it for
+  /// double-tap-to-replace, so swapping the source image never costs a trip
+  /// through the tray.
+  final VoidCallback? onDoubleTap;
+
+  const PrintEntry({required this.id, this.image, this.onDoubleTap});
 }
 
-/// The horizontal band of results. Scrolls within itself; never scrolls the
-/// page, because comparing a result to the source is the app's core act and
-/// both must stay visible.
+/// The horizontal band of images: the source image (when there is one) at the
+/// left, a divider, then every result. Scrolls within itself; never scrolls
+/// the page, because comparing a result to the source is the app's core act
+/// and both must stay visible.
 ///
-/// This is a coverflow, not a plain list: whichever print sits nearest the
-/// shelf's centre rises continuously as you drag, exactly tracking your
-/// finger rather than animating on a delay, and settles there - like riffling
-/// a deck until one card is held out. Releasing snaps that card to centre and
-/// reports it through [onSelect].
+/// Lift is driven by **selection**, not by scroll position. The earlier
+/// version rose whichever card sat nearest the viewport centre, which meant
+/// a shelf too short to scroll never animated at all and, when it did, the
+/// raised card was whatever happened to be centred rather than the one the
+/// user picked. Here the focused index animates to the selection and each
+/// card's height falls off with its distance from it - so tapping any card
+/// lifts *that* card, with its neighbours rising in a parabola around it,
+/// at any list length.
 class PrintShelf extends StatefulWidget {
   final List<PrintEntry> entries;
+
+  /// The source image, pinned to the left of the divider. Selectable exactly
+  /// like a result - tapping it promotes it to the main display.
+  final PrintEntry? input;
+
   final String? selectedId;
   final ValueChanged<String>? onSelect;
-  final String? stamp;
 
   const PrintShelf({
     super.key,
     required this.entries,
+    this.input,
     this.selectedId,
     this.onSelect,
-    this.stamp,
   });
 
   @override
@@ -338,27 +354,34 @@ class PrintShelf extends StatefulWidget {
 
 class _PrintShelfState extends State<PrintShelf> {
   static const _itemWidth = 74.0;
-  static const _overlap = 18.0;
+  static const _overlap = 22.0;
   static const _pitch = _itemWidth - _overlap; // visual spacing, post-overlap
-  static const _liftThreshold = _pitch * 1.6;
+  static const _dividerGap = 20.0;
+
+  /// How many neighbours on each side visibly rise with the focused card.
+  /// Above 1 so the shelf reads as a hand fanning a deck, not one card
+  /// popping alone.
+  static const _spread = 2.4;
 
   final _scroll = ScrollController();
-  bool _snapping = false;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToSelected());
+  List<PrintEntry> get _all =>
+      [if (widget.input != null) widget.input!, ...widget.entries];
+
+  bool get _hasInput => widget.input != null;
+
+  int get _focusIndex {
+    final id = widget.selectedId;
+    if (id == null) return 0;
+    final i = _all.indexWhere((e) => e.id == id);
+    return i < 0 ? 0 : i;
   }
 
   @override
   void didUpdateWidget(PrintShelf old) {
     super.didUpdateWidget(old);
-    // A new print arriving elsewhere (e.g. a fresh generation landing in the
-    // library) changes `selectedId` out from under the shelf - follow it, the
-    // same way a physical deck follows the card you just added to it.
     if (widget.selectedId != old.selectedId && widget.selectedId != null) {
-      _animateToSelected();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _revealFocused());
     }
   }
 
@@ -368,124 +391,90 @@ class _PrintShelfState extends State<PrintShelf> {
     super.dispose();
   }
 
-  int? get _selectedIndex {
-    final id = widget.selectedId;
-    if (id == null) return null;
-    final i = widget.entries.indexWhere((e) => e.id == id);
-    return i < 0 ? null : i;
+  /// Left edge of the card at [index], accounting for the input card sitting
+  /// clear of the overlapping result stack.
+  double _xFor(int index) {
+    if (_hasInput && index == 0) return 0;
+    final resultIndex = _hasInput ? index - 1 : index;
+    final lead = _hasInput ? _itemWidth + _dividerGap : 0.0;
+    return lead + resultIndex * _pitch;
   }
 
-  double _centerFor(int index) => index * _pitch + _itemWidth / 2;
-
-  void _jumpToSelected() {
-    final i = _selectedIndex;
-    if (i == null || !_scroll.hasClients) return;
-    _scroll.jumpTo(_targetOffsetFor(i));
-  }
-
-  void _animateToSelected() {
-    final i = _selectedIndex;
-    if (i == null || !_scroll.hasClients) return;
-    _snapping = true;
-    _scroll
-        .animateTo(_targetOffsetFor(i),
-            duration: Motion.arrival, curve: Motion.settle)
-        .whenComplete(() => _snapping = false);
-  }
-
-  double _targetOffsetFor(int index) {
-    if (!_scroll.hasClients) return 0;
+  /// Brings the focused card into view without yanking the shelf around when
+  /// it is already visible.
+  void _revealFocused() {
+    if (!_scroll.hasClients) return;
     final viewport = _scroll.position.viewportDimension;
-    final target = _centerFor(index) - viewport / 2;
-    return target.clamp(0.0, _scroll.position.maxScrollExtent);
+    final x = _xFor(_focusIndex);
+    final target =
+        (x + _itemWidth / 2 - viewport / 2).clamp(0.0, _scroll.position.maxScrollExtent);
+    _scroll.animateTo(target, duration: Motion.arrival, curve: Motion.ease);
   }
 
-  int _nearestToCenter() {
-    final viewport = _scroll.hasClients ? _scroll.position.viewportDimension : 0.0;
-    final centerLine = _scroll.offset + viewport / 2;
-    var best = 0;
-    var bestDist = double.infinity;
-    for (var i = 0; i < widget.entries.length; i++) {
-      final d = (_centerFor(i) - centerLine).abs();
-      if (d < bestDist) {
-        bestDist = d;
-        best = i;
-      }
-    }
-    return best;
-  }
-
-  double _liftForIndex(int index) {
-    if (!_scroll.hasClients) return widget.entries[index].id == widget.selectedId ? 1 : 0;
-    final viewport = _scroll.position.viewportDimension;
-    final centerLine = _scroll.offset + viewport / 2;
-    final distance = (_centerFor(index) - centerLine).abs();
-    final t = (1 - distance / _liftThreshold).clamp(0.0, 1.0);
+  double _liftFor(int index, double focus) {
+    final distance = (index - focus).abs();
+    final t = (1 - distance / _spread).clamp(0.0, 1.0);
     return t * t * (3 - 2 * t); // smoothstep - a gentle falloff, not a cliff
-  }
-
-  bool _onScrollEnd(ScrollEndNotification notification) {
-    if (_snapping || widget.entries.isEmpty) return false;
-    final nearest = _nearestToCenter();
-    final id = widget.entries[nearest].id;
-    if (id != widget.selectedId) widget.onSelect?.call(id);
-    _animateToSelected();
-    return false;
   }
 
   @override
   Widget build(BuildContext context) {
     final p = DeskTheme.of(context);
+    final all = _all;
+
     return SizedBox(
-      height: 118,
-      child: Row(
-        children: [
-          if (widget.stamp != null) ...[
-            RotatedBox(
-              quarterTurns: 3,
-              child: Text(widget.stamp!,
-                  style: Type.micro.copyWith(color: p.inkMuted)),
-            ),
-            const SizedBox(width: Space.xs),
-          ],
-          Expanded(
-            child: NotificationListener<ScrollEndNotification>(
-              onNotification: _onScrollEnd,
-              child: AnimatedBuilder(
-                animation: _scroll,
-                builder: (context, _) => ListView.builder(
-                  controller: _scroll,
-                  scrollDirection: Axis.horizontal,
-                  clipBehavior: Clip.none,
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(vertical: Space.sm),
-                  itemCount: widget.entries.length,
-                  // Prints overlap by about a third of their width. `Padding`
-                  // rejects negative insets outright, so the overlap is a
-                  // transform - shifting each print left into its
-                  // predecessor rather than shrinking the gap between them.
-                  itemBuilder: (context, i) {
-                    final entry = widget.entries[i];
-                    return Transform.translate(
-                      offset: Offset(i == 0 ? 0 : -_overlap * i, 0),
-                      child: Print(
-                        id: entry.id,
-                        image: entry.image,
-                        selected: entry.id == widget.selectedId,
-                        lift: _liftForIndex(i),
-                        width: _itemWidth,
-                        onTap: () => widget.onSelect?.call(entry.id),
-                      ),
-                    );
-                  },
+      height: 142,
+      // Animating the *focus position* rather than each card's lift means
+      // the whole parabola slides along the shelf, so the cards between the
+      // old and new selection rise and fall on the way past instead of two
+      // cards cross-fading in place.
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: _focusIndex.toDouble(), end: _focusIndex.toDouble()),
+        duration: Motion.arrival,
+        curve: Motion.ease,
+        builder: (context, focus, _) => SingleChildScrollView(
+          controller: _scroll,
+          scrollDirection: Axis.horizontal,
+          clipBehavior: Clip.none,
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.only(top: Space.xl, bottom: Space.sm),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (var i = 0; i < all.length; i++) ...[
+                if (_hasInput && i == 1) _divider(p),
+                Transform.translate(
+                  // Results overlap into each other; the input card
+                  // deliberately does not, so the divider reads as a
+                  // real separation rather than a gap in one deck.
+                  offset: Offset(
+                    (_hasInput && i == 0) ? 0 : -_overlap * (_hasInput ? i - 1 : i),
+                    0,
+                  ),
+                  child: Print(
+                    id: all[i].id,
+                    image: all[i].image,
+                    selected: all[i].id == widget.selectedId,
+                    lift: _liftFor(i, focus),
+                    width: _itemWidth,
+                    onTap: () => widget.onSelect?.call(all[i].id),
+                    onDoubleTap: all[i].onDoubleTap,
+                  ),
                 ),
-              ),
-            ),
+              ],
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
+
+  Widget _divider(DeskPalette p) => Container(
+        width: Stroke.standard,
+        height: 66,
+        margin: const EdgeInsets.symmetric(horizontal: (_dividerGap - Stroke.standard) / 2),
+        color: p.ink.withValues(alpha: 0.28),
+      );
 }
 
 /// A labelled card tucked into the title row: the loaded checkpoint or

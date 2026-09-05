@@ -8,6 +8,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:sd_companion/domain/engine/engine_endpoint.dart';
+import 'package:sd_companion/data/engines/comfy/comfy_lora_editor.dart';
 import 'package:sd_companion/data/engines/comfy/comfy_node_schema.dart';
 import 'package:sd_companion/data/engines/comfy/comfy_object_info_client.dart';
 import 'package:sd_companion/data/engines/comfy/comfy_workflow.dart';
@@ -230,6 +231,39 @@ class ComfyWorkflowService {
     }
     values[slotIndex] = random ? 'randomize' : 'fixed';
     node.widgetsValues = values;
+    record.updatedAt = DateTime.now();
+    await _persistRecord(record);
+    await _refreshDetected();
+  }
+
+  // ===== LoRAs ===== //
+  //
+  // Unlike every other setting, these change the *shape* of the graph, so
+  // they go through ComfyLoraEditor rather than a widget value write. Both
+  // re-detect afterwards, which is what makes the new node show up with its
+  // own controls.
+
+  /// Splices a LoRA into the active workflow's model chain.
+  Future<void> addLora({required String file, double strength = 1}) async {
+    final record = activeRecord;
+    final detected = activeDetected.value;
+    final provider = _schemaProvider;
+    if (record == null || detected == null || provider == null) return;
+
+    await ComfyLoraEditor(provider)
+        .add(record.current, detected, file: file, strength: strength);
+    record.updatedAt = DateTime.now();
+    await _persistRecord(record);
+    await _refreshDetected();
+  }
+
+  /// Removes a LoRA node and reconnects the chain around it.
+  Future<void> removeLora(DetectedLora lora) async {
+    final record = activeRecord;
+    final provider = _schemaProvider;
+    if (record == null || provider == null) return;
+
+    ComfyLoraEditor(provider).remove(record.current, lora.nodeId);
     record.updatedAt = DateTime.now();
     await _persistRecord(record);
     await _refreshDetected();

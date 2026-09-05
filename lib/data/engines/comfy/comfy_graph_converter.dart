@@ -73,13 +73,16 @@ class ComfyGraphConverter {
           continue;
         }
 
-        if (inputSpec.isWidgetCapable) {
+        // A widget-typed input the graph declares as a socket is a socket:
+        // it has no stored value, and reading one would take the next
+        // widget's. Unconnected and optional, so it is simply omitted.
+        if (inputSpec.isWidgetCapable && !isSocketOnly(node, inputSpec.name)) {
           final overrideKey = '${node.id}:${inputSpec.name}';
           if (overrides.containsKey(overrideKey)) {
             inputsMap[inputSpec.name] = overrides[overrideKey];
             continue;
           }
-          final slotIndex = schema.widgetSlotIndex(inputSpec.name);
+          final slotIndex = widgetSlotIndexFor(schema, node, inputSpec.name);
           final values = node.widgetsValues;
           final value = (slotIndex != null && slotIndex < values.length)
               ? values[slotIndex]

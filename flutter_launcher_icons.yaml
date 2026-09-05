@@ -1,11 +1,20 @@
-# flutter pub run flutter_launcher_icons
+# Regenerate the source art first:  python tool/generate_icons.py
+# Then:                             dart run flutter_launcher_icons
 flutter_launcher_icons:
   image_path: "assets/icon/icon.png"
 
   android: "launcher_icon"
-  # image_path_android: "assets/icon/icon.png"
-  min_sdk_android: 21 # android min sdk min:16, default 21
-  # adaptive_icon_background: "assets/icon/background.png"
-  # adaptive_icon_foreground: "assets/icon/foreground.png"
-  # adaptive_icon_foreground_inset: 16
-  # adaptive_icon_monochrome: "assets/icon/monochrome.png"
+  min_sdk_android: 21
+
+  # Adaptive layers, so Android 12+ stops drawing the legacy icon on a white
+  # plate. The background is the desk itself, which also means the splash's
+  # icon circle blends into the splash background instead of reading as a box.
+  adaptive_icon_background: "assets/icon/icon_background.png"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  # Android 13 themed icons: the system recolours this silhouette to match
+  # the user's wallpaper.
+  adaptive_icon_monochrome: "assets/icon/icon_monochrome.png"
+  # The source art is already drawn inside the adaptive safe zone, so the
+  # tool's default 16% inset would shrink it a second time and leave the
+  # mark floating in space.
+  adaptive_icon_foreground_inset: 0

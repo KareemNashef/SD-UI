@@ -70,6 +70,20 @@ abstract interface class ImageToTextCapable {
   Future<Result<String>> describeImage(Uint8List image);
 }
 
+/// Writes a prompt from nothing but a dial.
+///
+/// Distinct from [PromptRewriteCapable] in the one way that matters: it
+/// needs no draft to work from, so it is the tool for an empty box.
+/// ComfyUI runs a bundled local-LLM workflow for this.
+///
+/// [intensity] is the single number that workflow's system prompt reads -
+/// 1 to 10, mild to extreme. Everything else about what gets written lives
+/// in the workflow, which is where it belongs: change the system prompt and
+/// the same dial means whatever the new one says it means.
+abstract interface class PromptGenerateCapable {
+  Future<Result<String>> generatePrompt({required int intensity});
+}
+
 /// Upscales an image to a target resolution on its longest side.
 abstract interface class UpscaleCapable {
   Future<Result<String>> upscale({

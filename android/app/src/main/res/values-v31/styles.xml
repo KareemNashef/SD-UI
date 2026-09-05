@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ draws the launch screen itself and ignores windowBackground,
+     which is why the splash stayed black no matter what the drawable said. -->
+<resources>
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowSplashScreenBackground">@color/desk</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+        <!-- windowSplashScreenIconBackgroundColor is deliberately unset.
+             Setting it is what puts the icon on a filled plate - the white
+             box this replaces. Unset, the mark sits straight on the desk. -->
+        <item name="android:windowBackground">@color/desk</item>
+    </style>
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@color/desk</item>
+    </style>
+</resources>

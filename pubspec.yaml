@@ -21,6 +21,7 @@ dependencies:
   image: ^4.7.2
   file_picker: ^8.1.6
   scrollable_positioned_list: ^0.3.8
+  gal: ^2.3.3
 
 dev_dependencies:
   flutter_lints: ^4.0.0
@@ -32,7 +33,10 @@ flutter:
 
 
   assets:
-    - assets/icon/
+    # assets/icon/ is deliberately absent: it is build-time source art for
+    # `tool/generate_icons.py`, compiled into Android resources by
+    # flutter_launcher_icons. Bundling it too shipped a second copy of every
+    # icon inside the APK that nothing ever loads.
     - assets/placeholders/
     - assets/comfy/
 

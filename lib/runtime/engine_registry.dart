@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:sd_companion/data/engines/comfy/comfy_engine.dart';
 import 'package:sd_companion/data/engines/comfy/comfy_workflow_service.dart';
+import 'package:sd_companion/data/engines/comfy/model_library.dart';
 import 'package:sd_companion/data/engines/forge/forge_engine.dart';
 import 'package:sd_companion/domain/engine/engine_endpoint.dart';
 import 'package:sd_companion/domain/engine/engine_kind.dart';
@@ -31,6 +32,10 @@ class EngineRegistry {
   /// show machine A's workflows while pointed at machine B.
   final Map<String, ComfyWorkflowService> _workflowServices = {};
 
+  /// One model library per ComfyUI endpoint, for the same reason: the
+  /// checkpoints and LoRAs on machine A are not the ones on machine B.
+  final Map<String, ModelLibrary> _modelLibraries = {};
+
   final Map<String, ImageEngine> _engines = {};
 
   EngineRegistry({this.engineFactory});
@@ -42,6 +47,11 @@ class EngineRegistry {
   /// The workflow service backing a ComfyUI [endpoint].
   ComfyWorkflowService workflowsFor(EngineEndpoint endpoint) =>
       _workflowServices.putIfAbsent(endpoint.id, ComfyWorkflowService.new);
+
+  /// The checkpoint/LoRA library backing a ComfyUI [endpoint], as read from
+  /// the ComfyUI-Lora-Manager addon.
+  ModelLibrary modelLibraryFor(EngineEndpoint endpoint) =>
+      _modelLibraries.putIfAbsent(endpoint.id, () => ModelLibrary(endpoint));
 
   ImageEngine _build(EngineEndpoint endpoint) {
     final custom = engineFactory;
@@ -67,6 +77,10 @@ class EngineRegistry {
     final engines = _engines.values.toList();
     _engines.clear();
     _workflowServices.clear();
+    for (final library in _modelLibraries.values) {
+      library.dispose();
+    }
+    _modelLibraries.clear();
     for (final engine in engines) {
       await engine.dispose();
     }

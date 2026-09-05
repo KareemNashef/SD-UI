@@ -332,7 +332,7 @@ class _GenerationLabState extends State<GenerationLab> {
                 );
               }
               return PrintShelf(
-                stamp: '×${lib.count}',
+
                 selectedId: lib.selectedId,
                 onSelect: _rt.library.select,
                 entries: [
