@@ -1,6 +1,5 @@
 // ==================== Image Engine ==================== //
 
-import 'dart:typed_data';
 
 import 'package:sd_companion/core/result.dart';
 import 'package:sd_companion/domain/engine/engine_capabilities.dart';
@@ -8,7 +7,9 @@ import 'package:sd_companion/domain/engine/engine_endpoint.dart';
 import 'package:sd_companion/domain/engine/engine_kind.dart';
 import 'package:sd_companion/domain/generation/generated_image.dart';
 import 'package:sd_companion/domain/generation/generation_spec.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sd_companion/domain/generation/run_progress.dart';
+import 'package:sd_companion/domain/generation/thinking_update.dart';
 
 /// The contract every generation engine implements.
 ///
@@ -59,12 +60,6 @@ abstract class ImageEngine {
 /// engine-specific abilities live in their own interfaces. Call sites use
 /// `engine is PromptRewriteCapable` alongside the declared capability flag.
 
-/// Rewrites a prompt through an LLM. Forge uses OpenRouter; ComfyUI runs a
-/// bundled QwenVL workflow. Same contract, very different plumbing.
-abstract interface class PromptRewriteCapable {
-  Future<Result<String>> rewritePrompt(String prompt);
-}
-
 /// Captions an image into a prompt.
 abstract interface class ImageToTextCapable {
   Future<Result<String>> describeImage(Uint8List image);
@@ -82,6 +77,16 @@ abstract interface class ImageToTextCapable {
 /// the same dial means whatever the new one says it means.
 abstract interface class PromptGenerateCapable {
   Future<Result<String>> generatePrompt({required int intensity});
+}
+
+/// Reports what a language model is doing while it does it.
+///
+/// A local LLM has no step count: it loads a model, reads a prompt, reasons,
+/// then writes - and the interesting part is the words appearing, not a
+/// percentage. Engines that can say so expose it here, and an interface that
+/// only ComfyUI implements keeps that out of [ImageEngine].
+abstract interface class ThinkingFeedCapable {
+  ValueListenable<ThinkingUpdate> get thinking;
 }
 
 /// Upscales an image to a target resolution on its longest side.

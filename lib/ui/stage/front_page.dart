@@ -22,7 +22,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:gal/gal.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -39,6 +38,7 @@ import 'package:sd_companion/domain/engine/image_engine.dart';
 import 'package:sd_companion/domain/generation/generated_image.dart';
 import 'package:sd_companion/domain/generation/generation_spec.dart';
 import 'package:sd_companion/domain/generation/run_progress.dart';
+import 'package:sd_companion/domain/generation/thinking_update.dart';
 import 'package:sd_companion/domain/generation/sampler_names.dart';
 import 'package:sd_companion/domain/generation/sampling_params.dart';
 import 'package:sd_companion/domain/generation/scheduler_names.dart';
@@ -63,6 +63,8 @@ import 'package:sd_companion/ui/stage/image_tools.dart';
 import 'package:sd_companion/ui/stage/mask_editor.dart';
 import 'package:sd_companion/ui/stage/outpaint_editor.dart';
 import 'package:sd_companion/ui/stage/prompt_book.dart';
+import 'package:sd_companion/ui/stage/prompt_tools.dart';
+import 'package:sd_companion/ui/stage/thinking_surface.dart';
 import 'package:sd_companion/ui/stage/workflow_settings.dart';
 
 /// The source image's identity on the shelf. Namespaced so it can never
@@ -97,6 +99,12 @@ class _FrontPageState extends State<FrontPage> {
   static const _kInputId = kInputPrintId;
   static const _kRunId = kRunPrintId;
 
+  /// The mounted sheet's own frame: a 3pt border and the mat inside it.
+  /// Anything floating over the picture lines up with the *picture*, not
+  /// with the desk behind it - the shelf used to start at the frame and
+  /// run out past both edges of the paper.
+  static const _sheetInset = Stroke.frame + Space.md;
+
   /// True while the compare tool is held down. It only swaps which child of
   /// the already-mounted IndexedStack is painted, so the flip costs nothing.
   bool _comparing = false;
@@ -108,29 +116,32 @@ class _FrontPageState extends State<FrontPage> {
 
   bool get _promptBusy => _promptTask != null;
 
-  /// Whether the second prompt button writes a new prompt instead of
-  /// rewriting the one you have. Held rather than tapped to change: the two
-  /// are alternatives to each other, not a pair worth a button each in a row
-  /// that already has three.
-  bool _promptGenerates = false;
+  /// The one number the prompt writer takes: 1 mild, 10 extreme. Kept in
+  /// preferences, not just in this state - it is a taste rather than a
+  /// per-press decision, and dialling it back in every morning is not.
+  late int _promptIntensity;
 
-  /// The one number the prompt writer takes: 1 mild, 10 extreme. Kept for
-  /// the session rather than asked for each time - it is a setting you land
-  /// on and then press the button repeatedly at.
-  double _promptIntensity = 5;
+  /// What the language model is doing, while it is doing it. Only the
+  /// prompt tools produce this, and only for as long as one is running.
+  ThinkingUpdate _thinking = ThinkingUpdate.idle;
 
-  /// The toggle, but only where the engine can honour it - switching to an
-  /// engine that cannot write prompts must not leave a button that does
-  /// nothing but apologise.
-  bool get _generating =>
-      _promptGenerates && _rt.engine.state.capabilities.promptGenerate;
+  /// Runs [work] with the engine's thinking feed wired to the surface that
+  /// replaces the prompt box, and takes it down again afterwards however
+  /// the work ends.
+  Future<T> _withThinkingFeed<T>(
+      Object engine, Future<T> Function() work) async {
+    final feed = engine is ThinkingFeedCapable ? engine.thinking : null;
+    void onUpdate() {
+      if (mounted) setState(() => _thinking = feed!.value);
+    }
 
-  void _togglePromptTool() {
-    setState(() => _promptGenerates = !_promptGenerates);
-    HapticFeedback.mediumImpact();
-    _notify(_promptGenerates
-        ? 'Write: makes a prompt from nothing.'
-        : 'Enhance: rewrites the prompt you have.');
+    feed?.addListener(onUpdate);
+    try {
+      return await work();
+    } finally {
+      feed?.removeListener(onUpdate);
+      if (mounted) setState(() => _thinking = ThinkingUpdate.idle);
+    }
   }
 
   /// The prompt as it was before the last wholesale replacement - a clear,
@@ -153,6 +164,7 @@ class _FrontPageState extends State<FrontPage> {
     super.initState();
     final rt = RuntimeScope.read(context);
     _prompt.text = rt.session.state.prompt;
+    _promptIntensity = rt.settings.loadPromptIntensity();
     _stores = StoreGroup([rt.engine, rt.session, rt.run, rt.library, rt.catalog]);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _connect(rt.engine.state.active);
@@ -440,44 +452,10 @@ class _FrontPageState extends State<FrontPage> {
         ),
       );
 
-  /// CHECKLIST 6.4. ComfyUI runs a bundled QwenVL workflow for this, so it
-  /// takes real time and can fail - hence the notice on both ends rather
-  /// than a silent swap of the text under the cursor.
-  Future<void> _enhancePrompt() async {
-    final engine = _rt.activeEngine;
-    if (engine is! PromptRewriteCapable) {
-      _notify('This engine cannot rewrite prompts.', isError: true);
-      return;
-    }
-    final current = _prompt.text.trim();
-    if (current.isEmpty) {
-      _notify('Type something first - there is nothing to enhance.');
-      return;
-    }
-    if (_rt.run.isActive) {
-      _notify('Something is already running.', isError: true);
-      return;
-    }
-
-    setState(() => _promptTask = _PromptTask.enhance);
-    final result = await (engine as PromptRewriteCapable).rewritePrompt(current);
-    if (!mounted) return;
-    setState(() => _promptTask = null);
-    result.fold(
-      (rewritten) {
-        // The original goes into the book first, so an enhancement that
-        // turns out worse is one tap away from being undone.
-        _rt.promptBook.record(current);
-        _setPrompt(rewritten);
-        _notify('Prompt enhanced. The original is saved under Prompts.');
-      },
-      (error) => _notify(error.message, isError: true),
-    );
-  }
-
-  /// The other half of the enhance button. Takes nothing and returns a
-  /// whole prompt, so it is the tool for an empty box - which is exactly
-  /// when "enhance" has nothing to work with.
+  /// Writes a prompt from nothing but the intensity dial. ComfyUI runs a
+  /// bundled LM Studio workflow for this, so it takes real time and can
+  /// fail - hence the notice on both ends rather than a silent swap of the
+  /// text under the cursor.
   Future<void> _generatePrompt() async {
     final engine = _rt.activeEngine;
     if (engine is! PromptGenerateCapable) {
@@ -490,8 +468,11 @@ class _FrontPageState extends State<FrontPage> {
     }
 
     setState(() => _promptTask = _PromptTask.generate);
-    final result = await (engine as PromptGenerateCapable)
-        .generatePrompt(intensity: _promptIntensity.round());
+    final result = await _withThinkingFeed(
+      engine,
+      () => (engine as PromptGenerateCapable)
+          .generatePrompt(intensity: _promptIntensity),
+    );
     if (!mounted) return;
     setState(() => _promptTask = null);
     result.fold(
@@ -501,7 +482,7 @@ class _FrontPageState extends State<FrontPage> {
         final current = _prompt.text.trim();
         if (current.isNotEmpty) _rt.promptBook.record(current);
         _setPrompt(prompt);
-        _notify('Prompt written. Hold Write again for Enhance.');
+        _notify('Prompt written.');
       },
       (error) => _notify(error.message, isError: true),
     );
@@ -529,7 +510,10 @@ class _FrontPageState extends State<FrontPage> {
     if (!mounted) return;
 
     setState(() => _promptTask = _PromptTask.describe);
-    final result = await (engine as ImageToTextCapable).describeImage(bytes);
+    final result = await _withThinkingFeed(
+      engine,
+      () => (engine as ImageToTextCapable).describeImage(bytes),
+    );
     if (!mounted) return;
     setState(() => _promptTask = null);
     result.fold(
@@ -1533,10 +1517,11 @@ class _FrontPageState extends State<FrontPage> {
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-            child: AnimatedSlide(
+            child: LayoutBuilder(
+              builder: (context, box) => AnimatedSlide(
               // Travel in fractions of the page, so the composer clears the
               // keyboard without the layout above it changing size at all.
-              offset: Offset(0, -_keyboardSlide(context)),
+              offset: Offset(0, -_keyboardSlide(context, box.maxHeight)),
               duration: Motion.fade,
               curve: Motion.ease,
               child: AnimatedBuilder(
@@ -1559,22 +1544,27 @@ class _FrontPageState extends State<FrontPage> {
               },
             ),
             ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  /// How far to lift the page so the prompt clears the keyboard, as a
-  /// fraction of the page height. Capped, because sliding the whole page off
-  /// the top to chase a very tall keyboard is worse than a partial view.
-  double _keyboardSlide(BuildContext context) {
+  /// How far to lift the page so the composer clears the keyboard, as a
+  /// fraction of [pageHeight] - which is the height of the box actually
+  /// being slid, not the screen's. Measuring against the screen came up
+  /// short by the safe-area insets, and a third of the way up the phone was
+  /// short of a half-screen keyboard by a good deal more: the field ended
+  /// up sliced along its bottom edge with no way to scroll to the rest.
+  ///
+  /// Capped only against a keyboard taller than the page, where lifting
+  /// everything would leave nothing to lift out of.
+  double _keyboardSlide(BuildContext context, double pageHeight) {
     final inset = MediaQuery.viewInsetsOf(context).bottom;
-    if (inset <= 0) return 0;
-    final height = MediaQuery.sizeOf(context).height;
-    if (height <= 0) return 0;
-    final fraction = inset / height;
-    return fraction > 0.32 ? 0.32 : fraction;
+    if (inset <= 0 || pageHeight <= 0 || !pageHeight.isFinite) return 0;
+    final fraction = inset / pageHeight;
+    return fraction > 0.6 ? 0.6 : fraction;
   }
 
   Widget _buildBody(BuildContext context, ComfyWorkflowService? workflows) {
@@ -1599,6 +1589,7 @@ class _FrontPageState extends State<FrontPage> {
     final ready = _isReady(engineState, workflows) && session.hasPrompt && !run.isActive;
     final shelfEntries = _shelfEntries(run, library);
     final inputEntry = _inputEntry(context, engineState, session, workflows);
+    final shelfVisible = shelfEntries.isNotEmpty || inputEntry != null;
 
     return Column(
       children: [
@@ -1633,14 +1624,66 @@ class _FrontPageState extends State<FrontPage> {
                       // is an awkward reach.
                       if (session.hasSourceImage && !run.isActive && focused != null)
                         Positioned(
-                          right: Space.md,
-                          bottom: Space.md,
+                          right: _sheetInset,
+                          // Above the shelf, not under it. Once the prints
+                          // began floating on the canvas they landed on top
+                          // of this, and a button you cannot press is worse
+                          // than one that isn't there.
+                          bottom: _sheetInset +
+                              (shelfVisible ? PrintShelf.height : 0),
                           child: _CompareButton(
                             onHoldChanged: (held) =>
                                 setState(() => _comparing = held),
                           ),
                         ),
 
+                      // The shelf rides on the canvas rather than under it.
+                      // Below, it and the composer between them left the
+                      // picture about three hundred points on a phone; the
+                      // prints are small, mostly empty paper, and sitting
+                      // them on the bottom of the image costs the image
+                      // very little of what anyone is looking at.
+                      //
+                      // It clears out while compare is held: that gesture
+                      // exists to see the input as it is, and cards over
+                      // the bottom of it are exactly the kind of thing that
+                      // was in the way.
+                      Positioned(
+                        left: _sheetInset,
+                        right: _sheetInset,
+                        bottom: _sheetInset,
+                        child: IgnorePointer(
+                          ignoring: _comparing,
+                          child: AnimatedOpacity(
+                            duration: Motion.press,
+                            opacity: _comparing ? 0 : 1,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (run.isActive)
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        left: Space.sm,
+                                        right: Space.sm,
+                                        bottom: Space.sm),
+                                    child: DreamBar(
+                                      fraction: run.progress.fraction,
+                                      caption: _progressCaption(run.progress),
+                                    ),
+                                  ),
+                                if (shelfVisible)
+                                  PrintShelf(
+                                    input: inputEntry,
+                                    selectedId:
+                                        _viewingId ?? library.selectedId,
+                                    onSelect: _onShelfSelect,
+                                    entries: shelfEntries,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1650,219 +1693,120 @@ class _FrontPageState extends State<FrontPage> {
           ),
         ),
 
-        // ===== The shelf: source image, divider, then every result. Shows
-        // an empty, shimmering print per batch slot from the moment a run is
-        // queued, per DESIGN.md 7.14. ===== //
-        Padding(
-          key: const ValueKey('shelf'),
-          padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-          child: (shelfEntries.isEmpty && inputEntry == null)
-              ? SizedBox(
-                  height: 110,
-                  child: Center(
-                    child: Text('NOTHING PRINTED YET',
-                        style: Type.micro.copyWith(color: p.inkFaint)),
-                  ),
-                )
-              : PrintShelf(
-                  input: inputEntry,
-                  selectedId: _viewingId ?? library.selectedId,
-                  onSelect: (id) {
-                    if (id == _kInputId) {
-                      _onInputTapped();
-                      return;
-                    }
-                    if (id == _kRunId) {
-                      setState(() => _viewingId = _kRunId);
-                      return;
-                    }
-                    _rt.library.select(id);
-                    if (library.images.any((i) => i.id == id)) {
-                      setState(() => _viewingId = id);
-                    }
-                  },
-                  entries: shelfEntries,
-                ),
-        ),
-
-        // ===== Progress, only while a run is in flight ===== //
-        if (run.isActive)
-          Padding(
-            key: const ValueKey('progress'),
-            padding: const EdgeInsets.fromLTRB(Space.gutter, Space.sm, Space.gutter, 0),
-            child: DeskProgress(
-              fraction: run.progress.fraction,
-              caption: _progressCaption(run.progress),
-            ),
-          ),
-
-        // ===== Prompt, status, generate ===== //
+        // ===== The composer: one row, always the same height ===== //
+        //
+        // Prompt, tools, go. The field is one line while the canvas is
+        // worth looking at and four once the keyboard has covered it
+        // anyway, which is the only moment the extra lines are readable.
+        // The status line lives in the field's own label row: it was a
+        // whole row of its own for two words that are usually "Ready".
         Padding(
           key: const ValueKey('composer'),
-          padding: const EdgeInsets.fromLTRB(Space.gutter, Space.md, Space.gutter, Space.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DeskField(
-                label: 'Prompt',
-                controller: _prompt,
-                maxLines: 2,
-                onChanged: _rt.session.setPrompt,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
+          padding: const EdgeInsets.fromLTRB(
+              Space.gutter, Space.md, Space.gutter, Space.md),
+          child: _promptBusy
+              ? ThinkingSurface(
+                  label: _statusText(engineState, run),
+                  update: _thinking,
+                  waitingFor: _promptTask == _PromptTask.describe
+                      ? 'LOOKING AT THE IMAGE'
+                      : 'WAKING THE MODEL',
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Appears once there is something to go back to: an
-                    // accidental clear, or an enhancement/description that
-                    // turned out worse than what it replaced.
-                    if (_promptUndo != null && _promptUndo != session.prompt)
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: _undoPrompt,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: Space.sm, vertical: 2),
-                          child: Icon(Icons.undo_rounded,
-                              size: 14, color: p.inkMuted),
+                    Expanded(
+                      child: DeskField(
+                        label: _statusText(engineState, run),
+                        controller: _prompt,
+                        // Two at rest and six with the keyboard up. A field
+                        // grows to fit its text, so the second line costs
+                        // nothing on a short prompt and saves a long one
+                        // from being read through a slot.
+                        maxLines: 2,
+                        focusedMaxLines: 6,
+                        onChanged: _rt.session.setPrompt,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Appears once there is something to go back
+                            // to: an accidental clear, or a written prompt
+                            // that turned out worse than what it replaced.
+                            if (_promptUndo != null &&
+                                _promptUndo != session.prompt)
+                              _labelAction(p, Icons.undo_rounded, _undoPrompt),
+                            // Only offered when there is something to
+                            // clear, so the row stays quiet on an empty
+                            // prompt.
+                            if (session.prompt.trim().isNotEmpty)
+                              _labelAction(p, Icons.backspace_outlined,
+                                  () => _setPrompt('')),
+                            _labelAction(p, Icons.open_in_full_rounded,
+                                _openPromptEditor),
+                          ],
                         ),
-                      ),
-                    // Only offered when there is something to clear, so the
-                    // label row stays quiet on an empty prompt.
-                    if (session.prompt.trim().isNotEmpty)
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => _setPrompt(''),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: Space.sm, vertical: 2),
-                          child: Icon(Icons.backspace_outlined,
-                              size: 13, color: p.inkMuted),
-                        ),
-                      ),
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: _openPromptEditor,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: Space.sm, vertical: 2),
-                        child: Icon(Icons.open_in_full_rounded,
-                            size: 14, color: p.inkMuted),
                       ),
                     ),
+                    const SizedBox(width: Space.sm),
+                    PromptTools(
+                      canWrite: capabilities.promptGenerate,
+                      canDescribe: capabilities.imageToText,
+                      busy: _promptBusy,
+                      intensity: _promptIntensity,
+                      onIntensity: (value) {
+                        setState(() => _promptIntensity = value);
+                        _rt.settings.savePromptIntensity(value);
+                      },
+                      onPrompts: _openPromptBook,
+                      onWrite: _generatePrompt,
+                      onDescribe: _describeImage,
+                    ),
+                    const SizedBox(width: Space.sm),
+                    if (run.isActive)
+                      DeskButton(
+                        label: 'Stop',
+                        kind: DeskButtonKind.destructive,
+                        onPressed: _rt.cancelRun,
+                      )
+                    else
+                      DeskButton(
+                        label: 'Generate',
+                        icon: Icons.play_arrow_rounded,
+                        kind: DeskButtonKind.primary,
+                        onPressed: ready ? _generate : null,
+                      ),
                   ],
                 ),
-              ),
-              const SizedBox(height: Space.sm),
-              // Prompt actions sit with the prompt, not in the tray - they
-              // act on the text, and every one of them is capability-gated
-              // so an engine never advertises what it cannot do.
-              Row(
-                children: [
-                  _PromptAction(
-                    icon: Icons.history_rounded,
-                    label: 'Prompts',
-                    onTap: _promptBusy ? null : _openPromptBook,
-                  ),
-                  // One button, two tools. Holding it swaps which - they do
-                  // the same job from opposite ends (rewrite what is there,
-                  // or write something when nothing is), and a fourth button
-                  // in this row would not fit a phone.
-                  if (capabilities.promptRewrite ||
-                      capabilities.promptGenerate) ...[
-                    const SizedBox(width: Space.sm),
-                    _PromptAction(
-                      icon: _generating
-                          ? Icons.casino_rounded
-                          : Icons.auto_awesome_rounded,
-                      // "Write", not "Generate": the button that starts a
-                      // run is already called that, and two Generates in one
-                      // screen is a coin toss every time.
-                      label: _generating ? 'Write' : 'Enhance',
-                      busy: _promptTask == _PromptTask.enhance ||
-                          _promptTask == _PromptTask.generate,
-                      onTap: _promptBusy
-                          ? null
-                          : (_generating ? _generatePrompt : _enhancePrompt),
-                      onLongPress: capabilities.promptGenerate &&
-                              capabilities.promptRewrite
-                          ? _togglePromptTool
-                          : null,
-                    ),
-                  ],
-                  // Describe picks its own image, so it does not depend on
-                  // there being a source loaded - which is what lets it be
-                  // used to start a txt2img prompt from a photo.
-                  if (capabilities.imageToText) ...[
-                    const SizedBox(width: Space.sm),
-                    _PromptAction(
-                      icon: Icons.image_search_rounded,
-                      label: 'Describe',
-                      busy: _promptTask == _PromptTask.describe,
-                      onTap: _promptBusy ? null : _describeImage,
-                    ),
-                  ],
-                ],
-              ),
-              // Only while the writer is armed. It is the one input that
-              // tool takes, and a dial for a button that is not on screen
-              // would be furniture.
-              if (_generating) ...[
-                const SizedBox(height: Space.md),
-                DeskTape(
-                  label: 'Intensity',
-                  value: _promptIntensity,
-                  min: 1,
-                  max: 10,
-                  steps: const [1],
-                  format: (v) => v.round().toString(),
-                  onChanged: (v) => setState(() => _promptIntensity = v),
-                ),
-              ],
-              const SizedBox(height: Space.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _statusText(engineState, run),
-                      style: Type.micro.copyWith(color: p.inkFaint),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: Space.sm),
-                  if (run.isActive)
-                    DeskButton(
-                      label: 'Stop',
-                      kind: DeskButtonKind.destructive,
-                      onPressed: _rt.cancelRun,
-                    )
-                  else ...[
-                    // Upscale sits beside Generate because it is the same
-                    // kind of act - it occupies the engine and produces a
-                    // new print - rather than an edit to the image on screen.
-                    if (capabilities.upscale &&
-                        (focused != null || session.hasSourceImage))
-                      Padding(
-                        padding: const EdgeInsets.only(right: Space.sm),
-                        child: DeskButton(
-                          label: 'Upscale',
-                          icon: Icons.zoom_in_rounded,
-                          onPressed: () => _openUpscaleDrawer(library),
-                        ),
-                      ),
-                    DeskButton(
-                      label: 'Generate',
-                      icon: Icons.play_arrow_rounded,
-                      kind: DeskButtonKind.primary,
-                      onPressed: ready ? _generate : null,
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ),
         ),
       ],
     );
+  }
+
+  /// One of the small icons in the prompt field's own label row.
+  Widget _labelAction(DeskPalette p, IconData icon, VoidCallback onTap) =>
+      GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: Space.sm, vertical: 2),
+          child: Icon(icon, size: 14, color: p.inkMuted),
+        ),
+      );
+
+  void _onShelfSelect(String id) {
+    if (id == _kInputId) {
+      _onInputTapped();
+      return;
+    }
+    if (id == _kRunId) {
+      setState(() => _viewingId = _kRunId);
+      return;
+    }
+    _rt.library.select(id);
+    if (_rt.library.state.images.any((i) => i.id == id)) {
+      setState(() => _viewingId = id);
+    }
   }
 
   Widget _titleRow(
@@ -2130,15 +2074,34 @@ class _FrontPageState extends State<FrontPage> {
         index: index,
         sizing: StackFit.expand,
         children: [
-          preview != null
-              ? Image.memory(preview, fit: BoxFit.contain, gaplessPlayback: true)
-              // Watching a run that has not sent a frame yet is a real
-              // state, and saying so beats a blank sheet - not every server
-              // is configured to send previews at all.
-              : Center(
-                  child: Text('WAITING FOR THE FIRST FRAME',
-                      style: Type.micro.copyWith(color: p.inkFaint)),
-                ),
+          // Built only while a run is on, not merely when the stack is
+          // pointed elsewhere: an IndexedStack builds every child, so an
+          // ever-repeating wash would otherwise animate off-screen for the
+          // whole session.
+          //
+          // Generating wears the same drifting wash as a prompt being
+          // written: the machine is working and there is nothing yet to
+          // look at, which is the same state in both places. Frames fade in
+          // over it as they arrive rather than replacing it, so a server
+          // that sends no previews at all still has something honest on
+          // screen for the whole run instead of a blank sheet.
+          if (!run.isActive)
+            const SizedBox.shrink()
+          else
+          Stack(
+            fit: StackFit.expand,
+            children: [
+              DreamWash(energy: preview == null ? 0.55 : 0.85),
+              AnimatedOpacity(
+                duration: Motion.arrival,
+                opacity: preview == null ? 0 : 1,
+                child: preview == null
+                    ? const SizedBox.expand()
+                    : Image.memory(preview,
+                        fit: BoxFit.contain, gaplessPlayback: true),
+              ),
+            ],
+          ),
           focused != null
               ? _preview(focused,
                   fit: BoxFit.contain, decodeWidth: _stageDecodeWidth(context))
@@ -2325,6 +2288,16 @@ class _FrontPageState extends State<FrontPage> {
         name: 'Details',
         onTap: () => _openMetadataDrawer(library),
       ),
+      // Moved out of the composer when that became one row: prompt,
+      // tools, go, and no room for a fourth button. It belongs here anyway
+      // - it is an act on the picture, which is what the tray is for. It
+      // was only ever beside Generate because both occupy the engine.
+      if (capabilities.upscale)
+        DeskTool(
+          icon: Icons.zoom_in_rounded,
+          name: 'Upscale',
+          onTap: () => _openUpscaleDrawer(library),
+        ),
 
       DeskTool(
         icon: Icons.delete_outline_rounded,
@@ -2975,195 +2948,7 @@ class _CompareButtonState extends State<_CompareButton> {
   }
 }
 
-
-/// A small text-adjacent action. Deliberately lighter than a `DeskButton`:
-/// these sit under the prompt in a row of three, and full-height buttons
-/// there would compete with Generate for attention.
-class _PromptAction extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-  final VoidCallback? onLongPress;
-  final bool busy;
-
-  const _PromptAction({
-    required this.icon,
-    required this.label,
-    this.onTap,
-    this.onLongPress,
-    this.busy = false,
-  });
-
-  @override
-  State<_PromptAction> createState() => _PromptActionState();
-}
-
-class _PromptActionState extends State<_PromptAction>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _spin = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1200),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.busy) _spin.repeat();
-  }
-
-  @override
-  void didUpdateWidget(_PromptAction old) {
-    super.didUpdateWidget(old);
-    if (widget.busy && !_spin.isAnimating) {
-      _spin.repeat();
-    } else if (!widget.busy && _spin.isAnimating) {
-      _spin.stop();
-    }
-  }
-
-  @override
-  void dispose() {
-    _spin.dispose();
-    super.dispose();
-  }
-
-  IconData get icon => widget.icon;
-  String get label => widget.label;
-  VoidCallback? get onTap => widget.onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = DeskTheme.of(context);
-    final enabled = onTap != null;
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        onLongPress: widget.onLongPress,
-        // The Stack wraps the button rather than sitting inside it. Inside,
-        // the Container's `alignment` shrink-wrapped its child to the Row's
-        // intrinsic size, so `Positioned.fill` filled the *label*, and the
-        // border animated around the text instead of around the button.
-        // Stack sizes to its first child, so filling now means the button.
-        child: Stack(
-          children: [
-            Container(
-              height: 34,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: enabled || widget.busy ? p.paper : p.paperEdge,
-                borderRadius: BorderRadius.circular(Corner.control),
-                border: Border.all(
-                  // While busy the static border steps back, so the
-                  // travelling segment reads as motion rather than as a
-                  // second outline sitting on top of a solid one.
-                  color: widget.busy
-                      ? p.ink.withValues(alpha: 0.25)
-                      : (enabled ? p.ink : p.inkFaint),
-                  width: Stroke.standard,
-                ),
-                boxShadow: enabled ? Elevation.rest.shadows(p.ink) : const [],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon,
-                      size: 14,
-                      color: enabled || widget.busy ? p.ink : p.inkFaint),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      label,
-                      style: Type.label.copyWith(
-                          color: enabled || widget.busy ? p.ink : p.inkFaint,
-                          fontSize: 11),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (widget.busy)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: AnimatedBuilder(
-                    animation: _spin,
-                    builder: (context, _) => CustomPaint(
-                      painter: _TravellingBorderPainter(
-                        progress: _spin.value,
-                        colour: p.clay,
-                        radius: Corner.control,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// A clay segment travelling around the button's own border.
-///
-/// Chosen over a spinner because the button is short and wide: a spinner
-/// would either shrink the label or sit oddly beside it, whereas the border
-/// is already there and doing nothing. Uses `PathMetric.extractPath` so the
-/// segment follows the rounded corners exactly rather than approximating.
-class _TravellingBorderPainter extends CustomPainter {
-  final double progress;
-  final Color colour;
-  final double radius;
-
-  const _TravellingBorderPainter({
-    required this.progress,
-    required this.colour,
-    required this.radius,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final path = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        rect.deflate(Stroke.standard / 2),
-        Radius.circular(radius),
-      ));
-
-    final paint = Paint()
-      ..color = colour
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = Stroke.live
-      ..strokeCap = StrokeCap.round;
-
-    for (final metric in path.computeMetrics()) {
-      final total = metric.length;
-      final segment = total * 0.28;
-      final start = (progress * total) % total;
-      final end = start + segment;
-
-      if (end <= total) {
-        canvas.drawPath(metric.extractPath(start, end), paint);
-      } else {
-        // Wrapped past the start: draw it as two pieces so the segment
-        // travels continuously instead of vanishing at the seam.
-        canvas.drawPath(metric.extractPath(start, total), paint);
-        canvas.drawPath(metric.extractPath(0, end - total), paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_TravellingBorderPainter old) =>
-      old.progress != progress || old.colour != colour;
-}
-
-
-/// Which prompt action is running. Named rather than boolean, because the
-/// buttons need to know *which* one to show as busy.
-enum _PromptTask { enhance, generate, describe }
+enum _PromptTask { generate, describe }
 
 
 /// The expanded prompt editor. Its own page rather than a drawer: a drawer

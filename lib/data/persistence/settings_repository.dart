@@ -86,17 +86,19 @@ class SettingsRepository {
 
   // ===== Prompts ===== //
 
+  /// How far the prompt writer is told to go, 1 to 10. Kept between runs
+  /// of the app, not just between presses: it is a taste, and nobody wants
+  /// to dial their taste back in every morning.
+  int loadPromptIntensity() =>
+      (_prefs.getInt(PrefKeys.promptIntensity) ?? 5).clamp(1, 10);
+
+  Future<void> savePromptIntensity(int value) =>
+      _prefs.setInt(PrefKeys.promptIntensity, value.clamp(1, 10));
+
   String loadNegativePrompt() => _prefs.getString(PrefKeys.negativePrompt) ?? '';
 
   Future<void> saveNegativePrompt(String value) =>
       _prefs.setString(PrefKeys.negativePrompt, value);
-
-  String loadRewriteModel() =>
-      _prefs.getString(PrefKeys.routerModel) ??
-      'arcee-ai/trinity-large-preview:free';
-
-  Future<void> saveRewriteModel(String value) =>
-      _prefs.setString(PrefKeys.routerModel, value);
 
   // ===== Prompt book ===== //
 

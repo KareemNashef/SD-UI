@@ -20,7 +20,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
@@ -41,13 +40,15 @@ import 'package:sd_companion/domain/engine/engine_kind.dart';
 import 'package:sd_companion/domain/engine/image_engine.dart';
 import 'package:sd_companion/domain/generation/generated_image.dart';
 import 'package:sd_companion/domain/generation/generation_spec.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sd_companion/domain/generation/run_progress.dart';
+import 'package:sd_companion/domain/generation/thinking_update.dart';
 
 class ComfyEngine
     implements
         ImageEngine,
-        PromptRewriteCapable,
         PromptGenerateCapable,
+        ThinkingFeedCapable,
         ImageToTextCapable,
         UpscaleCapable {
   @override
@@ -352,54 +353,27 @@ class ComfyEngine
     }
   }
 
-  // ===== Prompt Enhance / Image-to-Prompt ===== //
+  // ===== Prompt writing ===== //
   //
-  // Two more small bundled utility workflows, same shape as the upscale one
-  // above: fixed IMAGE/STRING->STRING pipelines built on the QwenVL-GGUF
-  // custom nodes (1038lab/ComfyUI-QwenVL), driven purely by widget-name
-  // overrides resolved against the live server's own schema rather than
-  // any positional assumption - the SeedVR2 workflow already showed what
-  // goes wrong when that's assumed instead of verified. Both terminate in
-  // a core `PreviewAny` node, whose ComfyUI-side implementation reports its
-  // stringified value at `outputs[nodeId]['text'][0]` in `/history` (it has
-  // no image output to extract, unlike the rest of this engine).
+  // Two bundled utility workflows, same shape as the upscale one above:
+  // fixed pipelines around `LMStudioPromptGenerator` (a local LM Studio
+  // server), driven purely by widget-name overrides resolved against the
+  // live server's own schema rather than any positional assumption - the
+  // SeedVR2 workflow already showed what goes wrong when that is assumed
+  // instead of verified. Both terminate in a core `PreviewAny` node, whose
+  // ComfyUI-side implementation reports its stringified value at
+  // `outputs[nodeId]['text'][0]` in `/history` (it has no image output to
+  // extract, unlike the rest of this engine).
 
-  static const _kPromptEnhanceWorkflowAsset = 'assets/comfy/prompt_enhance.json';
+  @override
+  ValueListenable<ThinkingUpdate> get thinking => progressService.thinking;
+
+  static const _kLmStudioNode = 'LMStudioPromptGenerator';
   static const _kImg2PromptWorkflowAsset = 'assets/comfy/img2prompt.json';
   static const _kPromptGenerateWorkflowAsset =
       'assets/comfy/prompt_generate.json';
-  ComfyWorkflowDocument? _promptEnhanceTemplate;
   ComfyWorkflowDocument? _img2PromptTemplate;
   ComfyWorkflowDocument? _promptGenerateTemplate;
-
-  @override
-  Future<Result<String>> rewritePrompt(String prompt) => guard(() async {
-        final doc = await _loadBundled(
-          _kPromptEnhanceWorkflowAsset,
-          _promptEnhanceTemplate,
-          (d) => _promptEnhanceTemplate = d,
-        );
-
-        final enhancerNode = _findNode(doc, 'AILab_QwenVL_GGUF_PromptEnhancer');
-        if (enhancerNode == null) {
-          throw const ValidationError(
-            'Bundled prompt-enhance workflow is missing its enhancer node',
-          );
-        }
-
-        final schemaProvider = HttpComfyNodeSchemaProvider(endpoint);
-        final schema = await schemaProvider.schemaFor(enhancerNode.type);
-        if (!schema.known || schema.inputByName('prompt_text') == null) {
-          throw const CapabilityError(
-            'AILab_QwenVL_GGUF_PromptEnhancer node is not available on this '
-            'ComfyUI server. Install 1038lab/ComfyUI-QwenVL and its GGUF models.',
-          );
-        }
-
-        return _runTextWorkflow(doc, schemaProvider, {
-          '${enhancerNode.id}:prompt_text': prompt,
-        });
-      });
 
   @override
   Future<Result<String>> generatePrompt({required int intensity}) =>
@@ -410,36 +384,27 @@ class ComfyEngine
           (d) => _promptGenerateTemplate = d,
         );
 
-        final generatorNode = _findNode(doc, 'PromptGenerator');
-        if (generatorNode == null) {
+        final generator = _findNode(doc, _kLmStudioNode);
+        if (generator == null) {
           throw const ValidationError(
             'Bundled prompt-generate workflow is missing its generator node',
           );
         }
-
         final schemaProvider = HttpComfyNodeSchemaProvider(endpoint);
-        final schema = await schemaProvider.schemaFor(generatorNode.type);
-        if (!schema.known) {
-          throw const CapabilityError(
-            'PromptGenerator node is not available on this ComfyUI server. '
-            'Install the prompt-manager custom nodes and an LLM model.',
-          );
-        }
+        final schema = await schemaProvider.schemaFor(generator.type);
+        _requireLmStudio(schema);
 
-        // The whole point of this button is a *different* prompt each press,
-        // and ComfyUI caches node outputs by their resolved inputs - so the
-        // workflow's stored seed would hand back the same sentence forever.
-        // Same reasoning as the sampler seed in `generate`.
-        final overrides = <String, dynamic>{};
-        if (schema.inputByName('seed') != null) {
-          overrides['${generatorNode.id}:seed'] = _randomSeedValue();
-        }
-        // The node's user prompt, which the bundled system prompt reads as
-        // an intensity from 1 to 10 and nothing else. A string, because that
-        // is the widget's declared type - sending an int would be rejected.
-        if (schema.inputByName('prompt') != null) {
-          overrides['${generatorNode.id}:prompt'] =
-              '${intensity.clamp(1, 10)}';
+        final overrides = _freshSeed(schema, generator);
+
+        // The one thing this button actually sets. The workflow's system
+        // prompt reads the last number in the user prompt as an intensity
+        // from 1 to 10, so that number - not the sentence around it - is
+        // the whole interface between the app and what gets written.
+        final userPrompt = schema.inputByName('user_prompt');
+        if (userPrompt != null) {
+          final stored = '${widgetValueOf(schema, generator, userPrompt) ?? ''}';
+          overrides['${generator.id}:user_prompt'] =
+              withIntensity(stored, intensity);
         }
         return _runTextWorkflow(doc, schemaProvider, overrides);
       });
@@ -453,27 +418,38 @@ class ComfyEngine
         );
 
         final loadImageNode = _findNode(doc, 'LoadImage');
-        final captionNode = _findNode(doc, 'AILab_QwenVL_GGUF_Advanced');
+        final captionNode = _findNode(doc, _kLmStudioNode);
         if (loadImageNode == null || captionNode == null) {
           throw const ValidationError(
             'Bundled img2prompt workflow is missing required nodes',
           );
         }
-
         final schemaProvider = HttpComfyNodeSchemaProvider(endpoint);
         final schema = await schemaProvider.schemaFor(captionNode.type);
-        if (!schema.known) {
-          throw const CapabilityError(
-            'AILab_QwenVL_GGUF_Advanced node is not available on this ComfyUI '
-            'server. Install 1038lab/ComfyUI-QwenVL and its GGUF models.',
-          );
-        }
+        _requireLmStudio(schema);
 
         final uploadedFilename = await _uploadImage(image, loadImageNode.id);
         return _runTextWorkflow(doc, schemaProvider, {
           '${loadImageNode.id}:image': uploadedFilename,
+          ..._freshSeed(schema, captionNode),
         });
       });
+
+  void _requireLmStudio(ComfyNodeSchema schema) {
+    if (schema.known) return;
+    throw const CapabilityError(
+      'The LMStudioPromptGenerator node is not available on this ComfyUI '
+      'server. Install ComfyUI-OllamaPromptGen and run LM Studio.',
+    );
+  }
+
+  /// ComfyUI caches node outputs by their resolved inputs, so the workflow's
+  /// stored seed would hand back the same sentence forever. Same reasoning
+  /// as the sampler seed in `generate`.
+  Map<String, dynamic> _freshSeed(ComfyNodeSchema schema, ComfyEditorNode node) =>
+      schema.inputByName('seed') == null
+          ? <String, dynamic>{}
+          : <String, dynamic>{'${node.id}:seed': _randomSeedValue()};
 
   /// Shared queue/history plumbing for the two text-output workflows above.
   Future<String> _runTextWorkflow(
@@ -739,4 +715,18 @@ class ComfyEngine
     }
     return images;
   }
+}
+
+/// Replaces the last number in [userPrompt] with [intensity].
+///
+/// The bundled generator's system prompt reads the final number in the user
+/// prompt as an intensity from 1 to 10. Rewriting only that number leaves
+/// every other word of the sentence alone, so a user who edits the wording
+/// in their own copy of the workflow keeps it.
+String withIntensity(String userPrompt, int intensity) {
+  final level = intensity.clamp(1, 10);
+  final numbers = RegExp(r'\d+').allMatches(userPrompt).toList();
+  if (numbers.isEmpty) return '$userPrompt $level';
+  final last = numbers.last;
+  return userPrompt.replaceRange(last.start, last.end, '$level');
 }

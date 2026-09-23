@@ -69,6 +69,33 @@ bool isSocketOnly(ComfyEditorNode node, String inputName) {
   return entry != null && entry['widget'] == null;
 }
 
+/// The value stored for [widgetName] on this node.
+///
+/// `widgets_values` is positional, and positions are only trustworthy when
+/// every widget in them is one `/object_info` declares. A node whose own
+/// JavaScript adds widgets - a status readout, a "Check connection" button -
+/// pushes six entries into that array that the schema cannot account for,
+/// and everything after them reads as something else entirely: a
+/// temperature comes back as a model name, a timeout as a temperature.
+///
+/// `widgets_values_named` is the same data keyed by name, written by recent
+/// ComfyUI frontends, and immune to all of it. Preferred whenever the export
+/// carried one; the positional array is the fallback for older files.
+dynamic widgetValueOf(
+  ComfyNodeSchema schema,
+  ComfyEditorNode node,
+  ComfyInputSpec input,
+) {
+  final named = node.widgetsValuesNamed;
+  if (named != null && named.containsKey(input.name)) {
+    return named[input.name];
+  }
+  final slotIndex = widgetSlotIndexFor(schema, node, input.name);
+  final values = node.widgetsValues;
+  if (slotIndex != null && slotIndex < values.length) return values[slotIndex];
+  return input.options['default'];
+}
+
 class ComfyInputSpec {
   final String name;
   final String type; // 'COMBO' or a raw type string like 'MODEL', 'INT'

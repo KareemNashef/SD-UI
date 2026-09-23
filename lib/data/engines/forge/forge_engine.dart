@@ -32,7 +32,7 @@ import 'package:sd_companion/domain/generation/generated_image.dart';
 import 'package:sd_companion/domain/generation/generation_spec.dart';
 import 'package:sd_companion/domain/generation/run_progress.dart';
 
-class ForgeEngine implements ImageEngine, PromptRewriteCapable, UpscaleCapable {
+class ForgeEngine implements ImageEngine, UpscaleCapable {
   @override
   final EngineEndpoint endpoint;
 
@@ -302,29 +302,6 @@ class ForgeEngine implements ImageEngine, PromptRewriteCapable, UpscaleCapable {
     if (lower < alignment) return alignment;
     return value - lower < upper - value ? lower : upper;
   }
-
-  // ===== Prompt rewriting ===== //
-
-  @override
-  Future<Result<String>> rewritePrompt(String prompt) => guard(() async {
-        final model = routerModel?.call();
-        final response = await _client.post(
-          endpoint.http('/ollama_optimizer/optimize'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'prompt': prompt,
-            if (model != null && model.isNotEmpty) 'openrouter_model': model,
-          }),
-        );
-        if (response.statusCode != 200) {
-          throw ServerError(
-            'Failed to optimize prompt: HTTP ${response.statusCode}',
-            statusCode: response.statusCode,
-          );
-        }
-        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-        return decoded['optimizedPrompt'] as String;
-      });
 
   // ===== SeedVR2 upscale ===== //
   //

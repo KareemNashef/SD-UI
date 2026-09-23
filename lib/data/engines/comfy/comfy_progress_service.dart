@@ -17,6 +17,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:sd_companion/core/diagnostics.dart';
 import 'package:sd_companion/domain/generation/run_progress.dart';
+import 'package:sd_companion/domain/generation/thinking_update.dart';
 import 'package:sd_companion/domain/engine/engine_endpoint.dart';
 
 class ComfyProgressService {
@@ -38,6 +39,14 @@ class ComfyProgressService {
   String? _errorMessage;
 
   final ValueNotifier<RunProgress> notifier = ValueNotifier(RunProgress.idle);
+
+  /// What a local LLM is doing right now, when one is running.
+  ///
+  /// Separate from [notifier] because it is a different kind of thing: no
+  /// step count, no percentage most of the time, and the part worth showing
+  /// is the words rather than a bar. Only the prompt workflows produce it.
+  final ValueNotifier<ThinkingUpdate> thinking =
+      ValueNotifier(ThinkingUpdate.idle);
 
   RunProgress get current => notifier.value;
 
@@ -105,6 +114,7 @@ class ComfyProgressService {
     _stepTotal = null;
     _queuePosition = null;
     _previewBytes = null;
+    thinking.value = ThinkingUpdate.idle;
     _errorMessage = null;
     _emit(jobId: promptId);
   }
@@ -185,6 +195,14 @@ class ComfyProgressService {
           _log('status queue=$queueRemaining (not tracking - not emitted)');
         }
       }
+      return;
+    }
+
+    // The LLM node's own event. It carries no prompt id - it is emitted
+    // from inside a node's execution, not by ComfyUI's executor - so it has
+    // to be read before the prompt-id filter below, exactly like `status`.
+    if (type == 'promptgen.progress') {
+      thinking.value = ThinkingUpdate.fromEvent(data);
       return;
     }
 

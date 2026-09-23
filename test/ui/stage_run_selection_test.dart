@@ -90,6 +90,15 @@ Finder _card(String id) =>
 String _stage(WidgetTester tester) =>
     tester.widget<MountedSheet>(find.byType(MountedSheet)).caption;
 
+/// A bounded settle. The canvas wears a drifting wash for the whole of a
+/// generation, so `pumpAndSettle` waits for an animation that by design
+/// never ends.
+Future<void> _settle(WidgetTester tester) async {
+  for (var i = 0; i < 6; i++) {
+    await tester.pump(const Duration(milliseconds: 60));
+  }
+}
+
 void main() {
   testWidgets('an earlier result can be looked at mid-run, and the run '
       'card gets the stage back', (tester) async {
@@ -135,7 +144,7 @@ void main() {
 
     // Step off it onto the earlier picture.
     await tester.tap(_card(earlier.id));
-    await tester.pumpAndSettle();
+    await _settle(tester);
     expect(_stage(tester), 'RESULT',
         reason: 'the run must not drag the stage back to itself');
     expect(runtime.run.state.isActive, isTrue,
@@ -143,7 +152,7 @@ void main() {
 
     // And back onto the run.
     await tester.tap(_card(kRunPrintId));
-    await tester.pumpAndSettle();
+    await _settle(tester);
     expect(_stage(tester), 'GENERATING');
 
     // Progress keeps arriving on the card that was left behind.

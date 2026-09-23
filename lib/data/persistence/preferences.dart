@@ -105,7 +105,7 @@ abstract final class PrefKeys {
   static const batchSize = 'batchSize';
   static const negativePrompt = 'negativePrompt';
   static const positivePrompt = 'positivePrompt';
-  static const routerModel = 'routerModel';
+  static const promptIntensity = 'promptIntensity';
 
   static const promptHistory = 'inpaintHistory';
   static const promptFavourites = 'favoritePrompts';

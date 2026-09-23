@@ -21,9 +21,7 @@ class EngineCapabilities {
   final bool loras;
 
   /// Rewrite the prompt through a remote LLM.
-  final bool promptRewrite;
-
-  /// Writes a prompt from nothing, as opposed to rewriting one.
+  /// Writes a prompt from nothing but a dial.
   final bool promptGenerate;
 
   /// Caption an image into a prompt.
@@ -60,7 +58,6 @@ class EngineCapabilities {
     required this.checkpoints,
     required this.workflows,
     required this.loras,
-    required this.promptRewrite,
     required this.promptGenerate,
     required this.imageToText,
     required this.imageMetadata,
@@ -78,7 +75,6 @@ class EngineCapabilities {
     checkpoints: true,
     workflows: false,
     loras: true,
-    promptRewrite: true, // OpenRouter
     promptGenerate: false,
     imageToText: false,
     imageMetadata: true,
@@ -97,8 +93,7 @@ class EngineCapabilities {
     checkpoints: false,
     workflows: true,
     loras: false,
-    promptRewrite: true, // bundled QwenVL workflow
-    promptGenerate: true, // bundled prompt-manager workflow
+    promptGenerate: true, // bundled LM Studio workflow
     imageToText: true, // bundled QwenVL workflow
     imageMetadata: false,
     imageInput: true,

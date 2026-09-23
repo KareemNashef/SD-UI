@@ -510,9 +510,7 @@ class WorkflowAutoDetector {
   ) {
     final slotIndex = widgetSlotIndexFor(schema, node, input.name);
     final values = node.widgetsValues;
-    final value = (slotIndex != null && slotIndex < values.length)
-        ? values[slotIndex]
-        : input.options['default'];
+    final value = widgetValueOf(schema, node, input);
     final entry = node.inputEntry(input.name);
     final isLinked = entry != null && entry['link'] != null;
 

@@ -82,12 +82,7 @@ class ComfyGraphConverter {
             inputsMap[inputSpec.name] = overrides[overrideKey];
             continue;
           }
-          final slotIndex = widgetSlotIndexFor(schema, node, inputSpec.name);
-          final values = node.widgetsValues;
-          final value = (slotIndex != null && slotIndex < values.length)
-              ? values[slotIndex]
-              : inputSpec.options['default'];
-          inputsMap[inputSpec.name] = value;
+          inputsMap[inputSpec.name] = widgetValueOf(schema, node, inputSpec);
           continue;
         }
 

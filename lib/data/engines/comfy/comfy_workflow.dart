@@ -60,6 +60,35 @@ class ComfyEditorNode {
       (raw['widgets_values'] as List?) ?? const [];
   set widgetsValues(List<dynamic> values) => raw['widgets_values'] = values;
 
+  /// The same values keyed by widget name, when the export carried it.
+  ///
+  /// Recent ComfyUI frontends write this alongside the positional array, and
+  /// it is the only honest source for a node whose own JavaScript adds
+  /// widgets - a "Check connection" button, a status line - because those
+  /// occupy positions that `/object_info` has never heard of.
+  Map<String, dynamic>? get widgetsValuesNamed {
+    final named = raw['widgets_values_named'];
+    return named is Map ? named.cast<String, dynamic>() : null;
+  }
+
+  /// Writes a widget value to both representations, so whichever one the
+  /// next reader trusts, it finds the same thing.
+  void setWidgetValue(String name, int? slotIndex, dynamic value) {
+    if (slotIndex != null) {
+      final values = List<dynamic>.from(widgetsValues);
+      while (values.length <= slotIndex) {
+        values.add(null);
+      }
+      values[slotIndex] = value;
+      widgetsValues = values;
+    }
+    final named = widgetsValuesNamed;
+    if (named != null && named.containsKey(name)) {
+      named[name] = value;
+      raw['widgets_values_named'] = named;
+    }
+  }
+
   List<Map<String, dynamic>> get inputs =>
       ((raw['inputs'] as List?) ?? const [])
           .cast<Map<String, dynamic>>();

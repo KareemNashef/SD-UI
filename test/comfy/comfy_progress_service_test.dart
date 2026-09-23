@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sd_companion/data/engines/comfy/comfy_progress_service.dart';
 import 'package:sd_companion/domain/generation/run_progress.dart';
+import 'package:sd_companion/domain/generation/thinking_update.dart';
 
 void main() {
   late ComfyProgressService service;
@@ -179,4 +180,53 @@ void main() {
         reason: 'a status frame while untracked must not publish anything - '
             'it carried the previous run\'s terminal phase into the next run');
   });
+
+  group('the language model feed', () {
+    // `promptgen.progress` is emitted from inside a node's own execution
+    // rather than by ComfyUI's executor, so it carries no prompt id. Read
+    // after the prompt-id filter it would be dropped every single time, and
+    // the thinking surface would sit on "waking the model" for the whole
+    // run with the words arriving and being thrown away.
+    test('is read even though it carries no prompt id', () {
+      send('promptgen.progress', {
+        'node': '16',
+        'phase': 'thinking',
+        'thinking': 'weighing it up',
+        'done': false,
+      });
+
+      expect(service.thinking.value.phase, 'thinking');
+      expect(service.thinking.value.thinking, 'weighing it up');
+      expect(service.thinking.value.isActive, isTrue);
+    });
+
+    test('carries the load percentage, and only where there is one', () {
+      send('promptgen.progress', {'phase': 'loading', 'progress': 0.47});
+      expect(service.thinking.value.progress, closeTo(0.47, 1e-9));
+
+      send('promptgen.progress', {'phase': 'generating', 'text': 'a light'});
+      expect(service.thinking.value.progress, isNull,
+          reason: 'nothing knows how long an answer will be');
+      expect(service.thinking.value.stream, 'a light');
+    });
+
+    test('the answer supersedes the reasoning once it starts', () {
+      send('promptgen.progress', {'phase': 'thinking', 'thinking': 'hmm'});
+      expect(service.thinking.value.stream, 'hmm');
+
+      send('promptgen.progress',
+          {'phase': 'generating', 'thinking': 'hmm', 'text': 'a lighthouse'});
+      expect(service.thinking.value.stream, 'a lighthouse');
+    });
+
+    test('a new run starts from silence', () {
+      send('promptgen.progress', {'phase': 'done', 'text': 'done', 'done': true});
+      expect(service.thinking.value.isActive, isFalse);
+
+      service.beginTracking('prompt-2');
+      expect(service.thinking.value, ThinkingUpdate.idle,
+          reason: 'the previous answer must not linger into the next run');
+    });
+  });
+
 }

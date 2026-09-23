@@ -181,6 +181,12 @@ class DeskField extends StatefulWidget {
   final String? hint;
   final TextInputType? keyboardType;
   final int maxLines;
+
+  /// Lines to grow to while the field has focus, when that differs from
+  /// [maxLines]. A composer can then sit on one line for the whole time the
+  /// canvas matters and open up only once the keyboard has covered it
+  /// anyway - which is the only moment the extra lines are readable.
+  final int? focusedMaxLines;
   final ValueChanged<String>? onChanged;
   final List<TextInputFormatter>? inputFormatters;
 
@@ -196,6 +202,7 @@ class DeskField extends StatefulWidget {
     this.hint,
     this.keyboardType,
     this.maxLines = 1,
+    this.focusedMaxLines,
     this.onChanged,
     this.inputFormatters,
     this.trailing,
@@ -227,12 +234,24 @@ class _DeskFieldState extends State<DeskField> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      // As tall as its label and its box, and no taller. Without this a
+      // field placed in a Row stretches to whatever height that row is
+      // offered, which in a bottom bar is the rest of the screen.
+      mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           children: [
             Expanded(
-              child: Text(widget.label.toUpperCase(),
-                  style: Type.micro.copyWith(color: p.inkFaint)),
+              child: Text(
+                widget.label.toUpperCase(),
+                // One line, always. A label is a name for the box below it;
+                // a caller that passes something long - a connection error,
+                // say - should lose the tail, not push the field down the
+                // screen.
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Type.micro.copyWith(color: p.inkFaint),
+              ),
             ),
             if (widget.trailing != null) widget.trailing!,
           ],
@@ -254,7 +273,8 @@ class _DeskFieldState extends State<DeskField> {
             controller: widget.controller,
             focusNode: _focus,
             keyboardType: widget.keyboardType,
-            maxLines: widget.maxLines,
+            maxLines: focused ? (widget.focusedMaxLines ?? widget.maxLines)
+                : widget.maxLines,
             onChanged: widget.onChanged,
             inputFormatters: widget.inputFormatters,
             cursorColor: p.clay,

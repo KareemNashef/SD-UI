@@ -205,12 +205,7 @@ class ComfyWorkflowService {
     if (record == null || widget.widgetSlotIndex == null) return;
     final node = record.current.nodeById(widget.node.id);
     if (node == null) return;
-    final values = List<dynamic>.from(node.widgetsValues);
-    while (values.length <= widget.widgetSlotIndex!) {
-      values.add(null);
-    }
-    values[widget.widgetSlotIndex!] = value;
-    node.widgetsValues = values;
+    node.setWidgetValue(widget.input.name, widget.widgetSlotIndex, value);
     record.updatedAt = DateTime.now();
     await _persistRecord(record);
     await _refreshDetected();
@@ -225,12 +220,8 @@ class ComfyWorkflowService {
     if (record == null || slotIndex == null) return;
     final node = record.current.nodeById(widget.node.id);
     if (node == null) return;
-    final values = List<dynamic>.from(node.widgetsValues);
-    while (values.length <= slotIndex) {
-      values.add(null);
-    }
-    values[slotIndex] = random ? 'randomize' : 'fixed';
-    node.widgetsValues = values;
+    node.setWidgetValue('control_after_generate', slotIndex,
+        random ? 'randomize' : 'fixed');
     record.updatedAt = DateTime.now();
     await _persistRecord(record);
     await _refreshDetected();

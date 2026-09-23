@@ -331,6 +331,12 @@ class PrintEntry {
 /// lifts *that* card, with its neighbours rising in a parabola around it,
 /// at any list length.
 class PrintShelf extends StatefulWidget {
+  /// The band's fixed height: a card sitting just clear of the bottom edge,
+  /// plus the headroom a picked card rises into. Public because the shelf
+  /// floats over the canvas, and anything else on that canvas has to know
+  /// what it has to clear.
+  static const height = 142.0;
+
   final List<PrintEntry> entries;
 
   /// The source image, pinned to the left of the divider. Selectable exactly
@@ -417,13 +423,33 @@ class _PrintShelfState extends State<PrintShelf> {
     return t * t * (3 - 2 * t); // smoothstep - a gentle falloff, not a cliff
   }
 
+  /// Everything laid out, end to end, plus room for the last card's shadow.
+  double get _contentWidth {
+    final count = _all.length;
+    if (count == 0) return 0;
+    return _xFor(count - 1) + _itemWidth + Elevation.lifted.offset.dx;
+  }
+
+  /// Back to front. The focused card is painted last so that a card rising
+  /// out of the deck rises *over* its neighbours - laid out in order it came
+  /// up behind the one to its right, which read as the shelf lifting the
+  /// wrong print.
+  List<int> _paintOrder(int count) {
+    final focus = _focusIndex;
+    return [
+      for (var i = 0; i < count; i++)
+        if (i != focus) i,
+      if (focus >= 0 && focus < count) focus,
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = DeskTheme.of(context);
     final all = _all;
 
     return SizedBox(
-      height: 142,
+      height: PrintShelf.height,
       // Animating the *focus position* rather than each card's lift means
       // the whole parabola slides along the shelf, so the cards between the
       // old and new selection rise and fall on the way past instead of two
@@ -435,34 +461,49 @@ class _PrintShelfState extends State<PrintShelf> {
         builder: (context, focus, _) => SingleChildScrollView(
           controller: _scroll,
           scrollDirection: Axis.horizontal,
-          clipBehavior: Clip.none,
+          // Hard edge, deliberately.
+          //
+          // The cards used to be a Row whose children were slid left by
+          // `Transform.translate` to overlap. A transform does not change
+          // layout, so the row measured wider than it drew and the drawing
+          // sat outside the viewport - and with `Clip.none` the shelf then
+          // painted straight out over the desk on both sides of the canvas.
+          // Laying the cards out at real positions in a Stack makes the
+          // scroll extent honest, and clipping keeps the shelf inside the
+          // picture it floats on. The lift has room *inside* the box now,
+          // rather than escaping it.
+          clipBehavior: Clip.hardEdge,
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.only(top: Space.xl, bottom: Space.sm),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              for (var i = 0; i < all.length; i++) ...[
-                if (_hasInput && i == 1) _divider(p),
-                Transform.translate(
-                  // Results overlap into each other; the input card
-                  // deliberately does not, so the divider reads as a
-                  // real separation rather than a gap in one deck.
-                  offset: Offset(
-                    (_hasInput && i == 0) ? 0 : -_overlap * (_hasInput ? i - 1 : i),
-                    0,
+          padding: const EdgeInsets.symmetric(horizontal: Space.sm),
+          child: SizedBox(
+            width: _contentWidth,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                if (_hasInput)
+                  Positioned(
+                    left: _itemWidth + (_dividerGap - Stroke.standard) / 2,
+                    bottom: Space.sm + 8,
+                    child: _divider(p),
                   ),
-                  child: Print(
-                    id: all[i].id,
-                    image: all[i].image,
-                    selected: all[i].id == widget.selectedId,
-                    lift: _liftFor(i, focus),
+                for (final i in _paintOrder(all.length))
+                  Positioned(
+                    key: ValueKey(all[i].id),
+                    left: _xFor(i),
+                    bottom: Space.sm,
                     width: _itemWidth,
-                    onTap: () => widget.onSelect?.call(all[i].id),
-                    onDoubleTap: all[i].onDoubleTap,
+                    child: Print(
+                      id: all[i].id,
+                      image: all[i].image,
+                      selected: all[i].id == widget.selectedId,
+                      lift: _liftFor(i, focus),
+                      width: _itemWidth,
+                      onTap: () => widget.onSelect?.call(all[i].id),
+                      onDoubleTap: all[i].onDoubleTap,
+                    ),
                   ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -472,7 +513,6 @@ class _PrintShelfState extends State<PrintShelf> {
   Widget _divider(DeskPalette p) => Container(
         width: Stroke.standard,
         height: 66,
-        margin: const EdgeInsets.symmetric(horizontal: (_dividerGap - Stroke.standard) / 2),
         color: p.ink.withValues(alpha: 0.28),
       );
 }

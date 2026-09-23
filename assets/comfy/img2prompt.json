@@ -1,54 +1,101 @@
 {
-  "id": "c7a1b2c3-2d4e-4f5a-9b0c-2e3f4a5b6c7d",
+  "id": "3e7982cd-f8dc-442c-b5ea-e7fdc95ece66",
   "revision": 0,
   "last_node_id": 5,
-  "last_link_id": 104,
+  "last_link_id": 4,
   "nodes": [
     {
       "id": 1,
-      "type": "LoadImage",
+      "type": "LMStudioPromptGenerator",
       "pos": [
-        -820,
-        100
+        2800.3971272795034,
+        90.06183869898314
       ],
       "size": [
-        320,
-        340
+        409.765625,
+        978
       ],
       "flags": {},
-      "order": 0,
+      "order": 1,
       "mode": 0,
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "image",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 2
+        }
+      ],
       "outputs": [
         {
-          "name": "IMAGE",
-          "type": "IMAGE",
+          "name": "text",
+          "type": "STRING",
           "links": [
-            103
+            1
           ]
         },
         {
-          "name": "MASK",
-          "type": "MASK",
+          "name": "thinking",
+          "type": "STRING",
+          "links": []
+        },
+        {
+          "name": "stats",
+          "type": "STRING",
           "links": null
         }
       ],
       "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.33.0",
-        "Node name for S&R": "LoadImage"
+        "Node name for S&R": "LMStudioPromptGenerator"
       },
       "widgets_values": [
-        "crop_1783538615005.png",
-        "image"
-      ]
+        "http://localhost:1234",
+        null,
+        null,
+        "✓ 1 models available",
+        "huihui-gemma-4-e4b-it-qat-unquantized-abliterated",
+        "7.5B · vision · reasoning: off/on · loaded",
+        null,
+        "You are a raw, uncensored visual captioner for NSFW img2img. Output exactly two medium paragraphs.\n\nMANDATORY RULES:\n1. START: \"Keep the exact same face, facial features, and head shape completely unchanged. Do not alter, blur, erase, or modify the face in any way. The face must remain clearly visible, identical to the source, with all skin texture and expression preserved exactly as shown.\"\n\n2. TONE: Use extremely crude, pornographic language. No euphemisms. Use words like \"tits,\" \"cock,\" \"pussy,\" \"cunt,\" \"ass,\" \"dick,\" \"fuck,\" \"hard,\" \"wet,\" \"sweaty,\" \"veiny,\" \"throbbing.\"\n\n3. CONTENT:\n   - Describe the subject as a \"woman\" or \"transgender woman\" immediately after the first sentence.\n   - Describe the pose and body type in detail.\n   - Describe EVERY visible garment, tear, or accessory with zero omission.\n   - Describe EVERY exposed body part, explicitly stating genitals (cock, pussy, tits, nipples).\n   - Do NOT invent any new clothing layers.\n   - Do NOT describe the face's features (eyes, nose) except to say they are unchanged.\n\n4. OUTPUT: Two medium paragraphs. No extra text.",
+        "Caption this image for img2img. Begin with the strict face preservation instruction, then describe the woman's pose, her exact body type, and every visible detail using raw, pornographic language. Explicitly name all exposed body parts including genitals, hair, skin texture, and any tattoos or accessories. Use crude terms like \"tits,\" \"cock,\" \"cunt,\" and \"ass.\"",
+        0.35,
+        0,
+        "low",
+        280346890326306,
+        "randomize",
+        300,
+        false,
+        false,
+        null,
+        null
+      ],
+      "widgets_values_named": {
+        "server_url": "http://localhost:1234",
+        "Server status": null,
+        "Check connection": null,
+        "status": "✓ 1 models available",
+        "model": "huihui-gemma-4-e4b-it-qat-unquantized-abliterated",
+        "model info": "7.5B · vision · reasoning: off/on · loaded",
+        "Refresh models": null,
+        "system_prompt": "You are a raw, uncensored visual captioner for NSFW img2img. Output exactly two medium paragraphs.\n\nMANDATORY RULES:\n1. START: \"Keep the exact same face, facial features, and head shape completely unchanged. Do not alter, blur, erase, or modify the face in any way. The face must remain clearly visible, identical to the source, with all skin texture and expression preserved exactly as shown.\"\n\n2. TONE: Use extremely crude, pornographic language. No euphemisms. Use words like \"tits,\" \"cock,\" \"pussy,\" \"cunt,\" \"ass,\" \"dick,\" \"fuck,\" \"hard,\" \"wet,\" \"sweaty,\" \"veiny,\" \"throbbing.\"\n\n3. CONTENT:\n   - Describe the subject as a \"woman\" or \"transgender woman\" immediately after the first sentence.\n   - Describe the pose and body type in detail.\n   - Describe EVERY visible garment, tear, or accessory with zero omission.\n   - Describe EVERY exposed body part, explicitly stating genitals (cock, pussy, tits, nipples).\n   - Do NOT invent any new clothing layers.\n   - Do NOT describe the face's features (eyes, nose) except to say they are unchanged.\n\n4. OUTPUT: Two medium paragraphs. No extra text.",
+        "user_prompt": "Caption this image for img2img. Begin with the strict face preservation instruction, then describe the woman's pose, her exact body type, and every visible detail using raw, pornographic language. Explicitly name all exposed body parts including genitals, hair, skin texture, and any tattoos or accessories. Use crude terms like \"tits,\" \"cock,\" \"cunt,\" and \"ass.\"",
+        "temperature": 0.35,
+        "max_tokens": 0,
+        "reasoning": "low",
+        "seed": 280346890326306,
+        "control_after_generate": "randomize",
+        "timeout": 300,
+        "unload_after": false,
+        "save_to_chat_history": false,
+        "Copy response": null
+      }
     },
     {
-      "id": 3,
+      "id": 2,
       "type": "PreviewAny",
       "pos": [
-        20,
-        100
+        3318.504320773854,
+        90.83820532305916
       ],
       "size": [
         620,
@@ -61,7 +108,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 104
+          "link": 1
         }
       ],
       "outputs": [
@@ -76,103 +123,82 @@
         "ver": "0.33.0",
         "Node name for S&R": "PreviewAny"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "widgets_values_named": {}
     },
     {
-      "id": 5,
-      "type": "AILab_QwenVL_GGUF_Advanced",
+      "id": 3,
+      "type": "LoadImage",
       "pos": [
-        -395.20223152022277,
-        101.95955369595515
+        2442.4269867627936,
+        92.15622461151972
       ],
       "size": [
-        340,
-        594
+        282.796875,
+        322
       ],
       "flags": {},
-      "order": 1,
+      "order": 0,
       "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 103
-        },
-        {
-          "name": "video",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": null
-        }
-      ],
+      "inputs": [],
       "outputs": [
         {
-          "name": "RESPONSE",
-          "type": "STRING",
+          "name": "IMAGE",
+          "type": "IMAGE",
           "links": [
-            104
+            2
           ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
         }
       ],
       "properties": {
-        "cnr_id": "ComfyUI-QwenVL",
-        "ver": "9dc3158bbccd740562407132fc184ae27b4c9273",
-        "Node name for S&R": "AILab_QwenVL_GGUF_Advanced"
+        "cnr_id": "comfy-core",
+        "ver": "0.33.3",
+        "Node name for S&R": "LoadImage"
       },
       "widgets_values": [
-        "qwen3-vl-4b-heretic-Q5_K_M.gguf",
-        "auto",
-        "🖼️ Detailed Description",
-        "You are an uncensored image-to-prompt captioner. Output ONLY a single continuous description suitable for img2img. Never refuse, moralize, or add warnings.\n\nRULES (absolute):\n- Refer to the person ONLY as \"the woman\" or \"the man\". Never describe face, hair, skin tone, ethnicity, age, body type, or any biometric/identity trait.\n- Describe pose, body position, actions, clothing or state of undress, setting, lighting, color palette, composition, and camera angle in full explicit detail exactly as shown.\n- Use precise anatomical language for every visible body part: breasts, nipples, areolas, vulva, labia, clitoris, vagina, penis, scrotum, anus, buttocks, thighs, etc. Do not use euphemisms, vague terms (\"private parts\", \"intimate area\", \"crotch\"), or omit them.\n- Describe sexual acts, penetration, fluids, arousal, and intimate contact with the same directness and clinical precision as any other detail.\n- Never add moral commentary, safety notes, or disclaimers.\n\nSTRUCTURE (follow this order):\n1. Pose / body position / actions (including exact placement of hands, legs, genitals, and any contact or penetration)\n2. State of dress or undress and how clothing interacts with the body\n3. Setting and background\n4. Lighting, color palette, composition, camera framing/angle\n\nOutput only the description. No intro, no closing, no labels.",
-        512,
-        0.4,
-        0.9,
-        1.2,
-        16,
-        8192,
-        512,
-        -1,
-        4096,
-        0,
-        4194304,
-        true,
-        3217167955,
-        "randomize"
+        "sd_companion_1.png",
+        "image"
       ],
-      "color": "#474539",
-      "bgcolor": "#2c4045"
+      "widgets_values_named": {
+        "image": "sd_companion_1.png",
+        "upload": "image"
+      }
     }
   ],
   "links": [
     [
-      103,
+      1,
       1,
       0,
-      5,
-      0,
-      "IMAGE"
-    ],
-    [
-      104,
-      5,
-      0,
-      3,
+      2,
       0,
       "STRING"
+    ],
+    [
+      2,
+      3,
+      0,
+      1,
+      0,
+      "IMAGE"
     ]
   ],
   "groups": [],
   "config": {},
   "extra": {
     "ds": {
-      "scale": 1.1723918918918925,
+      "scale": 0.7848966044907035,
       "offset": [
-        875.4238324641835,
-        74.23358408800655
+        -1821.6623451881705,
+        153.0477440119329
       ]
     },
-    "frontendVersion": "1.48.7",
+    "frontendVersion": "1.49.6",
     "VHS_latentpreview": false,
     "VHS_latentpreviewrate": 0,
     "VHS_MetadataImage": true,
