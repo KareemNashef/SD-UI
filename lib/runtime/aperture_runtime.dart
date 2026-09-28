@@ -81,7 +81,7 @@ class ApertureRuntime {
     final runtime = ApertureRuntime._(
       preferences: prefs,
       settings: settings,
-      engines: EngineRegistry(),
+      engines: EngineRegistry(preferences: prefs),
       engine: engine,
       session: session,
       run: RunStore(),

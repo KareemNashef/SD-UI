@@ -97,3 +97,16 @@ abstract interface class UpscaleCapable {
     void Function(RunProgress progress)? onProgress,
   });
 }
+
+/// Allows an engine to replace the graph used for image upscaling.
+///
+/// This is deliberately separate from [UpscaleCapable]: Forge exposes an
+/// upscale endpoint, while ComfyUI can expose a user-editable workflow.
+abstract interface class UpscaleWorkflowConfigurable {
+  String? get upscaleWorkflowName;
+
+  Future<Result<void>> replaceUpscaleWorkflow(
+    String jsonText, {
+    String? name,
+  });
+}

@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1120" viewBox="0 0 1500 1120">
+  <rect width="1500" height="1120" fill="#211e18"/>
+  <text x="70" y="68" fill="#eee4cf" font-family="Arial, sans-serif" font-size="34" font-weight="700">Bottom bar — complete-function mockups</text>
+  <text x="70" y="104" fill="#bdb49f" font-family="Arial, sans-serif" font-size="18">Every option includes prompt entry, fullscreen, clear, history, Write + intensity, Describe, and Generate.</text>
+
+  <!-- Shared miniature prompt field drawing -->
+  <g transform="translate(70 145)">
+    <rect width="1360" height="280" rx="24" fill="#dcd2bb" stroke="#0e0d0b" stroke-width="5"/>
+    <text x="28" y="42" fill="#181612" font-family="Arial" font-size="22" font-weight="700">A  Prompt-first horizontal dock</text>
+    <text x="28" y="70" fill="#605a4e" font-family="Arial" font-size="16">Best when writing the prompt is the primary task.</text>
+    <rect x="28" y="116" width="510" height="106" rx="18" fill="#eee5d2" stroke="#171511" stroke-width="4"/>
+    <text x="52" y="151" fill="#746d5d" font-family="Arial" font-size="14">PROMPT</text>
+    <text x="52" y="190" fill="#29251e" font-family="Arial" font-size="20">a cinematic mountain village at dusk…</text>
+    <text x="452" y="151" fill="#605a4e" font-family="Arial" font-size="18">↗</text>
+    <text x="482" y="151" fill="#db573c" font-family="Arial" font-size="18">×</text>
+    <rect x="562" y="116" width="160" height="106" rx="18" fill="#eee5d2" stroke="#171511" stroke-width="4"/>
+    <text x="586" y="151" fill="#746d5d" font-family="Arial" font-size="14">PROMPTS</text>
+    <text x="594" y="192" fill="#29251e" font-family="Arial" font-size="18">◷  History</text>
+    <rect x="746" y="116" width="196" height="106" rx="18" fill="#db573c" stroke="#a73d2b" stroke-width="3"/>
+    <text x="770" y="151" fill="#fff1de" font-family="Arial" font-size="14">WRITE  ·  INTENSITY</text>
+    <text x="770" y="194" fill="#fff1de" font-family="Arial" font-size="19">⚄  Write       6</text>
+    <rect x="966" y="116" width="170" height="106" rx="18" fill="#eee5d2" stroke="#171511" stroke-width="4"/>
+    <text x="990" y="151" fill="#746d5d" font-family="Arial" font-size="14">IMAGE</text>
+    <text x="990" y="192" fill="#29251e" font-family="Arial" font-size="18">▧  Describe</text>
+    <rect x="1160" y="116" width="172" height="106" rx="18" fill="#746d5d"/>
+    <text x="1191" y="178" fill="#fff1de" font-family="Arial" font-size="21" font-weight="700">▶ Generate</text>
+  </g>
+
+  <g transform="translate(70 465)">
+    <rect width="1360" height="280" rx="24" fill="#dcd2bb" stroke="#0e0d0b" stroke-width="5"/>
+    <text x="28" y="42" fill="#181612" font-family="Arial" font-size="22" font-weight="700">B  Two-tier composer</text>
+    <text x="28" y="70" fill="#605a4e" font-family="Arial" font-size="16">Gives the prompt field room while keeping every action explicit below it.</text>
+    <rect x="28" y="100" width="1304" height="82" rx="18" fill="#eee5d2" stroke="#171511" stroke-width="4"/>
+    <text x="52" y="135" fill="#746d5d" font-family="Arial" font-size="14">PROMPT</text>
+    <text x="52" y="164" fill="#29251e" font-family="Arial" font-size="19">a cinematic mountain village at dusk…</text>
+    <text x="1235" y="135" fill="#605a4e" font-family="Arial" font-size="18">↗</text>
+    <text x="1270" y="135" fill="#db573c" font-family="Arial" font-size="18">×</text>
+    <rect x="28" y="198" width="188" height="54" rx="14" fill="#eee5d2" stroke="#171511" stroke-width="3"/><text x="74" y="232" fill="#29251e" font-family="Arial" font-size="18">◷  Prompts</text>
+    <rect x="232" y="198" width="236" height="54" rx="14" fill="#db573c"/><text x="274" y="232" fill="#fff1de" font-family="Arial" font-size="18">⚄  Write   6  ━━━</text>
+    <rect x="484" y="198" width="194" height="54" rx="14" fill="#eee5d2" stroke="#171511" stroke-width="3"/><text x="526" y="232" fill="#29251e" font-family="Arial" font-size="18">▧  Describe</text>
+    <rect x="1040" y="188" width="292" height="74" rx="17" fill="#746d5d"/><text x="1106" y="234" fill="#fff1de" font-family="Arial" font-size="23" font-weight="700">▶  Generate</text>
+  </g>
+
+  <g transform="translate(70 785)">
+    <rect width="1360" height="280" rx="24" fill="#dcd2bb" stroke="#0e0d0b" stroke-width="5"/>
+    <text x="28" y="42" fill="#181612" font-family="Arial" font-size="22" font-weight="700">C  Prompt field with tool rail</text>
+    <text x="28" y="70" fill="#605a4e" font-family="Arial" font-size="16">Keeps the bottom bar compact by making the three server actions a dedicated rail.</text>
+    <rect x="28" y="112" width="780" height="102" rx="18" fill="#eee5d2" stroke="#171511" stroke-width="4"/>
+    <text x="54" y="147" fill="#746d5d" font-family="Arial" font-size="14">PROMPT</text>
+    <text x="54" y="184" fill="#29251e" font-family="Arial" font-size="20">a cinematic mountain village at dusk…</text>
+    <text x="730" y="147" fill="#605a4e" font-family="Arial" font-size="18">↗</text><text x="764" y="147" fill="#db573c" font-family="Arial" font-size="18">×</text>
+    <rect x="832" y="112" width="126" height="102" rx="18" fill="#eee5d2" stroke="#171511" stroke-width="4"/><text x="862" y="154" fill="#29251e" font-family="Arial" font-size="17">◷</text><text x="855" y="184" fill="#29251e" font-family="Arial" font-size="15">Prompts</text>
+    <rect x="974" y="112" width="170" height="102" rx="18" fill="#db573c"/><text x="1004" y="154" fill="#fff1de" font-family="Arial" font-size="17">⚄  Write  6</text><text x="1004" y="184" fill="#fff1de" font-family="Arial" font-size="13">━━━━━━</text>
+    <rect x="1160" y="112" width="144" height="102" rx="18" fill="#eee5d2" stroke="#171511" stroke-width="4"/><text x="1190" y="154" fill="#29251e" font-family="Arial" font-size="17">▧</text><text x="1182" y="184" fill="#29251e" font-family="Arial" font-size="15">Describe</text>
+    <rect x="1190" y="226" width="114" height="32" rx="10" fill="#746d5d"/><text x="1214" y="248" fill="#fff1de" font-family="Arial" font-size="14">Generate</text>
+  </g>
+</svg>

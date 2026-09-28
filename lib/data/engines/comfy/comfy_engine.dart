@@ -34,6 +34,7 @@ import 'package:sd_companion/data/engines/comfy/comfy_object_info_client.dart';
 import 'package:sd_companion/data/engines/comfy/comfy_progress_service.dart';
 import 'package:sd_companion/data/engines/comfy/comfy_workflow.dart';
 import 'package:sd_companion/data/engines/comfy/comfy_workflow_service.dart';
+import 'package:sd_companion/data/persistence/preferences.dart';
 import 'package:sd_companion/domain/engine/engine_capabilities.dart';
 import 'package:sd_companion/domain/engine/engine_endpoint.dart';
 import 'package:sd_companion/domain/engine/engine_kind.dart';
@@ -50,12 +51,14 @@ class ComfyEngine
         PromptGenerateCapable,
         ThinkingFeedCapable,
         ImageToTextCapable,
-        UpscaleCapable {
+        UpscaleCapable,
+        UpscaleWorkflowConfigurable {
   @override
   final EngineEndpoint endpoint;
 
   final ComfyWorkflowService workflows;
   final ComfyProgressService progressService;
+  final Preferences? preferences;
 
   final http.Client _client;
   final bool _ownsClient;
@@ -65,6 +68,7 @@ class ComfyEngine
     required this.workflows,
     ComfyProgressService? progressService,
     http.Client? client,
+    this.preferences,
   })  : progressService = progressService ?? ComfyProgressService(),
         _client = client ?? http.Client(),
         _ownsClient = client == null;
@@ -253,14 +257,83 @@ class ComfyEngine
 
   // ===== SeedVR2 Upscale ===== //
   //
-  // Unlike the main txt2img/img2img/inpainting flow, this doesn't run a
-  // user-imported workflow - it's a small, fixed IMAGE->IMAGE pipeline
-  // (LoadImage -> SeedVR2TilingUpscaler -> SaveImage) bundled with the app.
-  // It reuses all the same queueing/history/progress machinery as generate()
-  // rather than duplicating it.
+  // The bundled graph remains the safe default, but can be replaced by an
+  // editor-exported ComfyUI workflow. The selected graph is persisted per
+  // Comfy endpoint so changing servers does not accidentally reuse a graph
+  // with incompatible custom nodes.
 
   static const _kUpscaleWorkflowAsset = 'assets/comfy/seedvr2_upscale.json';
+  static const _kUpscaleWorkflowPreference = 'comfy.upscaleWorkflow.';
   ComfyWorkflowDocument? _upscaleWorkflowTemplate;
+  String? _upscaleWorkflowName;
+
+  @override
+  String? get upscaleWorkflowName => _upscaleWorkflowName;
+
+  @override
+  Future<Result<void>> replaceUpscaleWorkflow(
+    String jsonText, {
+    String? name,
+  }) => guard(() async {
+        final doc = ComfyWorkflowDocument.parse(jsonText);
+        final validation = ComfyWorkflowValidation.of(doc);
+        if (!validation.isValid) {
+          throw ValidationError(validation.blockingIssues.first.message);
+        }
+        // API-format JSON has no node metadata to analyse or override. It is
+        // intentionally rejected until the Workflow Viewer can let the user
+        // wire its input/output/settings explicitly.
+        if (doc.isApiFormat) {
+          // TODO: Add Workflow Viewer support for API-format workflows and
+          // manual input/output/settings mapping.
+          throw const ValidationError(
+            'This workflow format cannot be mapped automatically yet. '
+            'Workflow Viewer support is planned.',
+          );
+        }
+        _upscaleWorkflowTemplate = doc;
+        _upscaleWorkflowName = name;
+        final prefs = preferences;
+        if (prefs != null) {
+          await prefs.setString(
+            _upscaleWorkflowPreferenceKey,
+            jsonEncode({'name': name, 'workflow': doc.raw}),
+          );
+        }
+      });
+
+  String get _upscaleWorkflowPreferenceKey =>
+      '$_kUpscaleWorkflowPreference${endpoint.id}';
+
+  Future<ComfyWorkflowDocument> _loadUpscaleWorkflow() async {
+    if (_upscaleWorkflowTemplate != null) {
+      return _upscaleWorkflowTemplate!.clone();
+    }
+    final saved = preferences?.getString(_upscaleWorkflowPreferenceKey);
+    if (saved != null) {
+      try {
+        final decoded = jsonDecode(saved);
+        if (decoded is Map && decoded['workflow'] is Map) {
+          final doc = ComfyWorkflowDocument(
+            (decoded['workflow'] as Map).cast<String, dynamic>(),
+          );
+          final validation = ComfyWorkflowValidation.of(doc);
+          if (validation.isValid && !doc.isApiFormat) {
+            _upscaleWorkflowTemplate = doc;
+            _upscaleWorkflowName = decoded['name'] as String?;
+            return doc.clone();
+          }
+        }
+      } catch (_) {
+        // A corrupt preference falls back to the bundled workflow.
+      }
+    }
+    return _loadBundled(
+      _kUpscaleWorkflowAsset,
+      null,
+      (d) => _upscaleWorkflowTemplate = d,
+    );
+  }
 
   Future<ComfyWorkflowDocument> _loadBundled(
     String asset,
@@ -290,37 +363,21 @@ class ComfyEngine
     int resolution,
     void Function(RunProgress)? onProgress,
   ) async {
-    final doc = await _loadBundled(
-      _kUpscaleWorkflowAsset,
-      _upscaleWorkflowTemplate,
-      (d) => _upscaleWorkflowTemplate = d,
-    );
-
-    final loadImageNode = _findNode(doc, 'LoadImage');
-    final upscalerNode = _findNode(doc, 'SeedVR2TilingUpscaler');
-    if (loadImageNode == null || upscalerNode == null) {
-      throw const ValidationError(
-        'Bundled SeedVR2 upscale workflow is missing required nodes',
-      );
-    }
-
     final schemaProvider = HttpComfyNodeSchemaProvider(endpoint);
-    final upscalerSchema = await schemaProvider.schemaFor(upscalerNode.type);
-    if (!upscalerSchema.known ||
-        upscalerSchema.inputByName('new_resolution') == null) {
-      throw const CapabilityError(
-        'SeedVR2TilingUpscaler node is not available on this ComfyUI server. '
-        'Install moonwhaler/comfyui-seedvr2-tilingupscaler and its models.',
-      );
-    }
+    final doc = await _loadUpscaleWorkflow();
+    final mapping = await _findUpscaleMapping(doc, schemaProvider);
 
     final clientId = progressService.ensureClientId();
     await progressService.connect(endpoint, force: true);
 
-    final uploadedFilename = await _uploadImage(imageBytes, loadImageNode.id);
+    final uploadedFilename = await _uploadImage(imageBytes, mapping.imageNode.id);
+    final overrides = <String, dynamic>{
+      '${mapping.imageNode.id}:${mapping.imageInput.name}': uploadedFilename,
+    };
+    overrides['${mapping.resolution.$1.id}:${mapping.resolution.$2.name}'] =
+        resolution;
     final conversion = await _convert(doc, schemaProvider, {
-      '${loadImageNode.id}:image': uploadedFilename,
-      '${upscalerNode.id}:new_resolution': resolution,
+      ...overrides,
     });
 
     final promptId = await _queuePrompt(conversion.apiGraph, clientId);
@@ -351,6 +408,89 @@ class ComfyEngine
       unsubscribe?.call();
       progressService.endTracking();
     }
+  }
+
+  Future<_UpscaleMapping> _findUpscaleMapping(
+    ComfyWorkflowDocument doc,
+    ComfyNodeSchemaProvider schemaProvider,
+  ) async {
+    ComfyEditorNode? imageNode;
+    ComfyInputSpec? imageInput;
+    final numericInputs = <(ComfyEditorNode, ComfyInputSpec)>[];
+    var hasImageOutput = false;
+
+    for (final node in doc.nodes.where((node) => node.isActive)) {
+      final schema = await schemaProvider.schemaFor(node.type);
+      if (!schema.known) continue;
+      if (schema.outputNode && schema.outputTypes.contains('IMAGE')) {
+        hasImageOutput = true;
+      }
+      for (final input in schema.inputs) {
+        if (input.isWidgetCapable &&
+            input.options['image_upload'] == true &&
+            imageNode == null) {
+          imageNode = node;
+          imageInput = input;
+        }
+        if (input.isWidgetCapable &&
+            (input.type == 'INT' || input.type == 'FLOAT') &&
+            _looksLikeResolution(input.name)) {
+          numericInputs.add((node, input));
+        }
+      }
+    }
+
+    if (imageNode == null || imageInput == null) {
+      // TODO: Add Workflow Viewer mapping for workflows whose image input is
+      // not exposed as a standard image-upload widget.
+      throw const ValidationError(
+        'Could not identify the workflow image input automatically. '
+        'Workflow Viewer support is planned for manual mapping.',
+      );
+    }
+    if (numericInputs.isEmpty) {
+      // TODO: Add Workflow Viewer mapping for workflows whose target
+      // resolution is represented by a custom node or linked value.
+      throw const ValidationError(
+        'Could not identify a target resolution setting automatically. '
+        'Workflow Viewer support is planned for manual mapping.',
+      );
+    }
+    if (!hasImageOutput) {
+      // TODO: Add Workflow Viewer mapping for workflows whose result is
+      // exposed through a non-standard output node.
+      throw const ValidationError(
+        'Could not identify an image output automatically. '
+        'Workflow Viewer support is planned for manual mapping.',
+      );
+    }
+
+    numericInputs.sort((a, b) {
+      final aExact = _isExactResolutionName(a.$2.name) ? 0 : 1;
+      final bExact = _isExactResolutionName(b.$2.name) ? 0 : 1;
+      return aExact.compareTo(bExact);
+    });
+    return _UpscaleMapping(
+      imageNode: imageNode,
+      imageInput: imageInput,
+      resolution: numericInputs.first,
+    );
+  }
+
+  bool _looksLikeResolution(String name) {
+    final normalized = name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    return normalized.contains('resolution') ||
+        normalized.contains('longestside') ||
+        normalized.contains('upscalesize') ||
+        normalized == 'size';
+  }
+
+  bool _isExactResolutionName(String name) {
+    final normalized = name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    return normalized == 'newresolution' ||
+        normalized == 'targetresolution' ||
+        normalized == 'upscaleresolution' ||
+        normalized == 'longestside';
   }
 
   // ===== Prompt writing ===== //
@@ -715,6 +855,18 @@ class ComfyEngine
     }
     return images;
   }
+}
+
+class _UpscaleMapping {
+  final ComfyEditorNode imageNode;
+  final ComfyInputSpec imageInput;
+  final (ComfyEditorNode, ComfyInputSpec) resolution;
+
+  const _UpscaleMapping({
+    required this.imageNode,
+    required this.imageInput,
+    required this.resolution,
+  });
 }
 
 /// Replaces the last number in [userPrompt] with [intensity].

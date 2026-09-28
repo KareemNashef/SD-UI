@@ -129,7 +129,9 @@ class _FrontPageState extends State<FrontPage> {
   /// replaces the prompt box, and takes it down again afterwards however
   /// the work ends.
   Future<T> _withThinkingFeed<T>(
-      Object engine, Future<T> Function() work) async {
+    Object engine,
+    Future<T> Function() work,
+  ) async {
     final feed = engine is ThinkingFeedCapable ? engine.thinking : null;
     void onUpdate() {
       if (mounted) setState(() => _thinking = feed!.value);
@@ -165,7 +167,13 @@ class _FrontPageState extends State<FrontPage> {
     final rt = RuntimeScope.read(context);
     _prompt.text = rt.session.state.prompt;
     _promptIntensity = rt.settings.loadPromptIntensity();
-    _stores = StoreGroup([rt.engine, rt.session, rt.run, rt.library, rt.catalog]);
+    _stores = StoreGroup([
+      rt.engine,
+      rt.session,
+      rt.run,
+      rt.library,
+      rt.catalog,
+    ]);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _connect(rt.engine.state.active);
     });
@@ -206,7 +214,9 @@ class _FrontPageState extends State<FrontPage> {
 
     switch (kind) {
       case EngineKind.forge:
-        final result = await ForgeCatalogClient(endpoint: endpoint).fetchCheckpoints();
+        final result = await ForgeCatalogClient(
+          endpoint: endpoint,
+        ).fetchCheckpoints();
         result.fold(
           _rt.catalog.setCheckpoints,
           (error) => _notify(error.message, isError: true),
@@ -249,12 +259,9 @@ class _FrontPageState extends State<FrontPage> {
     setState(() => _viewingId = _kRunId);
     final result = await _rt.submit();
     if (!mounted) return;
-    result.fold(
-      (images) {
-        if (images.isNotEmpty) setState(() => _viewingId = images.first.id);
-      },
-      (error) => _notify(error.message, isError: true),
-    );
+    result.fold((images) {
+      if (images.isNotEmpty) setState(() => _viewingId = images.first.id);
+    }, (error) => _notify(error.message, isError: true));
   }
 
   // ===== Crop / resize / metadata ===== //
@@ -262,7 +269,8 @@ class _FrontPageState extends State<FrontPage> {
   /// Resolves whichever image the tray is currently acting on: a focused
   /// result, or the source image when that is what's on the stage.
   Future<(Uint8List bytes, bool isSource)?> _activeImageBytes(
-      LibraryState library) async {
+    LibraryState library,
+  ) async {
     final focused = _focusedImage(library);
     if (focused != null) {
       final bytes = await _imageBytes(focused);
@@ -284,7 +292,8 @@ class _FrontPageState extends State<FrontPage> {
     if (isSource) {
       final dir = await getTemporaryDirectory();
       final file = File(
-          '${dir.path}/aperture_edit_${DateTime.now().millisecondsSinceEpoch}.png');
+        '${dir.path}/aperture_edit_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
       await file.writeAsBytes(bytes);
       if (!mounted) return;
       _rt.session.setSourceImage(file);
@@ -340,8 +349,11 @@ class _FrontPageState extends State<FrontPage> {
         width: width,
         height: height,
         onApply: (w, h) async {
-          final resized =
-              await resizeImageBytes(bytes: target.$1, width: w, height: h);
+          final resized = await resizeImageBytes(
+            bytes: target.$1,
+            width: w,
+            height: h,
+          );
           if (!mounted) return;
           if (resized == null) {
             _notify('Resize failed.', isError: true);
@@ -368,10 +380,8 @@ class _FrontPageState extends State<FrontPage> {
     await showDeskDrawer<void>(
       context: context,
       title: 'Image details',
-      builder: (context) => MetadataDrawerBody(
-        metadata: metadata,
-        onCopied: _notify,
-      ),
+      builder: (context) =>
+          MetadataDrawerBody(metadata: metadata, onCopied: _notify),
     );
   }
 
@@ -413,8 +423,10 @@ class _FrontPageState extends State<FrontPage> {
     if (!mounted || picked == null || picked.isEmpty) return;
     _rt.library.add(picked);
     setState(() => _viewingId = _rt.library.state.selectedId);
-    _notify('Added ${picked.length} image${picked.length == 1 ? '' : 's'} '
-        'from the server.');
+    _notify(
+      'Added ${picked.length} image${picked.length == 1 ? '' : 's'} '
+      'from the server.',
+    );
   }
 
   // ===== Prompt intelligence (Tier 6) ===== //
@@ -440,17 +452,17 @@ class _FrontPageState extends State<FrontPage> {
   }
 
   Future<void> _openPromptBook() => showDeskDrawer<void>(
-        context: context,
-        title: 'Prompts',
-        builder: (context) => PromptBookBody(
-          store: _rt.promptBook,
-          onUse: _setPrompt,
-          onAppend: (fragment) {
-            final current = _prompt.text.trim();
-            _setPrompt(current.isEmpty ? fragment : '$current, $fragment');
-          },
-        ),
-      );
+    context: context,
+    title: 'Prompts',
+    builder: (context) => PromptBookBody(
+      store: _rt.promptBook,
+      onUse: _setPrompt,
+      onAppend: (fragment) {
+        final current = _prompt.text.trim();
+        _setPrompt(current.isEmpty ? fragment : '$current, $fragment');
+      },
+    ),
+  );
 
   /// Writes a prompt from nothing but the intensity dial. ComfyUI runs a
   /// bundled LM Studio workflow for this, so it takes real time and can
@@ -470,22 +482,20 @@ class _FrontPageState extends State<FrontPage> {
     setState(() => _promptTask = _PromptTask.generate);
     final result = await _withThinkingFeed(
       engine,
-      () => (engine as PromptGenerateCapable)
-          .generatePrompt(intensity: _promptIntensity),
+      () => (engine as PromptGenerateCapable).generatePrompt(
+        intensity: _promptIntensity,
+      ),
     );
     if (!mounted) return;
     setState(() => _promptTask = null);
-    result.fold(
-      (prompt) {
-        // Whatever was there goes to the book first, and the prompt row's
-        // undo covers the swap either way.
-        final current = _prompt.text.trim();
-        if (current.isNotEmpty) _rt.promptBook.record(current);
-        _setPrompt(prompt);
-        _notify('Prompt written.');
-      },
-      (error) => _notify(error.message, isError: true),
-    );
+    result.fold((prompt) {
+      // Whatever was there goes to the book first, and the prompt row's
+      // undo covers the swap either way.
+      final current = _prompt.text.trim();
+      if (current.isNotEmpty) _rt.promptBook.record(current);
+      _setPrompt(prompt);
+      _notify('Prompt written.');
+    }, (error) => _notify(error.message, isError: true));
   }
 
   /// CHECKLIST 6.5. Captions the source image into a prompt.
@@ -516,15 +526,12 @@ class _FrontPageState extends State<FrontPage> {
     );
     if (!mounted) return;
     setState(() => _promptTask = null);
-    result.fold(
-      (description) {
-        final current = _prompt.text.trim();
-        if (current.isNotEmpty) _rt.promptBook.record(current);
-        _setPrompt(description);
-        _notify('Described the input image.');
-      },
-      (error) => _notify(error.message, isError: true),
-    );
+    result.fold((description) {
+      final current = _prompt.text.trim();
+      if (current.isNotEmpty) _rt.promptBook.record(current);
+      _setPrompt(description);
+      _notify('Described the input image.');
+    }, (error) => _notify(error.message, isError: true));
   }
 
   // ===== Canvas editors ===== //
@@ -539,7 +546,8 @@ class _FrontPageState extends State<FrontPage> {
       final bytes = await file.readAsBytes();
       return await decodeImageFromList(bytes);
     } catch (e) {
-      if (mounted) _notify('Could not read the source image: $e', isError: true);
+      if (mounted)
+        _notify('Could not read the source image: $e', isError: true);
       return null;
     }
   }
@@ -586,7 +594,8 @@ class _FrontPageState extends State<FrontPage> {
 
     final result = await Navigator.of(context).push<OutpaintResult?>(
       DeskPageRoute(
-        builder: (_) => OutpaintEditor(image: decoded, display: FileImage(file)),
+        builder: (_) =>
+            OutpaintEditor(image: decoded, display: FileImage(file)),
         fullscreenDialog: true,
       ),
     );
@@ -596,7 +605,8 @@ class _FrontPageState extends State<FrontPage> {
     try {
       final dir = await getTemporaryDirectory();
       final expanded = File(
-          '${dir.path}/aperture_extended_${DateTime.now().millisecondsSinceEpoch}.png');
+        '${dir.path}/aperture_extended_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
       await expanded.writeAsBytes(result.image);
       if (!mounted) return;
       // Order matters: setSourceImage deliberately clears the mask, so the
@@ -664,12 +674,18 @@ class _FrontPageState extends State<FrontPage> {
         final granted = await Gal.requestAccess();
         if (!mounted) return;
         if (!granted) {
-          _notify('Photo library access was declined, so nothing was saved.',
-              isError: true);
+          _notify(
+            'Photo library access was declined, so nothing was saved.',
+            isError: true,
+          );
           return;
         }
       }
-      await Gal.putImageBytes(bytes, album: 'Aperture');
+      await Gal.putImageBytes(
+        bytes,
+        album: 'Aperture',
+        name: "Aperture-${DateTime.now().millisecondsSinceEpoch}",
+      );
       if (mounted) _notify('Saved to your photo library, in "Aperture".');
     } on GalException catch (e) {
       if (mounted) _notify('Save failed: ${e.type.message}', isError: true);
@@ -699,36 +715,185 @@ class _FrontPageState extends State<FrontPage> {
       title: 'Upscale',
       builder: (context) {
         final p = DeskTheme.of(context);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        const minResolution = 512;
+        const maxResolution = 1440;
+        const resolutionStep = 32;
+        final currentShorterSide = size == null
+            ? minResolution
+            : (size.$1 < size.$2 ? size.$1 : size.$2);
+        final initialResolution = ((currentShorterSide - minResolution) /
+                    resolutionStep)
+                .round()
+                .clamp(0, (maxResolution - minResolution) ~/ resolutionStep)
+                .toInt() *
+            resolutionStep +
+            minResolution;
+        var selectedResolution = initialResolution;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final outputSize = size == null
+                ? null
+                : _upscaleOutputDimensions(
+                    size.$1, size.$2, selectedResolution);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
             if (size != null) ...[
               Text('CURRENT', style: Type.micro.copyWith(color: p.inkFaint)),
               const SizedBox(height: 2),
-              Text('${size.$1} × ${size.$2}',
-                  style: Type.readout.copyWith(color: p.ink, fontSize: 14)),
+              Text(
+                '${size.$1} × ${size.$2}',
+                style: Type.readout.copyWith(color: p.ink, fontSize: 14),
+              ),
               const SizedBox(height: Space.lg),
             ],
-            Text('TARGET LONGEST SIDE',
-                style: Type.micro.copyWith(color: p.inkFaint)),
+            Text(
+              'TARGET SHORTER SIDE',
+              style: Type.micro.copyWith(color: p.inkFaint),
+            ),
             const SizedBox(height: Space.sm),
-            for (final resolution in const [1024, 2048, 3072, 4096])
-              Padding(
-                padding: const EdgeInsets.only(bottom: Space.sm),
-                child: DeskButton(
-                  label: '$resolution px',
-                  icon: Icons.zoom_in_rounded,
-                  expand: true,
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _runUpscale(target.$1, resolution);
-                  },
-                ),
+            if (_rt.activeEngine is UpscaleWorkflowConfigurable) ...[
+              DeskButton(
+                label: 'Replace workflow',
+                icon: Icons.upload_file_rounded,
+                expand: true,
+                onPressed: () => _replaceUpscaleWorkflow(),
               ),
+              const SizedBox(height: Space.sm),
+              Text(
+                (_rt.activeEngine as UpscaleWorkflowConfigurable)
+                            .upscaleWorkflowName ==
+                        null
+                    ? 'Using bundled SeedVR2 workflow'
+                    : 'Using ${(_rt.activeEngine as UpscaleWorkflowConfigurable).upscaleWorkflowName}',
+                style: Type.micro.copyWith(color: p.inkFaint),
+              ),
+              const SizedBox(height: Space.lg),
+            ],
+            Text(
+              '$selectedResolution px',
+              textAlign: TextAlign.center,
+              style: Type.readout.copyWith(color: p.ink, fontSize: 18),
+            ),
+            if (outputSize != null) ...[
+              const SizedBox(height: Space.xs),
+              Text(
+                'OUTPUT  ${outputSize.$1} × ${outputSize.$2}',
+                textAlign: TextAlign.center,
+                style: Type.micro.copyWith(color: p.inkMuted),
+              ),
+            ],
+            Slider(
+              min: minResolution.toDouble(),
+              max: maxResolution.toDouble(),
+              divisions: (maxResolution - minResolution) ~/ resolutionStep,
+              value: selectedResolution.toDouble(),
+              activeColor: p.clay,
+              onChanged: (value) {
+                final stepped = ((value - minResolution) / resolutionStep)
+                        .round() *
+                    resolutionStep +
+                    minResolution;
+                setModalState(() => selectedResolution = stepped);
+              },
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('$minResolution px',
+                    style: Type.micro.copyWith(color: p.inkFaint)),
+                Text('$maxResolution px',
+                    style: Type.micro.copyWith(color: p.inkFaint)),
+              ],
+            ),
+            const SizedBox(height: Space.md),
+            DeskButton(
+              label: 'Upscale to $selectedResolution px',
+              icon: Icons.zoom_in_rounded,
+              expand: true,
+              onPressed: () {
+                Navigator.of(context).pop();
+                _runUpscale(target.$1, selectedResolution);
+              },
+            ),
           ],
         );
+          },
+        );
       },
+    );
+  }
+
+  (int, int) _upscaleOutputDimensions(
+    int width,
+    int height,
+    int targetShorterSide,
+  ) {
+    final sourceShorterSide = width < height ? width : height;
+    final scale = targetShorterSide / sourceShorterSide;
+    return ((width * scale).round(), (height * scale).round());
+  }
+
+  Future<void> _replaceUpscaleWorkflow() async {
+    final engine = _rt.activeEngine;
+    if (engine is! UpscaleWorkflowConfigurable) return;
+    final configurable = engine as UpscaleWorkflowConfigurable;
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+      withData: true,
+    );
+    final file = picked?.files.firstOrNull;
+    if (file == null) return;
+    final bytes = file.bytes;
+    if (bytes == null) {
+      if (mounted) _notify('Could not read that workflow file.', isError: true);
+      return;
+    }
+    final result = await configurable.replaceUpscaleWorkflow(
+      utf8.decode(bytes),
+      name: file.name.replaceFirst(
+        RegExp(r'\.json$', caseSensitive: false),
+        '',
+      ),
+    );
+    if (!mounted) return;
+    result.fold(
+      (_) => _notify('Upscale workflow replaced.'),
+      (error) => _notify(error.message, isError: true),
+    );
+  }
+
+  Future<void> _openFullscreenViewer(LibraryState library) async {
+    final target = await _activeImageBytes(library);
+    if (!mounted || target == null) {
+      if (mounted) _notify('Could not read that image.', isError: true);
+      return;
+    }
+
+    Uint8List? inputBytes;
+    // Comparing a result against the current source is useful; comparing the
+    // source against itself is not, so the input control is omitted there.
+    if (!target.$2) {
+      final source = _rt.session.state.sourceImage;
+      if (source != null) {
+        try {
+          inputBytes = await source.readAsBytes();
+        } catch (_) {
+          inputBytes = null;
+        }
+      }
+    }
+
+    if (!mounted) return;
+    await Navigator.of(context).push<void>(
+      DeskPageRoute(
+        builder: (_) =>
+            _FullscreenImagePage(image: target.$1, inputImage: inputBytes),
+        fullscreenDialog: true,
+      ),
     );
   }
 
@@ -790,7 +955,8 @@ class _FrontPageState extends State<FrontPage> {
     try {
       final dir = await getTemporaryDirectory();
       final file = File(
-          '${dir.path}/aperture_input_${DateTime.now().millisecondsSinceEpoch}.png');
+        '${dir.path}/aperture_input_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
       await file.writeAsBytes(bytes);
       if (!mounted) return;
       _rt.session.setSourceImage(file);
@@ -851,20 +1017,21 @@ class _FrontPageState extends State<FrontPage> {
   // ===== Drawers ===== //
 
   Future<void> _openServerDrawer() => showDeskDrawer<void>(
-        context: context,
-        title: 'Server',
-        action: ValueListenableBuilder<EngineState>(
-          valueListenable: _rt.engine,
-          builder: (context, s, _) =>
-              DeskStamp(label: s.status.label, color: _statusColor(s.status)),
-        ),
-        builder: (context) => _EngineDrawerContent(
-          engineState: _rt.engine.state,
-          onConnect: (kind, endpoint) => _connect(kind, withEndpoint: endpoint),
-        ),
-      );
+    context: context,
+    title: 'Server',
+    action: ValueListenableBuilder<EngineState>(
+      valueListenable: _rt.engine,
+      builder: (context, s, _) =>
+          DeskStamp(label: s.status.label, color: _statusColor(s.status)),
+    ),
+    builder: (context) => _EngineDrawerContent(
+      engineState: _rt.engine.state,
+      onConnect: (kind, endpoint) => _connect(kind, withEndpoint: endpoint),
+    ),
+  );
 
-  Future<void> _openWorkflowsDrawer(ComfyWorkflowService workflows) => showDeskDrawer<void>(
+  Future<void> _openWorkflowsDrawer(ComfyWorkflowService workflows) =>
+      showDeskDrawer<void>(
         context: context,
         title: 'Workflows',
         action: DeskButton(
@@ -945,68 +1112,67 @@ class _FrontPageState extends State<FrontPage> {
   Future<void> _openWorkflowActions(
     ComfyWorkflowService workflows,
     ComfyWorkflowRecord record,
-  ) =>
-      showDeskDrawer<void>(
-        context: context,
-        title: record.name,
-        builder: (context) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DeskButton(
-              label: 'Edit settings',
-              icon: Icons.tune_rounded,
-              expand: true,
-              onPressed: () {
-                Navigator.of(context).pop();
-                _openWorkflowSettingsDrawer(workflows, record);
-              },
-            ),
-            const SizedBox(height: Space.sm),
-            DeskButton(
-              label: 'Rename',
-              icon: Icons.edit_rounded,
-              expand: true,
-              onPressed: () {
-                Navigator.of(context).pop();
-                _renameWorkflow(workflows, record);
-              },
-            ),
-            const SizedBox(height: Space.sm),
-            DeskButton(
-              label: 'Change type',
-              icon: Icons.category_rounded,
-              expand: true,
-              onPressed: () {
-                Navigator.of(context).pop();
-                _changeWorkflowType(workflows, record);
-              },
-            ),
-            const SizedBox(height: Space.sm),
-            DeskButton(
-              label: 'Duplicate',
-              icon: Icons.copy_rounded,
-              expand: true,
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await workflows.duplicateWorkflow(record.id);
-                if (mounted) _notify('Duplicated ${record.name}');
-              },
-            ),
-            const SizedBox(height: Space.lg),
-            DeskButton(
-              label: 'Delete',
-              icon: Icons.delete_outline_rounded,
-              kind: DeskButtonKind.destructive,
-              expand: true,
-              onPressed: () {
-                Navigator.of(context).pop();
-                _confirmDeleteWorkflow(workflows, record);
-              },
-            ),
-          ],
+  ) => showDeskDrawer<void>(
+    context: context,
+    title: record.name,
+    builder: (context) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        DeskButton(
+          label: 'Edit settings',
+          icon: Icons.tune_rounded,
+          expand: true,
+          onPressed: () {
+            Navigator.of(context).pop();
+            _openWorkflowSettingsDrawer(workflows, record);
+          },
         ),
-      );
+        const SizedBox(height: Space.sm),
+        DeskButton(
+          label: 'Rename',
+          icon: Icons.edit_rounded,
+          expand: true,
+          onPressed: () {
+            Navigator.of(context).pop();
+            _renameWorkflow(workflows, record);
+          },
+        ),
+        const SizedBox(height: Space.sm),
+        DeskButton(
+          label: 'Change type',
+          icon: Icons.category_rounded,
+          expand: true,
+          onPressed: () {
+            Navigator.of(context).pop();
+            _changeWorkflowType(workflows, record);
+          },
+        ),
+        const SizedBox(height: Space.sm),
+        DeskButton(
+          label: 'Duplicate',
+          icon: Icons.copy_rounded,
+          expand: true,
+          onPressed: () async {
+            Navigator.of(context).pop();
+            await workflows.duplicateWorkflow(record.id);
+            if (mounted) _notify('Duplicated ${record.name}');
+          },
+        ),
+        const SizedBox(height: Space.lg),
+        DeskButton(
+          label: 'Delete',
+          icon: Icons.delete_outline_rounded,
+          kind: DeskButtonKind.destructive,
+          expand: true,
+          onPressed: () {
+            Navigator.of(context).pop();
+            _confirmDeleteWorkflow(workflows, record);
+          },
+        ),
+      ],
+    ),
+  );
 
   Future<void> _openWorkflowSettingsDrawer(
     ComfyWorkflowService workflows,
@@ -1088,11 +1254,15 @@ class _FrontPageState extends State<FrontPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(type.displayName,
-                            style: Type.label.copyWith(color: p.ink)),
+                        Text(
+                          type.displayName,
+                          style: Type.label.copyWith(color: p.ink),
+                        ),
                         const SizedBox(height: 2),
-                        Text(type.description,
-                            style: Type.body.copyWith(color: p.inkFaint)),
+                        Text(
+                          type.description,
+                          style: Type.body.copyWith(color: p.inkFaint),
+                        ),
                       ],
                     ),
                   ),
@@ -1169,7 +1339,10 @@ class _FrontPageState extends State<FrontPage> {
       return;
     }
 
-    final defaultName = file.name.replaceAll(RegExp(r'\.json$', caseSensitive: false), '');
+    final defaultName = file.name.replaceAll(
+      RegExp(r'\.json$', caseSensitive: false),
+      '',
+    );
     if (!mounted) return;
     final choice = await Navigator.of(context).push<_ImportChoice>(
       DeskPageRoute(
@@ -1197,77 +1370,77 @@ class _FrontPageState extends State<FrontPage> {
   /// weights when something needs them), so this reports progress and stays
   /// open until the swap lands.
   Future<void> _openCheckpointDrawer() => showDeskDrawer<void>(
-        context: context,
-        title: 'Checkpoints',
-        action: DeskButton(
-          label: 'Refresh',
-          icon: Icons.refresh_rounded,
-          onPressed: () => _refreshCheckpoints(force: true),
-        ),
-        builder: (context) => ValueListenableBuilder<CatalogState>(
-          valueListenable: _rt.catalog,
-          builder: (context, catalog, _) {
-            final p = DeskTheme.of(context);
-            if (catalog.isLoading) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: Space.xxl),
-                child: Center(child: DeskProgress(caption: 'LOADING CHECKPOINTS')),
-              );
-            }
-            if (catalog.checkpoints.isEmpty) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: Space.xxl),
-                child: Center(
-                  child: Text(
-                    'No checkpoints found on this server.\nTap Refresh to rescan.',
-                    textAlign: TextAlign.center,
-                    style: Type.body.copyWith(color: p.inkFaint),
-                  ),
+    context: context,
+    title: 'Checkpoints',
+    action: DeskButton(
+      label: 'Refresh',
+      icon: Icons.refresh_rounded,
+      onPressed: () => _refreshCheckpoints(force: true),
+    ),
+    builder: (context) => ValueListenableBuilder<CatalogState>(
+      valueListenable: _rt.catalog,
+      builder: (context, catalog, _) {
+        final p = DeskTheme.of(context);
+        if (catalog.isLoading) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: Space.xxl),
+            child: Center(child: DeskProgress(caption: 'LOADING CHECKPOINTS')),
+          );
+        }
+        if (catalog.checkpoints.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: Space.xxl),
+            child: Center(
+              child: Text(
+                'No checkpoints found on this server.\nTap Refresh to rescan.',
+                textAlign: TextAlign.center,
+                style: Type.body.copyWith(color: p.inkFaint),
+              ),
+            ),
+          );
+        }
+        // Grouped by base model, which is what `CatalogState.byBaseModel`
+        // already exists to provide.
+        final groups = catalog.byBaseModel;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final entry in groups.entries) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, Space.md, 0, Space.sm),
+                child: Text(
+                  entry.key.toUpperCase(),
+                  style: Type.micro.copyWith(color: p.inkFaint),
                 ),
-              );
-            }
-            // Grouped by base model, which is what `CatalogState.byBaseModel`
-            // already exists to provide.
-            final groups = catalog.byBaseModel;
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final entry in groups.entries) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(0, Space.md, 0, Space.sm),
-                    child: Text(entry.key.toUpperCase(),
-                        style: Type.micro.copyWith(color: p.inkFaint)),
-                  ),
-                  for (final checkpoint in entry.value)
-                    _CheckpointRow(
-                      checkpoint: checkpoint,
-                      selected: checkpoint.name == catalog.activeCheckpoint,
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        _applyCheckpoint(checkpoint);
-                      },
-                    ),
-                ],
-              ],
-            );
-          },
-        ),
-      );
+              ),
+              for (final checkpoint in entry.value)
+                _CheckpointRow(
+                  checkpoint: checkpoint,
+                  selected: checkpoint.name == catalog.activeCheckpoint,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _applyCheckpoint(checkpoint);
+                  },
+                ),
+            ],
+          ],
+        );
+      },
+    ),
+  );
 
   Future<void> _refreshCheckpoints({bool force = false}) async {
     final endpoint = _rt.engine.state.endpoints[EngineKind.forge]!;
     _rt.catalog.setLoading(true);
-    final result =
-        await ForgeCatalogClient(endpoint: endpoint).fetchCheckpoints(force: force);
+    final result = await ForgeCatalogClient(
+      endpoint: endpoint,
+    ).fetchCheckpoints(force: force);
     if (!mounted) return;
-    result.fold(
-      _rt.catalog.setCheckpoints,
-      (error) {
-        _rt.catalog.setLoading(false);
-        _notify(error.message, isError: true);
-      },
-    );
+    result.fold(_rt.catalog.setCheckpoints, (error) {
+      _rt.catalog.setLoading(false);
+      _notify(error.message, isError: true);
+    });
   }
 
   Future<void> _applyCheckpoint(Checkpoint checkpoint) async {
@@ -1282,8 +1455,9 @@ class _FrontPageState extends State<FrontPage> {
     }
 
     _notify('Loading ${checkpoint.name}…');
-    final result = await ForgeCatalogClient(endpoint: endpoint)
-        .selectCheckpointAndWait(checkpoint);
+    final result = await ForgeCatalogClient(
+      endpoint: endpoint,
+    ).selectCheckpointAndWait(checkpoint);
     if (!mounted) return;
     result.fold(
       (_) => _notify('${checkpoint.name} loaded'),
@@ -1315,151 +1489,160 @@ class _FrontPageState extends State<FrontPage> {
   }
 
   Future<void> _openForgeSettingsDrawer() => showDeskDrawer<void>(
-        context: context,
-        title: 'Generation settings',
-        builder: (context) => ValueListenableBuilder<SessionState>(
-          valueListenable: _rt.session,
-          builder: (context, s, _) => Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    context: context,
+    title: 'Generation settings',
+    builder: (context) => ValueListenableBuilder<SessionState>(
+      valueListenable: _rt.session,
+      builder: (context, s, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DeskRuler(
+            label: 'Steps',
+            value: s.sampling.steps.toDouble(),
+            min: 1,
+            max: 60,
+            divisions: 59,
+            format: (v) => v.round().toString(),
+            onChanged: (v) =>
+                _rt.session.tuneSampling((p) => p.copyWith(steps: v.round())),
+          ),
+          const SizedBox(height: Space.lg),
+          DeskRuler(
+            label: 'Guidance',
+            value: s.sampling.cfgScale,
+            min: 1,
+            max: 15,
+            format: (v) => v.toStringAsFixed(2),
+            onChanged: (v) =>
+                _rt.session.tuneSampling((p) => p.copyWith(cfgScale: v)),
+          ),
+          const SizedBox(height: Space.lg),
+          DeskDropdown<int>(
+            label: 'Resolution',
+            value: s.sampling.width,
+            options: const [
+              DeskOption(value: 512, label: '512 × 512'),
+              DeskOption(value: 768, label: '768 × 768', detail: 'DEFAULT'),
+              DeskOption(value: 1024, label: '1024 × 1024'),
+            ],
+            onChanged: (v) => _rt.session.tuneSampling(
+              (p) => p.copyWith(width: v, height: v),
+            ),
+          ),
+          const SizedBox(height: Space.lg),
+          DeskRuler(
+            label: 'Batch size',
+            value: s.sampling.batchSize.toDouble(),
+            min: 1,
+            max: 8,
+            divisions: 7,
+            format: (v) => v.round().toString(),
+            onChanged: (v) => _rt.session.tuneSampling(
+              (p) => p.copyWith(batchSize: v.round()),
+            ),
+          ),
+          const SizedBox(height: Space.lg),
+          DeskDropdown<String>(
+            label: 'Sampler',
+            value: s.sampling.sampler,
+            options: [
+              for (final name in samplerNames)
+                DeskOption(value: name, label: name),
+            ],
+            onChanged: (v) =>
+                _rt.session.tuneSampling((p) => p.copyWith(sampler: v)),
+          ),
+          const SizedBox(height: Space.lg),
+          DeskDropdown<String>(
+            label: 'Scheduler',
+            value: s.sampling.scheduler,
+            options: [
+              for (final name in schedulerNames)
+                DeskOption(value: name, label: name),
+            ],
+            onChanged: (v) =>
+                _rt.session.tuneSampling((p) => p.copyWith(scheduler: v)),
+          ),
+
+          // Denoise only means anything once there's a source image to
+          // denoise *from* - on a pure txt2img run it is ignored, so
+          // showing it would just be a control that does nothing.
+          if (s.hasSourceImage) ...[
+            const SizedBox(height: Space.lg),
+            DeskRuler(
+              label: 'Denoise',
+              value: s.sampling.denoise,
+              min: 0,
+              max: 1,
+              format: (v) => v.toStringAsFixed(2),
+              onChanged: (v) =>
+                  _rt.session.tuneSampling((p) => p.copyWith(denoise: v)),
+            ),
+          ],
+
+          // Mask settings likewise: they only apply to an inpaint run.
+          if (s.mode == GenerationMode.inpaint) ...[
+            const SizedBox(height: Space.lg),
+            DeskRuler(
+              label: 'Mask blur',
+              value: s.sampling.maskBlur.toDouble(),
+              min: 0,
+              max: 64,
+              divisions: 64,
+              format: (v) => '${v.round()} px',
+              onChanged: (v) => _rt.session.tuneSampling(
+                (p) => p.copyWith(maskBlur: v.round()),
+              ),
+            ),
+            const SizedBox(height: Space.lg),
+            DeskDropdown<MaskFill>(
+              label: 'Masked content',
+              value: s.sampling.maskFill,
+              options: [
+                for (final fill in MaskFill.values)
+                  DeskOption(value: fill, label: fill.label),
+              ],
+              onChanged: (v) =>
+                  _rt.session.tuneSampling((p) => p.copyWith(maskFill: v)),
+            ),
+          ],
+
+          const SizedBox(height: Space.lg),
+          Row(
             children: [
-              DeskRuler(
-                label: 'Steps',
-                value: s.sampling.steps.toDouble(),
-                min: 1,
-                max: 60,
-                divisions: 59,
-                format: (v) => v.round().toString(),
-                onChanged: (v) =>
-                    _rt.session.tuneSampling((p) => p.copyWith(steps: v.round())),
-              ),
-              const SizedBox(height: Space.lg),
-              DeskRuler(
-                label: 'Guidance',
-                value: s.sampling.cfgScale,
-                min: 1,
-                max: 15,
-                format: (v) => v.toStringAsFixed(2),
-                onChanged: (v) =>
-                    _rt.session.tuneSampling((p) => p.copyWith(cfgScale: v)),
-              ),
-              const SizedBox(height: Space.lg),
-              DeskDropdown<int>(
-                label: 'Resolution',
-                value: s.sampling.width,
-                options: const [
-                  DeskOption(value: 512, label: '512 × 512'),
-                  DeskOption(value: 768, label: '768 × 768', detail: 'DEFAULT'),
-                  DeskOption(value: 1024, label: '1024 × 1024'),
-                ],
-                onChanged: (v) =>
-                    _rt.session.tuneSampling((p) => p.copyWith(width: v, height: v)),
-              ),
-              const SizedBox(height: Space.lg),
-              DeskRuler(
-                label: 'Batch size',
-                value: s.sampling.batchSize.toDouble(),
-                min: 1,
-                max: 8,
-                divisions: 7,
-                format: (v) => v.round().toString(),
-                onChanged: (v) => _rt.session
-                    .tuneSampling((p) => p.copyWith(batchSize: v.round())),
-              ),
-              const SizedBox(height: Space.lg),
-              DeskDropdown<String>(
-                label: 'Sampler',
-                value: s.sampling.sampler,
-                options: [
-                  for (final name in samplerNames)
-                    DeskOption(value: name, label: name),
-                ],
-                onChanged: (v) =>
-                    _rt.session.tuneSampling((p) => p.copyWith(sampler: v)),
-              ),
-              const SizedBox(height: Space.lg),
-              DeskDropdown<String>(
-                label: 'Scheduler',
-                value: s.sampling.scheduler,
-                options: [
-                  for (final name in schedulerNames)
-                    DeskOption(value: name, label: name),
-                ],
-                onChanged: (v) =>
-                    _rt.session.tuneSampling((p) => p.copyWith(scheduler: v)),
-              ),
-
-              // Denoise only means anything once there's a source image to
-              // denoise *from* - on a pure txt2img run it is ignored, so
-              // showing it would just be a control that does nothing.
-              if (s.hasSourceImage) ...[
-                const SizedBox(height: Space.lg),
-                DeskRuler(
-                  label: 'Denoise',
-                  value: s.sampling.denoise,
-                  min: 0,
-                  max: 1,
-                  format: (v) => v.toStringAsFixed(2),
-                  onChanged: (v) =>
-                      _rt.session.tuneSampling((p) => p.copyWith(denoise: v)),
+              Expanded(
+                child: Text(
+                  'Random seed',
+                  style: Type.label.copyWith(color: DeskTheme.of(context).ink),
                 ),
-              ],
-
-              // Mask settings likewise: they only apply to an inpaint run.
-              if (s.mode == GenerationMode.inpaint) ...[
-                const SizedBox(height: Space.lg),
-                DeskRuler(
-                  label: 'Mask blur',
-                  value: s.sampling.maskBlur.toDouble(),
-                  min: 0,
-                  max: 64,
-                  divisions: 64,
-                  format: (v) => '${v.round()} px',
-                  onChanged: (v) => _rt.session
-                      .tuneSampling((p) => p.copyWith(maskBlur: v.round())),
-                ),
-                const SizedBox(height: Space.lg),
-                DeskDropdown<MaskFill>(
-                  label: 'Masked content',
-                  value: s.sampling.maskFill,
-                  options: [
-                    for (final fill in MaskFill.values)
-                      DeskOption(value: fill, label: fill.label),
-                  ],
-                  onChanged: (v) =>
-                      _rt.session.tuneSampling((p) => p.copyWith(maskFill: v)),
-                ),
-              ],
-
-              const SizedBox(height: Space.lg),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Random seed',
-                      style: Type.label.copyWith(color: DeskTheme.of(context).ink),
-                    ),
-                  ),
-                  DeskToggle(
-                    value: s.sampling.isSeedRandom,
-                    onChanged: (random) => _rt.session.tuneSampling(
-                      (p) => random
-                          ? p.copyWith(clearSeed: true)
-                          : p.copyWith(seed: DateTime.now().millisecondsSinceEpoch % 4294967296),
-                    ),
-                  ),
-                ],
               ),
-              if (!s.sampling.isSeedRandom) ...[
-                const SizedBox(height: Space.md),
-                Text(
-                  'SEED ${s.sampling.seed}',
-                  style: Type.readout.copyWith(color: DeskTheme.of(context).inkFaint),
+              DeskToggle(
+                value: s.sampling.isSeedRandom,
+                onChanged: (random) => _rt.session.tuneSampling(
+                  (p) => random
+                      ? p.copyWith(clearSeed: true)
+                      : p.copyWith(
+                          seed:
+                              DateTime.now().millisecondsSinceEpoch %
+                              4294967296,
+                        ),
                 ),
-              ],
+              ),
             ],
           ),
-        ),
-      );
+          if (!s.sampling.isSeedRandom) ...[
+            const SizedBox(height: Space.md),
+            Text(
+              'SEED ${s.sampling.seed}',
+              style: Type.readout.copyWith(
+                color: DeskTheme.of(context).inkFaint,
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
 
   // ===== Sticky note toasts ===== //
 
@@ -1486,7 +1669,11 @@ class _FrontPageState extends State<FrontPage> {
             type: MaterialType.transparency,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 260),
-              child: StickyNote(message: message, isError: isError, onDismiss: dismiss),
+              child: StickyNote(
+                message: message,
+                isError: isError,
+                onDismiss: dismiss,
+              ),
             ),
           ),
         ),
@@ -1519,31 +1706,33 @@ class _FrontPageState extends State<FrontPage> {
             onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
             child: LayoutBuilder(
               builder: (context, box) => AnimatedSlide(
-              // Travel in fractions of the page, so the composer clears the
-              // keyboard without the layout above it changing size at all.
-              offset: Offset(0, -_keyboardSlide(context, box.maxHeight)),
-              duration: Motion.fade,
-              curve: Motion.ease,
-              child: AnimatedBuilder(
-              animation: _stores,
-              builder: (context, _) {
-                final engineState = _rt.engine.state;
-                if (engineState.active == EngineKind.comfy) {
-                  final workflows = _rt.engines.workflowsFor(engineState.endpoint);
-                  return AnimatedBuilder(
-                    animation: Listenable.merge([
-                      workflows.workflows,
-                      workflows.activeWorkflowId,
-                      workflows.activeDetected,
-                      workflows.activeError,
-                    ]),
-                    builder: (context, _) => _buildBody(context, workflows),
-                  );
-                }
-                return _buildBody(context, null);
-              },
-            ),
-            ),
+                // Travel in fractions of the page, so the composer clears the
+                // keyboard without the layout above it changing size at all.
+                offset: Offset(0, -_keyboardSlide(context, box.maxHeight)),
+                duration: Motion.fade,
+                curve: Motion.ease,
+                child: AnimatedBuilder(
+                  animation: _stores,
+                  builder: (context, _) {
+                    final engineState = _rt.engine.state;
+                    if (engineState.active == EngineKind.comfy) {
+                      final workflows = _rt.engines.workflowsFor(
+                        engineState.endpoint,
+                      );
+                      return AnimatedBuilder(
+                        animation: Listenable.merge([
+                          workflows.workflows,
+                          workflows.activeWorkflowId,
+                          workflows.activeDetected,
+                          workflows.activeError,
+                        ]),
+                        builder: (context, _) => _buildBody(context, workflows),
+                      );
+                    }
+                    return _buildBody(context, null);
+                  },
+                ),
+              ),
             ),
           ),
         ),
@@ -1582,11 +1771,12 @@ class _FrontPageState extends State<FrontPage> {
     final tools = run.isActive
         ? _trayTools(capabilities, session.mode)
         : viewingResult
-            ? _resultTools(capabilities, library)
-            : (_viewingInput && session.hasSourceImage)
-                ? _inputTools()
-                : _trayTools(capabilities, session.mode);
-    final ready = _isReady(engineState, workflows) && session.hasPrompt && !run.isActive;
+        ? _resultTools(capabilities, library)
+        : (_viewingInput && session.hasSourceImage)
+        ? _inputTools()
+        : _trayTools(capabilities, session.mode);
+    final ready =
+        _isReady(engineState, workflows) && session.hasPrompt && !run.isActive;
     final shelfEntries = _shelfEntries(run, library);
     final inputEntry = _inputEntry(context, engineState, session, workflows);
     final shelfVisible = shelfEntries.isNotEmpty || inputEntry != null;
@@ -1595,7 +1785,12 @@ class _FrontPageState extends State<FrontPage> {
       children: [
         Padding(
           key: const ValueKey('title'),
-          padding: const EdgeInsets.fromLTRB(Space.gutter, Space.md, Space.gutter, Space.sm),
+          padding: const EdgeInsets.fromLTRB(
+            Space.gutter,
+            Space.md,
+            Space.gutter,
+            Space.sm,
+          ),
           child: _titleRow(context, engineState, catalog, workflows),
         ),
 
@@ -1617,23 +1812,37 @@ class _FrontPageState extends State<FrontPage> {
                   child: Stack(
                     children: [
                       Positioned.fill(
-                          child: _mainDisplay(context, session, run, focused)),
+                        child: _mainDisplay(context, session, run, focused),
+                      ),
                       // On the canvas rather than in the tray: this is a
                       // gesture *about the picture*, and holding a button at
                       // the far edge while watching the middle of the image
                       // is an awkward reach.
-                      if (session.hasSourceImage && !run.isActive && focused != null)
+                      if (session.hasSourceImage &&
+                          !run.isActive &&
+                          focused != null)
                         Positioned(
                           right: _sheetInset,
                           // Above the shelf, not under it. Once the prints
                           // began floating on the canvas they landed on top
                           // of this, and a button you cannot press is worse
                           // than one that isn't there.
-                          bottom: _sheetInset +
+                          bottom:
+                              _sheetInset +
                               (shelfVisible ? PrintShelf.height : 0),
                           child: _CompareButton(
                             onHoldChanged: (held) =>
                                 setState(() => _comparing = held),
+                          ),
+                        ),
+                      if (!run.isActive &&
+                          (focused != null ||
+                              (_viewingInput && session.sourceImage != null)))
+                        Positioned(
+                          top: _sheetInset,
+                          right: _sheetInset,
+                          child: _FullscreenButton(
+                            onPressed: () => _openFullscreenViewer(library),
                           ),
                         ),
 
@@ -1663,9 +1872,10 @@ class _FrontPageState extends State<FrontPage> {
                                 if (run.isActive)
                                   Padding(
                                     padding: const EdgeInsets.only(
-                                        left: Space.sm,
-                                        right: Space.sm,
-                                        bottom: Space.sm),
+                                      left: Space.sm,
+                                      right: Space.sm,
+                                      bottom: Space.sm,
+                                    ),
                                     child: DreamBar(
                                       fraction: run.progress.fraction,
                                       caption: _progressCaption(run.progress),
@@ -1703,7 +1913,11 @@ class _FrontPageState extends State<FrontPage> {
         Padding(
           key: const ValueKey('composer'),
           padding: const EdgeInsets.fromLTRB(
-              Space.gutter, Space.md, Space.gutter, Space.md),
+            Space.gutter,
+            Space.md,
+            Space.gutter,
+            Space.md,
+          ),
           child: _promptBusy
               ? ThinkingSurface(
                   label: _statusText(engineState, run),
@@ -1739,10 +1953,16 @@ class _FrontPageState extends State<FrontPage> {
                             // clear, so the row stays quiet on an empty
                             // prompt.
                             if (session.prompt.trim().isNotEmpty)
-                              _labelAction(p, Icons.backspace_outlined,
-                                  () => _setPrompt('')),
-                            _labelAction(p, Icons.open_in_full_rounded,
-                                _openPromptEditor),
+                              _labelAction(
+                                p,
+                                Icons.backspace_outlined,
+                                () => _setPrompt(''),
+                              ),
+                            _labelAction(
+                              p,
+                              Icons.open_in_full_rounded,
+                              _openPromptEditor,
+                            ),
                           ],
                         ),
                       ),
@@ -1788,8 +2008,10 @@ class _FrontPageState extends State<FrontPage> {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: Space.sm, vertical: 2),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Space.sm,
+            vertical: 2,
+          ),
           child: Icon(icon, size: 14, color: p.inkMuted),
         ),
       );
@@ -1828,8 +2050,8 @@ class _FrontPageState extends State<FrontPage> {
             label: _selectorLabel(engineState, catalog, workflows),
             onTap: engineState.active == EngineKind.comfy
                 ? (workflows != null
-                    ? () => _openWorkflowsDrawer(workflows)
-                    : _openServerDrawer)
+                      ? () => _openWorkflowsDrawer(workflows)
+                      : _openServerDrawer)
                 : _openCheckpointDrawer,
           ),
         ),
@@ -1877,9 +2099,9 @@ class _FrontPageState extends State<FrontPage> {
   /// the previous prompt is recorded first, so taking someone else's is not
   /// a one-way door.
   Future<void> _openCivitai() async {
-    final pick = await Navigator.of(context).push<CivitaiPick>(
-      DeskPageRoute(builder: (_) => const CivitaiPage()),
-    );
+    final pick = await Navigator.of(
+      context,
+    ).push<CivitaiPick>(DeskPageRoute(builder: (_) => const CivitaiPage()));
     if (pick == null || !mounted) return;
 
     final current = _prompt.text.trim();
@@ -1888,9 +2110,11 @@ class _FrontPageState extends State<FrontPage> {
     if (pick.negativePrompt != null && pick.negativePrompt!.isNotEmpty) {
       _rt.session.setNegativePrompt(pick.negativePrompt!);
     }
-    _notify(pick.negativePrompt == null
-        ? 'Prompt taken from Civitai.'
-        : 'Prompt and negative prompt taken from Civitai.');
+    _notify(
+      pick.negativePrompt == null
+          ? 'Prompt taken from Civitai.'
+          : 'Prompt and negative prompt taken from Civitai.',
+    );
   }
 
   /// Engine identity and connection status, merged into one control instead
@@ -1898,12 +2122,15 @@ class _FrontPageState extends State<FrontPage> {
   /// which is also where you switch engines.
   Widget _engineBadge(BuildContext context, EngineState engineState) {
     final p = DeskTheme.of(context);
-    final color = _connecting ? DeskPalette.caution : _statusColor(engineState.status);
+    final color = _connecting
+        ? DeskPalette.caution
+        : _statusColor(engineState.status);
     return GestureDetector(
       onTap: _openServerDrawer,
       onLongPress: kDebugMode
-          ? () => Navigator.of(context)
-              .push(DeskPageRoute(builder: (_) => const DevHarness()))
+          ? () => Navigator.of(
+              context,
+            ).push(DeskPageRoute(builder: (_) => const DevHarness()))
           : null,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
@@ -1921,8 +2148,10 @@ class _FrontPageState extends State<FrontPage> {
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             const SizedBox(width: 6),
-            Text(engineState.active.label.toUpperCase(),
-                style: Type.micro.copyWith(color: p.paper)),
+            Text(
+              engineState.active.label.toUpperCase(),
+              style: Type.micro.copyWith(color: p.paper),
+            ),
           ],
         ),
       ),
@@ -1992,21 +2221,22 @@ class _FrontPageState extends State<FrontPage> {
           ? Stack(
               fit: StackFit.expand,
               children: [
-                Image.file(session.sourceImage!,
-                    fit: BoxFit.cover,
-                    cacheWidth: _thumbDecodeWidth,
-                    gaplessPlayback: true),
+                Image.file(
+                  session.sourceImage!,
+                  fit: BoxFit.cover,
+                  cacheWidth: _thumbDecodeWidth,
+                  gaplessPlayback: true,
+                ),
                 if (session.mask != null)
                   MaskOverlay(
-                      mask: session.mask!,
-                      colour: p.clay,
-                      fit: BoxFit.cover,
-                      decodeWidth: _thumbDecodeWidth),
+                    mask: session.mask!,
+                    colour: p.clay,
+                    fit: BoxFit.cover,
+                    decodeWidth: _thumbDecodeWidth,
+                  ),
               ],
             )
-          : Center(
-              child: Icon(Icons.add_rounded, size: 20, color: p.inkFaint),
-            ),
+          : Center(child: Icon(Icons.add_rounded, size: 20, color: p.inkFaint)),
     );
   }
 
@@ -2051,12 +2281,12 @@ class _FrontPageState extends State<FrontPage> {
     final (int index, String caption) = comparing
         ? (2, 'INPUT')
         : watchingRun
-            ? (0, 'GENERATING')
-            : focused != null
-                ? (1, 'RESULT')
-                : (_viewingInput && source != null)
-                    ? (2, 'INPUT')
-                    : (3, 'STAGE');
+        ? (0, 'GENERATING')
+        : focused != null
+        ? (1, 'RESULT')
+        : (_viewingInput && source != null)
+        ? (2, 'INPUT')
+        : (3, 'STAGE');
 
     return MountedSheet(
       caption: caption,
@@ -2071,69 +2301,80 @@ class _FrontPageState extends State<FrontPage> {
         maxScale: 8,
         clipBehavior: Clip.hardEdge,
         child: IndexedStack(
-        index: index,
-        sizing: StackFit.expand,
-        children: [
-          // Built only while a run is on, not merely when the stack is
-          // pointed elsewhere: an IndexedStack builds every child, so an
-          // ever-repeating wash would otherwise animate off-screen for the
-          // whole session.
-          //
-          // Generating wears the same drifting wash as a prompt being
-          // written: the machine is working and there is nothing yet to
-          // look at, which is the same state in both places. Frames fade in
-          // over it as they arrive rather than replacing it, so a server
-          // that sends no previews at all still has something honest on
-          // screen for the whole run instead of a blank sheet.
-          if (!run.isActive)
-            const SizedBox.shrink()
-          else
-          Stack(
-            fit: StackFit.expand,
-            children: [
-              DreamWash(energy: preview == null ? 0.55 : 0.85),
-              AnimatedOpacity(
-                duration: Motion.arrival,
-                opacity: preview == null ? 0 : 1,
-                child: preview == null
-                    ? const SizedBox.expand()
-                    : Image.memory(preview,
-                        fit: BoxFit.contain, gaplessPlayback: true),
+          index: index,
+          sizing: StackFit.expand,
+          children: [
+            // Built only while a run is on, not merely when the stack is
+            // pointed elsewhere: an IndexedStack builds every child, so an
+            // ever-repeating wash would otherwise animate off-screen for the
+            // whole session.
+            //
+            // Generating wears the same drifting wash as a prompt being
+            // written: the machine is working and there is nothing yet to
+            // look at, which is the same state in both places. Frames fade in
+            // over it as they arrive rather than replacing it, so a server
+            // that sends no previews at all still has something honest on
+            // screen for the whole run instead of a blank sheet.
+            if (!run.isActive)
+              const SizedBox.shrink()
+            else
+              Stack(
+                fit: StackFit.expand,
+                children: [
+                  DreamWash(energy: preview == null ? 0.55 : 0.85),
+                  AnimatedOpacity(
+                    duration: Motion.arrival,
+                    opacity: preview == null ? 0 : 1,
+                    child: preview == null
+                        ? const SizedBox.expand()
+                        : Image.memory(
+                            preview,
+                            fit: BoxFit.contain,
+                            gaplessPlayback: true,
+                          ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          focused != null
-              ? _preview(focused,
-                  fit: BoxFit.contain, decodeWidth: _stageDecodeWidth(context))
-              : const SizedBox.shrink(),
-          // Keyed on path so switching source images still swaps the decode,
-          // while merely switching *views* does not.
-          source != null
-              ? Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.file(source,
+            focused != null
+                ? _preview(
+                    focused,
+                    fit: BoxFit.contain,
+                    decodeWidth: _stageDecodeWidth(context),
+                  )
+                : const SizedBox.shrink(),
+            // Keyed on path so switching source images still swaps the decode,
+            // while merely switching *views* does not.
+            source != null
+                ? Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.file(
+                        source,
                         key: ValueKey(source.path),
                         fit: BoxFit.contain,
                         cacheWidth: _stageDecodeWidth(context),
-                        gaplessPlayback: true),
-                    // Not while comparing: the whole point of holding
-                    // compare is to see the input as it is, and a clay wash
-                    // over the very area being changed hides the difference
-                    // you are looking for.
-                    if (session.mask != null && !comparing)
-                      MaskOverlay(
+                        gaplessPlayback: true,
+                      ),
+                      // Not while comparing: the whole point of holding
+                      // compare is to see the input as it is, and a clay wash
+                      // over the very area being changed hides the difference
+                      // you are looking for.
+                      if (session.mask != null && !comparing)
+                        MaskOverlay(
                           mask: session.mask!,
                           colour: p.clay,
-                          decodeWidth: _stageDecodeWidth(context)),
-                  ],
-                )
-              : const SizedBox.shrink(),
-          Center(
-            child: Text('OUTPUTS WILL APPEAR HERE',
-                style: Type.micro.copyWith(color: p.inkFaint)),
-          ),
-        ],
+                          decodeWidth: _stageDecodeWidth(context),
+                        ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+            Center(
+              child: Text(
+                'OUTPUTS WILL APPEAR HERE',
+                style: Type.micro.copyWith(color: p.inkFaint),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -2170,9 +2411,16 @@ class _FrontPageState extends State<FrontPage> {
 
   // ===== Helpers ===== //
 
-  List<DeskTool> _trayTools(EngineCapabilities capabilities, GenerationMode mode) {
+  List<DeskTool> _trayTools(
+    EngineCapabilities capabilities,
+    GenerationMode mode,
+  ) {
     final tools = <DeskTool>[
-      DeskTool(icon: Icons.tune_rounded, name: 'Settings', onTap: _openSettingsDrawer),
+      DeskTool(
+        icon: Icons.tune_rounded,
+        name: 'Settings',
+        onTap: _openSettingsDrawer,
+      ),
     ];
     // Masking and extending need a picture to work on, and they need the
     // run to be one that would actually *use* them. A mask tool on a
@@ -2180,18 +2428,22 @@ class _FrontPageState extends State<FrontPage> {
     // worse than not offering it.
     if (_rt.session.state.hasSourceImage) {
       if (capabilities.masks && _supportsMask) {
-        tools.add(DeskTool(
-          icon: Icons.brush_rounded,
-          name: 'Mask',
-          onTap: _openMaskEditor,
-        ));
+        tools.add(
+          DeskTool(
+            icon: Icons.brush_rounded,
+            name: 'Mask',
+            onTap: _openMaskEditor,
+          ),
+        );
       }
       if (_supportsImageInput) {
-        tools.add(DeskTool(
-          icon: Icons.open_in_full_rounded,
-          name: 'Extend',
-          onTap: _openOutpaintEditor,
-        ));
+        tools.add(
+          DeskTool(
+            icon: Icons.open_in_full_rounded,
+            name: 'Extend',
+            onTap: _openOutpaintEditor,
+          ),
+        );
       }
     }
     return tools;
@@ -2201,70 +2453,87 @@ class _FrontPageState extends State<FrontPage> {
   /// because the generation controls must be reachable from every view -
   /// they were previously unreachable whenever an input image was selected.
   List<DeskTool> _inputTools() => [
-        DeskTool(
-          icon: Icons.close_rounded,
-          name: 'Close',
-          onTap: () => setState(() => _viewingId = null),
-        ),
-        DeskTool(icon: Icons.tune_rounded, name: 'Settings', onTap: _openSettingsDrawer),
-        if (_rt.engine.state.capabilities.masks && _supportsMask)
-          DeskTool(icon: Icons.brush_rounded, name: 'Mask', onTap: _openMaskEditor),
-        if (_supportsImageInput)
-          DeskTool(
-            icon: Icons.open_in_full_rounded,
-            name: 'Extend',
-            onTap: _openOutpaintEditor,
-          ),
-        if (_rt.session.state.mask != null)
-          DeskTool(
-            icon: Icons.layers_clear_rounded,
-            name: 'Clear mask',
-            onTap: () {
-              _rt.session.setMask(null);
-              _notify('Mask cleared.');
-            },
-          ),
-        DeskTool(
-          icon: Icons.crop_rounded,
-          name: 'Crop',
-          onTap: () => _openCropEditor(_rt.library.state),
-        ),
-        DeskTool(
-          icon: Icons.photo_size_select_large_rounded,
-          name: 'Resize',
-          onTap: () => _openResizeDrawer(_rt.library.state),
-        ),
-        DeskTool(
-          icon: Icons.info_outline_rounded,
-          name: 'Details',
-          onTap: () => _openMetadataDrawer(_rt.library.state),
-        ),
-        DeskTool(
-          icon: Icons.swap_horiz_rounded,
-          name: 'Replace',
-          onTap: _pickSourceImage,
-        ),
-        DeskTool(
-          icon: Icons.delete_outline_rounded,
-          name: 'Clear',
-          onTap: () {
-            _rt.session.clearCanvas();
-            setState(() => _viewingId = null);
-          },
-        ),
-      ];
+    DeskTool(
+      icon: Icons.close_rounded,
+      name: 'Close',
+      onTap: () => setState(() => _viewingId = null),
+    ),
+    DeskTool(
+      icon: Icons.tune_rounded,
+      name: 'Settings',
+      onTap: _openSettingsDrawer,
+    ),
+    if (_rt.engine.state.capabilities.masks && _supportsMask)
+      DeskTool(icon: Icons.brush_rounded, name: 'Mask', onTap: _openMaskEditor),
+    if (_supportsImageInput)
+      DeskTool(
+        icon: Icons.open_in_full_rounded,
+        name: 'Extend',
+        onTap: _openOutpaintEditor,
+      ),
+    if (_rt.session.state.mask != null)
+      DeskTool(
+        icon: Icons.layers_clear_rounded,
+        name: 'Clear mask',
+        onTap: () {
+          _rt.session.setMask(null);
+          _notify('Mask cleared.');
+        },
+      ),
+    DeskTool(
+      icon: Icons.crop_rounded,
+      name: 'Crop',
+      onTap: () => _openCropEditor(_rt.library.state),
+    ),
+    DeskTool(
+      icon: Icons.photo_size_select_large_rounded,
+      name: 'Resize',
+      onTap: () => _openResizeDrawer(_rt.library.state),
+    ),
+    if (_rt.engine.state.capabilities.upscale)
+      DeskTool(
+        icon: Icons.zoom_in_rounded,
+        name: 'Upscale',
+        onTap: () => _openUpscaleDrawer(_rt.library.state),
+      ),
+    DeskTool(
+      icon: Icons.info_outline_rounded,
+      name: 'Details',
+      onTap: () => _openMetadataDrawer(_rt.library.state),
+    ),
+    DeskTool(
+      icon: Icons.swap_horiz_rounded,
+      name: 'Replace',
+      onTap: _pickSourceImage,
+    ),
+    DeskTool(
+      icon: Icons.delete_outline_rounded,
+      name: 'Clear',
+      onTap: () {
+        _rt.session.clearCanvas();
+        setState(() => _viewingId = null);
+      },
+    ),
+  ];
 
   /// The tray while a finished result is the main display: what you can do
   /// to that specific print. Save/Upscale/Delete are real; Edit/Crop are
   /// listed because they belong here but aren't built - tapping says so.
-  List<DeskTool> _resultTools(EngineCapabilities capabilities, LibraryState library) {
+  List<DeskTool> _resultTools(
+    EngineCapabilities capabilities,
+    LibraryState library,
+  ) {
     return [
       DeskTool(
         icon: Icons.close_rounded,
         name: 'Close',
         onTap: () => setState(() => _viewingId = null),
       ),
-      DeskTool(icon: Icons.download_rounded, name: 'Save', onTap: () => _saveFocused(library)),
+      DeskTool(
+        icon: Icons.download_rounded,
+        name: 'Save',
+        onTap: () => _saveFocused(library),
+      ),
       // Sending a result to the input is meaningless for a txt2img run -
       // the graph has nowhere to put it.
       if (_supportsImageInput)
@@ -2317,19 +2586,28 @@ class _FrontPageState extends State<FrontPage> {
       final preview = run.progress.preview;
       final started = run.startedAt?.microsecondsSinceEpoch ?? 0;
       for (var i = 0; i < batch; i++) {
-        entries.add(PrintEntry(
-          // The first slot is the one that carries the live preview, so it
-          // is the one the stage can be pointed back at.
-          id: i == 0 ? _kRunId : 'pending-$started-$i',
-          image: (i == 0 && preview != null)
-              ? Image.memory(preview, fit: BoxFit.cover, gaplessPlayback: true)
-              : const _ShimmerPlaceholder(),
-        ));
+        entries.add(
+          PrintEntry(
+            // The first slot is the one that carries the live preview, so it
+            // is the one the stage can be pointed back at.
+            id: i == 0 ? _kRunId : 'pending-$started-$i',
+            image: (i == 0 && preview != null)
+                ? Image.memory(
+                    preview,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                  )
+                : const _ShimmerPlaceholder(),
+          ),
+        );
       }
     }
     entries.addAll([
       for (final image in library.images)
-        PrintEntry(id: image.id, image: _preview(image, decodeWidth: _thumbDecodeWidth)),
+        PrintEntry(
+          id: image.id,
+          image: _preview(image, decodeWidth: _thumbDecodeWidth),
+        ),
     ]);
     return entries;
   }
@@ -2359,10 +2637,11 @@ class _FrontPageState extends State<FrontPage> {
   }
 
   Color _statusColor(ConnectionStatus status) => switch (status) {
-        ConnectionStatus.connected => DeskPalette.good,
-        ConnectionStatus.unreachable => DeskPalette.alert,
-        ConnectionStatus.connecting || ConnectionStatus.unknown => DeskPalette.caution,
-      };
+    ConnectionStatus.connected => DeskPalette.good,
+    ConnectionStatus.unreachable => DeskPalette.alert,
+    ConnectionStatus.connecting ||
+    ConnectionStatus.unknown => DeskPalette.caution,
+  };
 
   String _statusText(EngineState engineState, RunState run) {
     if (run.isActive) {
@@ -2402,20 +2681,19 @@ class _FrontPageState extends State<FrontPage> {
     GeneratedImage image, {
     BoxFit fit = BoxFit.cover,
     int? decodeWidth,
-  }) =>
-      image.isDataUrl
-          ? Image.memory(
-              base64Decode(image.url.substring(image.url.indexOf(',') + 1)),
-              fit: fit,
-              cacheWidth: decodeWidth,
-              gaplessPlayback: true,
-            )
-          : Image.network(
-              image.url,
-              fit: fit,
-              cacheWidth: decodeWidth,
-              gaplessPlayback: true,
-            );
+  }) => image.isDataUrl
+      ? Image.memory(
+          base64Decode(image.url.substring(image.url.indexOf(',') + 1)),
+          fit: fit,
+          cacheWidth: decodeWidth,
+          gaplessPlayback: true,
+        )
+      : Image.network(
+          image.url,
+          fit: fit,
+          cacheWidth: decodeWidth,
+          gaplessPlayback: true,
+        );
 }
 
 /// A flat, hard-edged "something is happening" sweep for an empty print -
@@ -2453,7 +2731,10 @@ class _ShimmerPlaceholderState extends State<_ShimmerPlaceholder>
       child: AnimatedBuilder(
         animation: _c,
         builder: (context, _) => CustomPaint(
-          painter: _ShimmerPainter(phase: _c.value, stripe: p.ink.withValues(alpha: 0.07)),
+          painter: _ShimmerPainter(
+            phase: _c.value,
+            stripe: p.ink.withValues(alpha: 0.07),
+          ),
           child: const SizedBox.expand(),
         ),
       ),
@@ -2474,8 +2755,16 @@ class _ShimmerPainter extends CustomPainter {
       ..strokeWidth = 7;
     const spacing = 16.0;
     final travel = phase * spacing * 2;
-    for (var x = -size.height - travel; x < size.width + size.height; x += spacing) {
-      canvas.drawLine(Offset(x, size.height), Offset(x + size.height, 0), paint);
+    for (
+      var x = -size.height - travel;
+      x < size.width + size.height;
+      x += spacing
+    ) {
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        paint,
+      );
     }
   }
 
@@ -2490,7 +2779,10 @@ class _EngineDrawerContent extends StatefulWidget {
   final EngineState engineState;
   final void Function(EngineKind kind, EngineEndpoint endpoint) onConnect;
 
-  const _EngineDrawerContent({required this.engineState, required this.onConnect});
+  const _EngineDrawerContent({
+    required this.engineState,
+    required this.onConnect,
+  });
 
   @override
   State<_EngineDrawerContent> createState() => _EngineDrawerContentState();
@@ -2535,7 +2827,8 @@ class _EngineDrawerContentState extends State<_EngineDrawerContent> {
           label: 'Engine',
           value: _kind,
           options: [
-            for (final kind in EngineKind.values) DeskOption(value: kind, label: kind.label),
+            for (final kind in EngineKind.values)
+              DeskOption(value: kind, label: kind.label),
           ],
           onChanged: _switchKind,
         ),
@@ -2543,7 +2836,10 @@ class _EngineDrawerContentState extends State<_EngineDrawerContent> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(flex: 3, child: DeskField(label: 'Host', controller: _host)),
+            Expanded(
+              flex: 3,
+              child: DeskField(label: 'Host', controller: _host),
+            ),
             const SizedBox(width: Space.md),
             Expanded(
               child: DeskField(
@@ -2647,7 +2943,10 @@ class _CheckpointRow extends StatelessWidget {
         height: 52,
         decoration: BoxDecoration(
           border: Border(
-            bottom: BorderSide(color: p.ink.withValues(alpha: 0.2), width: Stroke.hairline),
+            bottom: BorderSide(
+              color: p.ink.withValues(alpha: 0.2),
+              width: Stroke.hairline,
+            ),
           ),
         ),
         child: Row(
@@ -2670,8 +2969,10 @@ class _CheckpointRow extends StatelessWidget {
               ),
             ),
             if (checkpoint.modules.isNotEmpty) ...[
-              Text('+${checkpoint.modules.length} MOD',
-                  style: Type.micro.copyWith(color: p.inkFaint)),
+              Text(
+                '+${checkpoint.modules.length} MOD',
+                style: Type.micro.copyWith(color: p.inkFaint),
+              ),
               const SizedBox(width: Space.md),
             ],
           ],
@@ -2704,12 +3005,19 @@ class _WorkflowRow extends StatelessWidget {
         height: 52,
         decoration: BoxDecoration(
           border: Border(
-            bottom: BorderSide(color: p.ink.withValues(alpha: 0.2), width: Stroke.hairline),
+            bottom: BorderSide(
+              color: p.ink.withValues(alpha: 0.2),
+              width: Stroke.hairline,
+            ),
           ),
         ),
         child: Row(
           children: [
-            Container(width: 3, height: double.infinity, color: selected ? p.clay : Colors.transparent),
+            Container(
+              width: 3,
+              height: double.infinity,
+              color: selected ? p.clay : Colors.transparent,
+            ),
             const SizedBox(width: Space.md),
             Expanded(
               child: Column(
@@ -2739,7 +3047,11 @@ class _WorkflowRow extends StatelessWidget {
               child: SizedBox(
                 width: Space.touch,
                 height: Space.touch,
-                child: Icon(Icons.more_vert_rounded, size: 18, color: p.inkMuted),
+                child: Icon(
+                  Icons.more_vert_rounded,
+                  size: 18,
+                  color: p.inkMuted,
+                ),
               ),
             ),
           ],
@@ -2794,49 +3106,57 @@ class _ImportWorkflowSheetState extends State<_ImportWorkflowSheet> {
             backgroundColor: Colors.transparent,
             body: SafeArea(
               top: false,
-              child: Column(children: [
-                DeskPageHeader(
-                  title: 'Import workflow',
-                  onClose: () => Navigator.of(context).pop(),
-                ),
-                Expanded(
-                  child: Padding(
-                padding: const EdgeInsets.all(Space.gutter),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: Space.xl),
-                    DeskField(label: 'Name', controller: _name),
-                    const SizedBox(height: Space.lg),
-                    DeskDropdown<ComfyWorkflowType>(
-                      label: 'Type',
-                      value: _type,
-                      options: [
-                        for (final t in ComfyWorkflowType.values)
-                          DeskOption(value: t, label: t.displayName),
-                      ],
-                      onChanged: (t) => setState(() => _type = t),
-                    ),
-                    const SizedBox(height: Space.lg),
-                    Text(_type.description, style: Type.body.copyWith(color: p.inkFaint)),
-                    const Spacer(),
-                    DeskButton(
-                      label: 'Import',
-                      icon: Icons.download_rounded,
-                      kind: DeskButtonKind.primary,
-                      expand: true,
-                      onPressed: () {
-                        final name = _name.text.trim();
-                        Navigator.of(context).pop(
-                          _ImportChoice(name.isEmpty ? widget.defaultName : name, _type),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+              child: Column(
+                children: [
+                  DeskPageHeader(
+                    title: 'Import workflow',
+                    onClose: () => Navigator.of(context).pop(),
                   ),
-                ),
-              ]),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(Space.gutter),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: Space.xl),
+                          DeskField(label: 'Name', controller: _name),
+                          const SizedBox(height: Space.lg),
+                          DeskDropdown<ComfyWorkflowType>(
+                            label: 'Type',
+                            value: _type,
+                            options: [
+                              for (final t in ComfyWorkflowType.values)
+                                DeskOption(value: t, label: t.displayName),
+                            ],
+                            onChanged: (t) => setState(() => _type = t),
+                          ),
+                          const SizedBox(height: Space.lg),
+                          Text(
+                            _type.description,
+                            style: Type.body.copyWith(color: p.inkFaint),
+                          ),
+                          const Spacer(),
+                          DeskButton(
+                            label: 'Import',
+                            icon: Icons.download_rounded,
+                            kind: DeskButtonKind.primary,
+                            expand: true,
+                            onPressed: () {
+                              final name = _name.text.trim();
+                              Navigator.of(context).pop(
+                                _ImportChoice(
+                                  name.isEmpty ? widget.defaultName : name,
+                                  _type,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -2844,7 +3164,6 @@ class _ImportWorkflowSheetState extends State<_ImportWorkflowSheet> {
     );
   }
 }
-
 
 /// Shows a black/white mask over the picture it belongs to, in clay.
 ///
@@ -2878,19 +3197,126 @@ class MaskOverlay extends StatelessWidget {
         opacity: 0.45,
         child: ColorFiltered(
           colorFilter: ColorFilter.matrix(<double>[
-            0, 0, 0, 0, (colour.r * 255).toDouble(),
-            0, 0, 0, 0, (colour.g * 255).toDouble(),
-            0, 0, 0, 0, (colour.b * 255).toDouble(),
-            0.3333, 0.3333, 0.3333, 0, 0,
+            0,
+            0,
+            0,
+            0,
+            (colour.r * 255).toDouble(),
+            0,
+            0,
+            0,
+            0,
+            (colour.g * 255).toDouble(),
+            0,
+            0,
+            0,
+            0,
+            (colour.b * 255).toDouble(),
+            0.3333,
+            0.3333,
+            0.3333,
+            0,
+            0,
           ]),
-          child: Image.memory(mask,
-              fit: fit, cacheWidth: decodeWidth, gaplessPlayback: true),
+          child: Image.memory(
+            mask,
+            fit: fit,
+            cacheWidth: decodeWidth,
+            gaplessPlayback: true,
+          ),
         ),
       ),
     );
   }
 }
 
+class _FullscreenButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final IconData icon;
+  final String tooltip;
+
+  const _FullscreenButton({
+    required this.onPressed,
+    this.icon = Icons.fullscreen_rounded,
+    this.tooltip = 'Fullscreen',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = DeskTheme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: p.paper,
+        borderRadius: BorderRadius.circular(Corner.control),
+        border: Border.all(color: p.ink, width: Stroke.standard),
+        boxShadow: Elevation.raised.shadows(p.ink),
+      ),
+      child: IconButton(
+        tooltip: tooltip,
+        icon: Icon(icon, color: p.ink),
+        onPressed: onPressed,
+      ),
+    );
+  }
+}
+
+class _FullscreenImagePage extends StatefulWidget {
+  final Uint8List image;
+  final Uint8List? inputImage;
+
+  const _FullscreenImagePage({required this.image, this.inputImage});
+
+  @override
+  State<_FullscreenImagePage> createState() => _FullscreenImagePageState();
+}
+
+class _FullscreenImagePageState extends State<_FullscreenImagePage> {
+  bool _comparing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final input = widget.inputImage;
+    final padding = MediaQuery.paddingOf(context);
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          InteractiveViewer(
+            minScale: 1,
+            maxScale: 8,
+            clipBehavior: Clip.hardEdge,
+            child: Image.memory(
+              _comparing && input != null ? input : widget.image,
+              fit: BoxFit.contain,
+              gaplessPlayback: true,
+            ),
+          ),
+          Positioned(
+            top: padding.top + Space.sm,
+            left: Space.md,
+            child: _FullscreenButton(
+              icon: Icons.close_rounded,
+              tooltip: 'Close fullscreen view',
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          if (input != null)
+            Positioned(
+              bottom: padding.bottom + Space.md,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: _CompareButton(
+                  onHoldChanged: (held) => setState(() => _comparing = held),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 /// Hold to see the input, release to go back.
 ///
@@ -2931,16 +3357,23 @@ class _CompareButtonState extends State<_CompareButton> {
           color: _held ? p.clay : p.paper,
           borderRadius: BorderRadius.circular(Corner.control),
           border: Border.all(color: p.ink, width: Stroke.standard),
-          boxShadow: (_held ? Elevation.pressed : Elevation.raised).shadows(p.ink),
+          boxShadow: (_held ? Elevation.pressed : Elevation.raised).shadows(
+            p.ink,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.compare_rounded,
-                size: 16, color: _held ? p.paper : p.ink),
+            Icon(
+              Icons.compare_rounded,
+              size: 16,
+              color: _held ? p.paper : p.ink,
+            ),
             const SizedBox(width: Space.sm),
-            Text(_held ? 'INPUT' : 'HOLD',
-                style: Type.micro.copyWith(color: _held ? p.paper : p.inkMuted)),
+            Text(
+              _held ? 'INPUT' : 'HOLD',
+              style: Type.micro.copyWith(color: _held ? p.paper : p.inkMuted),
+            ),
           ],
         ),
       ),
@@ -2949,7 +3382,6 @@ class _CompareButtonState extends State<_CompareButton> {
 }
 
 enum _PromptTask { generate, describe }
-
 
 /// The expanded prompt editor. Its own page rather than a drawer: a drawer
 /// caps at 88% of the screen and the keyboard would then own most of what is
@@ -2964,8 +3396,9 @@ class _PromptEditorPage extends StatefulWidget {
 }
 
 class _PromptEditorPageState extends State<_PromptEditorPage> {
-  late final TextEditingController _controller =
-      TextEditingController(text: widget.initial);
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initial,
+  );
 
   @override
   void dispose() {
@@ -3005,8 +3438,10 @@ class _PromptEditorPageState extends State<_PromptEditorPage> {
                         decoration: BoxDecoration(
                           color: p.paper,
                           borderRadius: BorderRadius.circular(Corner.control),
-                          border:
-                              Border.all(color: p.ink, width: Stroke.standard),
+                          border: Border.all(
+                            color: p.ink,
+                            width: Stroke.standard,
+                          ),
                           boxShadow: Elevation.raised.shadows(p.ink),
                         ),
                         padding: const EdgeInsets.all(Space.lg),
@@ -3030,13 +3465,19 @@ class _PromptEditorPageState extends State<_PromptEditorPage> {
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
-                        Space.gutter, 0, Space.gutter, Space.md),
+                      Space.gutter,
+                      0,
+                      Space.gutter,
+                      Space.md,
+                    ),
                     child: ValueListenableBuilder<TextEditingValue>(
                       valueListenable: _controller,
                       builder: (context, value, _) => Row(
                         children: [
-                          Text('${value.text.trim().length} CHARACTERS',
-                              style: Type.micro.copyWith(color: p.inkFaint)),
+                          Text(
+                            '${value.text.trim().length} CHARACTERS',
+                            style: Type.micro.copyWith(color: p.inkFaint),
+                          ),
                           const Spacer(),
                           DeskButton(
                             label: 'Clear',

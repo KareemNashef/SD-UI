@@ -9,6 +9,7 @@ import 'package:sd_companion/data/engines/forge/forge_engine.dart';
 import 'package:sd_companion/domain/engine/engine_endpoint.dart';
 import 'package:sd_companion/domain/engine/engine_kind.dart';
 import 'package:sd_companion/domain/engine/image_engine.dart';
+import 'package:sd_companion/data/persistence/preferences.dart';
 
 /// Keeps one live [ImageEngine] per [EngineKind], rebuilt when its address
 /// changes.
@@ -26,6 +27,7 @@ import 'package:sd_companion/domain/engine/image_engine.dart';
 class EngineRegistry {
   /// Injected so a test can hand back a stub without a live server.
   final ImageEngine Function(EngineEndpoint endpoint)? engineFactory;
+  final Preferences? preferences;
 
   /// One workflow service per ComfyUI endpoint. Workflows are per-server
   /// (saved under the endpoint id), so sharing one across two servers would
@@ -38,7 +40,7 @@ class EngineRegistry {
 
   final Map<String, ImageEngine> _engines = {};
 
-  EngineRegistry({this.engineFactory});
+  EngineRegistry({this.engineFactory, this.preferences});
 
   /// The engine for [endpoint], created on first use and reused after.
   ImageEngine of(EngineEndpoint endpoint) =>
@@ -62,6 +64,7 @@ class EngineRegistry {
       EngineKind.comfy => ComfyEngine(
           endpoint: endpoint,
           workflows: workflowsFor(endpoint),
+          preferences: preferences,
         ),
     };
   }
