@@ -69,9 +69,9 @@ class ComfyEngine
     ComfyProgressService? progressService,
     http.Client? client,
     this.preferences,
-  })  : progressService = progressService ?? ComfyProgressService(),
-        _client = client ?? http.Client(),
-        _ownsClient = client == null;
+  }) : progressService = progressService ?? ComfyProgressService(),
+       _client = client ?? http.Client(),
+       _ownsClient = client == null;
 
   @override
   EngineKind get kind => EngineKind.comfy;
@@ -117,18 +117,19 @@ class ComfyEngine
 
   @override
   Future<Result<void>> cancel() => guard(() async {
-        await _client.post(endpoint.http('/interrupt'));
-      });
+    await _client.post(endpoint.http('/interrupt'));
+  });
 
   @override
   Future<Result<Uint8List>> fetchImageBytes(String url) => guard(() async {
-        final response =
-            await _client.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
-        if (response.statusCode != 200) {
-          throw ServerError('Could not fetch image: HTTP ${response.statusCode}');
-        }
-        return response.bodyBytes;
-      });
+    final response = await _client
+        .get(Uri.parse(url))
+        .timeout(const Duration(seconds: 30));
+    if (response.statusCode != 200) {
+      throw ServerError('Could not fetch image: HTTP ${response.statusCode}');
+    }
+    return response.bodyBytes;
+  });
 
   @override
   Future<void> dispose() async {
@@ -181,7 +182,8 @@ class ComfyEngine
           ? _embedMaskAsAlpha(spec.sourceImage!, spec.mask!)
           : spec.sourceImage!;
       final uploaded = await _uploadImage(uploadBytes, primaryImage.node.id);
-      overrides['${primaryImage.node.id}:${primaryImage.input.name}'] = uploaded;
+      overrides['${primaryImage.node.id}:${primaryImage.input.name}'] =
+          uploaded;
     }
 
     for (final extraImage in detected.additionalImages) {
@@ -203,7 +205,8 @@ class ComfyEngine
     // override (not persisted to the saved workflow) whenever the widget is
     // flagged randomize, so every such generation is actually novel.
     for (final widget in detected.samplerSettings) {
-      if (widget.controlAfterGenerateSlotIndex == null || !widget.isRandomized) {
+      if (widget.controlAfterGenerateSlotIndex == null ||
+          !widget.isRandomized) {
         continue;
       }
       overrides['${widget.node.id}:${widget.input.name}'] = _randomSeedValue();
@@ -232,9 +235,11 @@ class ComfyEngine
     // socket ever registered a different id, the server sends them into a
     // black hole and it looks exactly like previews being switched off - so
     // the pairing is logged on every run.
-    trace('preview',
-        'queued promptId=$promptId with clientId=$clientId '
-        '(socket uses ${progressService.ensureClientId()})');
+    trace(
+      'preview',
+      'queued promptId=$promptId with clientId=$clientId '
+          '(socket uses ${progressService.ensureClientId()})',
+    );
 
     progressService.beginTracking(promptId);
     try {
@@ -247,7 +252,9 @@ class ComfyEngine
         workflowId: record.id,
       );
       if (images.isEmpty) {
-        throw const ServerError('ComfyUI finished but returned no image outputs');
+        throw const ServerError(
+          'ComfyUI finished but returned no image outputs',
+        );
       }
       return images;
     } finally {
@@ -275,32 +282,22 @@ class ComfyEngine
     String jsonText, {
     String? name,
   }) => guard(() async {
-        final doc = ComfyWorkflowDocument.parse(jsonText);
-        final validation = ComfyWorkflowValidation.of(doc);
-        if (!validation.isValid) {
-          throw ValidationError(validation.blockingIssues.first.message);
-        }
-        // API-format JSON has no node metadata to analyse or override. It is
-        // intentionally rejected until the Workflow Viewer can let the user
-        // wire its input/output/settings explicitly.
-        if (doc.isApiFormat) {
-          // TODO: Add Workflow Viewer support for API-format workflows and
-          // manual input/output/settings mapping.
-          throw const ValidationError(
-            'This workflow format cannot be mapped automatically yet. '
-            'Workflow Viewer support is planned.',
-          );
-        }
-        _upscaleWorkflowTemplate = doc;
-        _upscaleWorkflowName = name;
-        final prefs = preferences;
-        if (prefs != null) {
-          await prefs.setString(
-            _upscaleWorkflowPreferenceKey,
-            jsonEncode({'name': name, 'workflow': doc.raw}),
-          );
-        }
-      });
+    final doc = ComfyWorkflowDocument.parse(jsonText);
+    final normalized = doc.isApiFormat ? doc.toEditorFormat() : doc;
+    final validation = ComfyWorkflowValidation.of(normalized);
+    if (!validation.isValid) {
+      throw ValidationError(validation.blockingIssues.first.message);
+    }
+    _upscaleWorkflowTemplate = normalized;
+    _upscaleWorkflowName = name;
+    final prefs = preferences;
+    if (prefs != null) {
+      await prefs.setString(
+        _upscaleWorkflowPreferenceKey,
+        jsonEncode({'name': name, 'workflow': normalized.raw}),
+      );
+    }
+  });
 
   String get _upscaleWorkflowPreferenceKey =>
       '$_kUpscaleWorkflowPreference${endpoint.id}';
@@ -355,8 +352,7 @@ class ComfyEngine
     required Uint8List image,
     required int targetResolution,
     void Function(RunProgress progress)? onProgress,
-  }) =>
-      guard(() => _upscale(image, targetResolution, onProgress));
+  }) => guard(() => _upscale(image, targetResolution, onProgress));
 
   Future<String> _upscale(
     Uint8List imageBytes,
@@ -370,15 +366,16 @@ class ComfyEngine
     final clientId = progressService.ensureClientId();
     await progressService.connect(endpoint, force: true);
 
-    final uploadedFilename = await _uploadImage(imageBytes, mapping.imageNode.id);
+    final uploadedFilename = await _uploadImage(
+      imageBytes,
+      mapping.imageNode.id,
+    );
     final overrides = <String, dynamic>{
       '${mapping.imageNode.id}:${mapping.imageInput.name}': uploadedFilename,
     };
     overrides['${mapping.resolution.$1.id}:${mapping.resolution.$2.name}'] =
         resolution;
-    final conversion = await _convert(doc, schemaProvider, {
-      ...overrides,
-    });
+    final conversion = await _convert(doc, schemaProvider, {...overrides});
 
     final promptId = await _queuePrompt(conversion.apiGraph, clientId);
     progressService.beginTracking(promptId);
@@ -516,64 +513,67 @@ class ComfyEngine
   ComfyWorkflowDocument? _promptGenerateTemplate;
 
   @override
-  Future<Result<String>> generatePrompt({required int intensity}) =>
-      guard(() async {
-        final doc = await _loadBundled(
-          _kPromptGenerateWorkflowAsset,
-          _promptGenerateTemplate,
-          (d) => _promptGenerateTemplate = d,
+  Future<Result<String>> generatePrompt({required int intensity}) => guard(
+    () async {
+      final doc = await _loadBundled(
+        _kPromptGenerateWorkflowAsset,
+        _promptGenerateTemplate,
+        (d) => _promptGenerateTemplate = d,
+      );
+
+      final generator = _findNode(doc, _kLmStudioNode);
+      if (generator == null) {
+        throw const ValidationError(
+          'Bundled prompt-generate workflow is missing its generator node',
         );
+      }
+      final schemaProvider = HttpComfyNodeSchemaProvider(endpoint);
+      final schema = await schemaProvider.schemaFor(generator.type);
+      _requireLmStudio(schema);
 
-        final generator = _findNode(doc, _kLmStudioNode);
-        if (generator == null) {
-          throw const ValidationError(
-            'Bundled prompt-generate workflow is missing its generator node',
-          );
-        }
-        final schemaProvider = HttpComfyNodeSchemaProvider(endpoint);
-        final schema = await schemaProvider.schemaFor(generator.type);
-        _requireLmStudio(schema);
+      final overrides = _freshSeed(schema, generator);
 
-        final overrides = _freshSeed(schema, generator);
-
-        // The one thing this button actually sets. The workflow's system
-        // prompt reads the last number in the user prompt as an intensity
-        // from 1 to 10, so that number - not the sentence around it - is
-        // the whole interface between the app and what gets written.
-        final userPrompt = schema.inputByName('user_prompt');
-        if (userPrompt != null) {
-          final stored = '${widgetValueOf(schema, generator, userPrompt) ?? ''}';
-          overrides['${generator.id}:user_prompt'] =
-              withIntensity(stored, intensity);
-        }
-        return _runTextWorkflow(doc, schemaProvider, overrides);
-      });
+      // The one thing this button actually sets. The workflow's system
+      // prompt reads the last number in the user prompt as an intensity
+      // from 1 to 10, so that number - not the sentence around it - is
+      // the whole interface between the app and what gets written.
+      final userPrompt = schema.inputByName('user_prompt');
+      if (userPrompt != null) {
+        final stored = '${widgetValueOf(schema, generator, userPrompt) ?? ''}';
+        overrides['${generator.id}:user_prompt'] = withIntensity(
+          stored,
+          intensity,
+        );
+      }
+      return _runTextWorkflow(doc, schemaProvider, overrides);
+    },
+  );
 
   @override
   Future<Result<String>> describeImage(Uint8List image) => guard(() async {
-        final doc = await _loadBundled(
-          _kImg2PromptWorkflowAsset,
-          _img2PromptTemplate,
-          (d) => _img2PromptTemplate = d,
-        );
+    final doc = await _loadBundled(
+      _kImg2PromptWorkflowAsset,
+      _img2PromptTemplate,
+      (d) => _img2PromptTemplate = d,
+    );
 
-        final loadImageNode = _findNode(doc, 'LoadImage');
-        final captionNode = _findNode(doc, _kLmStudioNode);
-        if (loadImageNode == null || captionNode == null) {
-          throw const ValidationError(
-            'Bundled img2prompt workflow is missing required nodes',
-          );
-        }
-        final schemaProvider = HttpComfyNodeSchemaProvider(endpoint);
-        final schema = await schemaProvider.schemaFor(captionNode.type);
-        _requireLmStudio(schema);
+    final loadImageNode = _findNode(doc, 'LoadImage');
+    final captionNode = _findNode(doc, _kLmStudioNode);
+    if (loadImageNode == null || captionNode == null) {
+      throw const ValidationError(
+        'Bundled img2prompt workflow is missing required nodes',
+      );
+    }
+    final schemaProvider = HttpComfyNodeSchemaProvider(endpoint);
+    final schema = await schemaProvider.schemaFor(captionNode.type);
+    _requireLmStudio(schema);
 
-        final uploadedFilename = await _uploadImage(image, loadImageNode.id);
-        return _runTextWorkflow(doc, schemaProvider, {
-          '${loadImageNode.id}:image': uploadedFilename,
-          ..._freshSeed(schema, captionNode),
-        });
-      });
+    final uploadedFilename = await _uploadImage(image, loadImageNode.id);
+    return _runTextWorkflow(doc, schemaProvider, {
+      '${loadImageNode.id}:image': uploadedFilename,
+      ..._freshSeed(schema, captionNode),
+    });
+  });
 
   void _requireLmStudio(ComfyNodeSchema schema) {
     if (schema.known) return;
@@ -586,10 +586,12 @@ class ComfyEngine
   /// ComfyUI caches node outputs by their resolved inputs, so the workflow's
   /// stored seed would hand back the same sentence forever. Same reasoning
   /// as the sampler seed in `generate`.
-  Map<String, dynamic> _freshSeed(ComfyNodeSchema schema, ComfyEditorNode node) =>
-      schema.inputByName('seed') == null
-          ? <String, dynamic>{}
-          : <String, dynamic>{'${node.id}:seed': _randomSeedValue()};
+  Map<String, dynamic> _freshSeed(
+    ComfyNodeSchema schema,
+    ComfyEditorNode node,
+  ) => schema.inputByName('seed') == null
+      ? <String, dynamic>{}
+      : <String, dynamic>{'${node.id}:seed': _randomSeedValue()};
 
   /// Shared queue/history plumbing for the two text-output workflows above.
   Future<String> _runTextWorkflow(
@@ -632,8 +634,9 @@ class ComfyEngine
     Map<String, dynamic> overrides,
   ) async {
     try {
-      return await ComfyGraphConverter(schemaProvider)
-          .convert(doc, overrides: overrides);
+      return await ComfyGraphConverter(
+        schemaProvider,
+      ).convert(doc, overrides: overrides);
     } on ComfyWorkflowParseException catch (e) {
       throw ValidationError(e.message);
     }
@@ -667,16 +670,18 @@ class ComfyEngine
     final source = img.decodeImage(imageBytes);
     final maskImage = img.decodeImage(maskBytes);
     if (source == null || maskImage == null) {
-      throw const ValidationError('Could not decode the image or mask for upload');
+      throw const ValidationError(
+        'Could not decode the image or mask for upload',
+      );
     }
     final mask =
         (maskImage.width == source.width && maskImage.height == source.height)
-            ? maskImage
-            : img.copyResize(maskImage,
-                width: source.width, height: source.height);
+        ? maskImage
+        : img.copyResize(maskImage, width: source.width, height: source.height);
 
-    final withAlpha =
-        source.numChannels == 4 ? source : source.convert(numChannels: 4);
+    final withAlpha = source.numChannels == 4
+        ? source
+        : source.convert(numChannels: 4);
     for (var y = 0; y < withAlpha.height; y++) {
       for (var x = 0; x < withAlpha.width; x++) {
         final maskLuminance = mask.getPixel(x, y).luminance;
@@ -689,18 +694,21 @@ class ComfyEngine
   }
 
   Future<String> _uploadImage(Uint8List bytes, int nodeId) async {
-    final request = http.MultipartRequest('POST', endpoint.http('/upload/image'))
-      ..fields['overwrite'] = 'true'
-      ..files.add(
-        http.MultipartFile.fromBytes(
-          'image',
-          bytes,
-          filename: 'aperture_$nodeId.png',
-        ),
-      );
+    final request =
+        http.MultipartRequest('POST', endpoint.http('/upload/image'))
+          ..fields['overwrite'] = 'true'
+          ..files.add(
+            http.MultipartFile.fromBytes(
+              'image',
+              bytes,
+              filename: 'aperture_$nodeId.png',
+            ),
+          );
     http.StreamedResponse streamed;
     try {
-      streamed = await _client.send(request).timeout(const Duration(seconds: 30));
+      streamed = await _client
+          .send(request)
+          .timeout(const Duration(seconds: 30));
     } catch (e) {
       throw UnreachableError('Failed to upload image: $e', cause: e);
     }
@@ -748,7 +756,8 @@ class ComfyEngine
       final nodeErrors = decoded['node_errors'] as Map<String, dynamic>?;
       if (nodeErrors != null && nodeErrors.isNotEmpty) {
         final parts = nodeErrors.entries.map((entry) {
-          final errors = (entry.value as Map<String, dynamic>)['errors'] as List?;
+          final errors =
+              (entry.value as Map<String, dynamic>)['errors'] as List?;
           final firstMessage = errors != null && errors.isNotEmpty
               ? (errors.first as Map<String, dynamic>)['message']
               : null;
@@ -788,14 +797,17 @@ class ComfyEngine
               '${messages.isNotEmpty ? messages.last : 'unknown error'}',
             );
           }
-          final completed = status?['completed'] as bool? ?? entry['outputs'] != null;
+          final completed =
+              status?['completed'] as bool? ?? entry['outputs'] != null;
           if (completed) return entry;
         }
       }
       progressService.nudgeRunningIfQueued();
       await Future.delayed(const Duration(milliseconds: 700));
     }
-    throw const TimeoutError('Timed out waiting for ComfyUI to finish generating');
+    throw const TimeoutError(
+      'Timed out waiting for ComfyUI to finish generating',
+    );
   }
 
   List<GeneratedImage> _extractOutputImages({
@@ -819,13 +831,11 @@ class ComfyEngine
         if (filename == null) continue;
         final subfolder = map['subfolder'] as String? ?? '';
         final type = map['type'] as String? ?? 'output';
-        final url = endpoint
-            .http('/view', {
-              'filename': filename,
-              'subfolder': subfolder,
-              'type': type,
-            })
-            .toString();
+        final url = endpoint.http('/view', {
+          'filename': filename,
+          'subfolder': subfolder,
+          'type': type,
+        }).toString();
         final origin = ComfyOrigin(
           promptId: promptId,
           workflowId: workflowId,

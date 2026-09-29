@@ -85,10 +85,7 @@ mixin _Pressable<T extends StatefulWidget> on State<T>
           // Travel by exactly the shadow it is losing, so the object appears
           // to move down into the desk rather than merely shrink.
           final travel = rest.offset - elevation.offset;
-          return Transform.translate(
-            offset: travel,
-            child: builder(elevation),
-          );
+          return Transform.translate(offset: travel, child: builder(elevation));
         },
       ),
     );
@@ -130,7 +127,11 @@ class _DeskButtonState extends State<DeskButton>
       DeskButtonKind.primary => (p.clay, p.paper, p.ink),
       DeskButtonKind.secondary => (p.paper, p.ink, p.ink),
       DeskButtonKind.ghost => (Colors.transparent, p.ink, p.ink),
-      DeskButtonKind.destructive => (p.paper, DeskPalette.alert, DeskPalette.alert),
+      DeskButtonKind.destructive => (
+        p.paper,
+        DeskPalette.alert,
+        DeskPalette.alert,
+      ),
     };
 
     return pressWrap(
@@ -268,12 +269,15 @@ class _DeskFieldState extends State<DeskField> {
             boxShadow: Elevation.raised.shadows(p.ink),
           ),
           padding: const EdgeInsets.symmetric(
-              horizontal: Space.md + 2, vertical: Space.md),
+            horizontal: Space.md + 2,
+            vertical: Space.md,
+          ),
           child: TextField(
             controller: widget.controller,
             focusNode: _focus,
             keyboardType: widget.keyboardType,
-            maxLines: focused ? (widget.focusedMaxLines ?? widget.maxLines)
+            maxLines: focused
+                ? (widget.focusedMaxLines ?? widget.maxLines)
                 : widget.maxLines,
             onChanged: widget.onChanged,
             inputFormatters: widget.inputFormatters,
@@ -325,7 +329,9 @@ class _DeskChipState extends State<DeskChip>
       onTap: widget.onTap,
       builder: (elevation) => Container(
         padding: const EdgeInsets.symmetric(
-            horizontal: Space.md, vertical: Space.sm),
+          horizontal: Space.md,
+          vertical: Space.sm,
+        ),
         decoration: BoxDecoration(
           color: p.paper,
           borderRadius: BorderRadius.circular(Corner.control),
@@ -336,8 +342,10 @@ class _DeskChipState extends State<DeskChip>
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(widget.unit.toUpperCase(),
-                style: Type.micro.copyWith(color: p.inkFaint)),
+            Text(
+              widget.unit.toUpperCase(),
+              style: Type.micro.copyWith(color: p.inkFaint),
+            ),
             const SizedBox(height: 1),
             Text(widget.value, style: Type.value.copyWith(color: p.ink)),
           ],
@@ -398,14 +406,16 @@ class _DeskRulerState extends State<DeskRuler> {
   @override
   Widget build(BuildContext context) {
     final p = DeskTheme.of(context);
-    final text = widget.format?.call(widget.value) ??
-        widget.value.toStringAsFixed(1);
+    final text =
+        widget.format?.call(widget.value) ?? widget.value.toStringAsFixed(1);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label.toUpperCase(),
-            style: Type.micro.copyWith(color: p.inkFaint)),
+        Text(
+          widget.label.toUpperCase(),
+          style: Type.micro.copyWith(color: p.inkFaint),
+        ),
         const SizedBox(height: Space.sm),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -428,14 +438,18 @@ class _DeskRulerState extends State<DeskRuler> {
                   clipBehavior: Clip.none,
                   children: [
                     Positioned(
-                      left: 0, right: 0, top: 7,
+                      left: 0,
+                      right: 0,
+                      top: 7,
                       child: Container(
                         height: 26,
                         decoration: BoxDecoration(
                           color: p.paperEdge,
                           borderRadius: BorderRadius.circular(Corner.photo),
-                          border:
-                              Border.all(color: p.ink, width: Stroke.standard),
+                          border: Border.all(
+                            color: p.ink,
+                            width: Stroke.standard,
+                          ),
                         ),
                         // Insets the fill inside the ink line. Without this,
                         // the fill's ClipRRect used the *outer* radius while
@@ -446,8 +460,11 @@ class _DeskRulerState extends State<DeskRuler> {
                         padding: const EdgeInsets.all(Stroke.standard),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(
-                              (Corner.photo - Stroke.standard)
-                                  .clamp(0, Corner.photo)),
+                            (Corner.photo - Stroke.standard).clamp(
+                              0,
+                              Corner.photo,
+                            ),
+                          ),
                           child: CustomPaint(
                             painter: _RulerPainter(
                               fraction: _t,
@@ -468,25 +485,28 @@ class _DeskRulerState extends State<DeskRuler> {
                         decoration: BoxDecoration(
                           color: p.paper,
                           borderRadius: BorderRadius.circular(Corner.photo),
-                          border:
-                              Border.all(color: p.ink, width: Stroke.standard),
+                          border: Border.all(
+                            color: p.ink,
+                            width: Stroke.standard,
+                          ),
                           // `lifted` (offset 6,8) is scaled for objects the
                           // size of a print or a whole card - on a thumb this
                           // thin it read as a stray dark rectangle trailing
                           // behind rather than a shadow attached to it.
                           // `raised` keeps the same "picked up" cue at a
                           // proportionate scale.
-                          boxShadow: (_dragging
-                                  ? Elevation.raised
-                                  : Elevation.rest)
-                              .shadows(p.ink),
+                          boxShadow:
+                              (_dragging ? Elevation.raised : Elevation.rest)
+                                  .shadows(p.ink),
                         ),
                         child: RotatedBox(
                           quarterTurns: 3,
                           child: Text(
                             text,
-                            style: Type.readout
-                                .copyWith(color: p.ink, fontSize: 9.5),
+                            style: Type.readout.copyWith(
+                              color: p.ink,
+                              fontSize: 9.5,
+                            ),
                           ),
                         ),
                       ),
@@ -527,7 +547,11 @@ class _RulerPainter extends CustomPainter {
     for (var i = 1; i < 10; i++) {
       final x = size.width * i / 10;
       final h = i == 5 ? size.height * 0.62 : size.height * 0.34;
-      canvas.drawLine(Offset(x, size.height), Offset(x, size.height - h), paint);
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x, size.height - h),
+        paint,
+      );
     }
   }
 
@@ -644,9 +668,11 @@ class DeskTabStrip<T> extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (tab.icon != null) ...[
-                        Icon(tab.icon,
-                            size: 14,
-                            color: tab.value == value ? p.paper : p.inkMuted),
+                        Icon(
+                          tab.icon,
+                          size: 14,
+                          color: tab.value == value ? p.paper : p.inkMuted,
+                        ),
                         const SizedBox(width: 6),
                       ],
                       // Flexible, not bare: four tabs on a narrow phone
@@ -791,7 +817,10 @@ class DeskStamp extends StatelessWidget {
         border: Border.all(color: color, width: Stroke.standard),
         borderRadius: BorderRadius.circular(Corner.photo),
       ),
-      child: Text(label.toUpperCase(), style: Type.micro.copyWith(color: color)),
+      child: Text(
+        label.toUpperCase(),
+        style: Type.micro.copyWith(color: color),
+      ),
     );
   }
 }
@@ -854,7 +883,10 @@ class _DeskProgressState extends State<DeskProgress>
         LayoutBuilder(
           builder: (context, constraints) {
             const thumbW = 34.0;
-            final travel = (constraints.maxWidth - thumbW).clamp(0.0, double.infinity);
+            final travel = (constraints.maxWidth - thumbW).clamp(
+              0.0,
+              double.infinity,
+            );
             final t = (fraction ?? 0).clamp(0.0, 1.0);
 
             return SizedBox(
@@ -875,7 +907,10 @@ class _DeskProgressState extends State<DeskProgress>
                       decoration: BoxDecoration(
                         color: p.paperEdge,
                         borderRadius: BorderRadius.circular(Corner.photo),
-                        border: Border.all(color: p.ink, width: Stroke.standard),
+                        border: Border.all(
+                          color: p.ink,
+                          width: Stroke.standard,
+                        ),
                       ),
                       // Same inset as the ruler track, and for the same
                       // reason: without it the fill's corner clip and the
@@ -884,7 +919,11 @@ class _DeskProgressState extends State<DeskProgress>
                       padding: const EdgeInsets.all(Stroke.standard),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(
-                            (Corner.photo - Stroke.standard).clamp(0, Corner.photo)),
+                          (Corner.photo - Stroke.standard).clamp(
+                            0,
+                            Corner.photo,
+                          ),
+                        ),
                         child: AnimatedBuilder(
                           animation: _c,
                           builder: (context, _) => CustomPaint(
@@ -917,12 +956,18 @@ class _DeskProgressState extends State<DeskProgress>
                         decoration: BoxDecoration(
                           color: p.paper,
                           borderRadius: BorderRadius.circular(Corner.photo),
-                          border: Border.all(color: p.ink, width: Stroke.standard),
+                          border: Border.all(
+                            color: p.ink,
+                            width: Stroke.standard,
+                          ),
                           boxShadow: Elevation.rest.shadows(p.ink),
                         ),
                         child: Text(
                           '${(t * 100).round()}',
-                          style: Type.readout.copyWith(color: p.ink, fontSize: 11),
+                          style: Type.readout.copyWith(
+                            color: p.ink,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                     ),
@@ -958,7 +1003,10 @@ class _ProgressPainter extends CustomPainter {
     final paint = Paint()..color = fill;
     final f = fraction;
     if (f != null) {
-      canvas.drawRect(Rect.fromLTWH(0, 0, size.width * f.clamp(0, 1), size.height), paint);
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.width * f.clamp(0, 1), size.height),
+        paint,
+      );
     } else {
       // A 25% segment travelling the track.
       const seg = 0.25;
@@ -974,7 +1022,11 @@ class _ProgressPainter extends CustomPainter {
     for (var i = 1; i < 10; i++) {
       final x = size.width * i / 10;
       final h = i == 5 ? size.height * 0.6 : size.height * 0.32;
-      canvas.drawLine(Offset(x, size.height), Offset(x, size.height - h), ticks);
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x, size.height - h),
+        ticks,
+      );
     }
   }
 
@@ -1051,44 +1103,51 @@ class DeskPageHeader extends StatelessWidget {
       value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: mode == DeskMode.day ? Brightness.light : Brightness.light,
+        statusBarBrightness: mode == DeskMode.day
+            ? Brightness.light
+            : Brightness.light,
       ),
       child: Container(
-      decoration: BoxDecoration(
-        color: p.paper,
-        border: Border(bottom: BorderSide(color: p.ink, width: Stroke.frame)),
-        boxShadow: Elevation.rest.shadows(p.ink),
-      ),
-      padding: EdgeInsets.fromLTRB(
-          Space.sm, Space.sm + statusBarHeight, Space.md, Space.sm),
-      child: Row(
-        children: [
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onClose,
-            child: SizedBox(
-              width: Space.touch,
-              height: Space.touch,
-              child: Icon(Icons.close_rounded, color: p.ink),
-            ),
+        decoration: BoxDecoration(
+          color: p.paper,
+          border: Border(
+            bottom: BorderSide(color: p.ink, width: Stroke.frame),
           ),
-          const SizedBox(width: Space.xs),
-          Expanded(
-            child: Text(
-              title,
-              style: Type.sheetTitle.copyWith(color: p.ink),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+          boxShadow: Elevation.rest.shadows(p.ink),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          Space.sm,
+          Space.sm + statusBarHeight,
+          Space.md,
+          Space.sm,
+        ),
+        child: Row(
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onClose,
+              child: SizedBox(
+                width: Space.touch,
+                height: Space.touch,
+                child: Icon(Icons.close_rounded, color: p.ink),
+              ),
             ),
-          ),
-          if (action != null) ...[const SizedBox(width: Space.sm), action!],
-        ],
-      ),
+            const SizedBox(width: Space.xs),
+            Expanded(
+              child: Text(
+                title,
+                style: Type.sheetTitle.copyWith(color: p.ink),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (action != null) ...[const SizedBox(width: Space.sm), action!],
+          ],
+        ),
       ),
     );
   }
 }
-
 
 /// One tool in the tray.
 ///
@@ -1220,6 +1279,11 @@ class DeskTape extends StatefulWidget {
   /// each further entry is a finer lane, reached by dragging upwards.
   final List<double> steps;
 
+  /// Optional origin for snapping. When omitted, steps snap from zero. This
+  /// is useful for controls whose lower bound is itself the first valid value
+  /// (for example, an image resolution with 32 px increments).
+  final double? stepOrigin;
+
   final ValueChanged<double> onChanged;
   final String Function(double) format;
 
@@ -1232,6 +1296,7 @@ class DeskTape extends StatefulWidget {
     required this.format,
     this.min,
     this.max,
+    this.stepOrigin,
   });
 
   @override
@@ -1295,7 +1360,8 @@ class _DeskTapeState extends State<DeskTape>
   }
 
   double _snap(double v) {
-    final snapped = (v / _step).round() * _step;
+    final origin = widget.stepOrigin ?? 0;
+    final snapped = origin + ((v - origin) / _step).round() * _step;
     // Rounded to the step's own decimals: tenths accumulated in floating
     // point otherwise land on 2.7000000000000006 and reach the workflow.
     return double.parse(_clamp(snapped).toStringAsFixed(4));
@@ -1383,13 +1449,17 @@ class _DeskTapeState extends State<DeskTape>
               child: Text(
                 widget.format(_shown),
                 style: Type.value.copyWith(
-                    color: active ? p.paper : p.ink, fontSize: 18),
+                  color: active ? p.paper : p.ink,
+                  fontSize: 18,
+                ),
               ),
             ),
           ] else
             const Spacer(),
-          Text('±${widget.format(_steps[index])}',
-              style: Type.micro.copyWith(color: active ? p.paper : p.inkFaint)),
+          Text(
+            '±${widget.format(_steps[index])}',
+            style: Type.micro.copyWith(color: active ? p.paper : p.inkFaint),
+          ),
         ],
       ),
     );
@@ -1446,9 +1516,12 @@ class _DeskTapeState extends State<DeskTape>
 
   void _nudge(double by) {
     final step = _steps.first;
+    final origin = widget.stepOrigin ?? 0;
     final next = double.parse(
-        _clamp(((widget.value + by * step) / step).round() * step)
-            .toStringAsFixed(4));
+      _clamp(
+        origin + ((widget.value + by * step - origin) / step).round() * step,
+      ).toStringAsFixed(4),
+    );
     if (next == widget.value) return;
     HapticFeedback.selectionClick();
     widget.onChanged(next);
@@ -1467,8 +1540,10 @@ class _DeskTapeState extends State<DeskTape>
         Row(
           children: [
             Expanded(
-              child: Text(widget.label.toUpperCase(),
-                  style: Type.micro.copyWith(color: p.inkFaint)),
+              child: Text(
+                widget.label.toUpperCase(),
+                style: Type.micro.copyWith(color: p.inkFaint),
+              ),
             ),
             AnimatedBuilder(
               animation: _lift,
@@ -1508,67 +1583,70 @@ class _DeskTapeState extends State<DeskTape>
   /// A step either way without a drag at all, and the fastest way to make a
   /// one-notch correction.
   Widget _pad(DeskPalette p, int direction, IconData icon) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _nudge(direction.toDouble()),
-        child: SizedBox(
-          width: _padWidth,
-          height: _stripHeight,
-          child: Icon(icon, size: 16, color: p.inkMuted),
-        ),
-      );
+    behavior: HitTestBehavior.opaque,
+    onTap: () => _nudge(direction.toDouble()),
+    child: SizedBox(
+      width: _padWidth,
+      height: _stripHeight,
+      child: Icon(icon, size: 16, color: p.inkMuted),
+    ),
+  );
 
   Widget _strip(DeskPalette p) => AnimatedBuilder(
-        animation: _lift,
-        builder: (context, _) {
-          final t = _lift.value;
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            // A horizontal recogniser, not a pan: this lives inside a
-            // vertically scrolling page, and only the horizontal one can
-            // win that arena. Once it has, the finger is free to travel
-            // upwards - which is where the precision lanes are.
-            onHorizontalDragStart: _start,
-            onHorizontalDragUpdate: _update,
-            onHorizontalDragEnd: (_) => _end(),
-            onHorizontalDragCancel: _end,
-            child: Container(
-              decoration: BoxDecoration(
-                color: p.paperEdge,
-                borderRadius: BorderRadius.circular(Corner.photo),
-                border: Border.all(
-                  color: Color.lerp(p.ink, p.clay, t)!,
-                  width: Stroke.standard + t,
-                ),
-                boxShadow:
-                    Elevation.lerp(Elevation.rest, Elevation.raised, t)
-                        .shadows(p.ink),
-              ),
-              padding: const EdgeInsets.all(Stroke.standard),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(
-                    (Corner.photo - Stroke.standard).clamp(0, Corner.photo)),
-                child: CustomPaint(
-                  painter: _TapePainter(
-                    value: _shown,
-                    step: _step,
-                    pixelsPerUnit: _pixelsPerUnit,
-                    min: widget.min,
-                    max: widget.max,
-                    ink: p.ink,
-                    faint: p.inkFaint,
-                    clay: p.clay,
-                    edge: p.paperEdge,
-                    beyond: p.ink.withValues(alpha: 0.07),
-                    engaged: t,
-                    format: widget.format,
-                  ),
-                  child: const SizedBox.expand(),
-                ),
-              ),
+    animation: _lift,
+    builder: (context, _) {
+      final t = _lift.value;
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        // A horizontal recogniser, not a pan: this lives inside a
+        // vertically scrolling page, and only the horizontal one can
+        // win that arena. Once it has, the finger is free to travel
+        // upwards - which is where the precision lanes are.
+        onHorizontalDragStart: _start,
+        onHorizontalDragUpdate: _update,
+        onHorizontalDragEnd: (_) => _end(),
+        onHorizontalDragCancel: _end,
+        child: Container(
+          decoration: BoxDecoration(
+            color: p.paperEdge,
+            borderRadius: BorderRadius.circular(Corner.photo),
+            border: Border.all(
+              color: Color.lerp(p.ink, p.clay, t)!,
+              width: Stroke.standard + t,
             ),
-          );
-        },
+            boxShadow: Elevation.lerp(
+              Elevation.rest,
+              Elevation.raised,
+              t,
+            ).shadows(p.ink),
+          ),
+          padding: const EdgeInsets.all(Stroke.standard),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(
+              (Corner.photo - Stroke.standard).clamp(0, Corner.photo),
+            ),
+            child: CustomPaint(
+              painter: _TapePainter(
+                value: _shown,
+                step: _step,
+                pixelsPerUnit: _pixelsPerUnit,
+                min: widget.min,
+                max: widget.max,
+                ink: p.ink,
+                faint: p.inkFaint,
+                clay: p.clay,
+                edge: p.paperEdge,
+                beyond: p.ink.withValues(alpha: 0.07),
+                engaged: t,
+                format: widget.format,
+              ),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
       );
+    },
+  );
 }
 
 class _TapePainter extends CustomPainter {
@@ -1616,16 +1694,18 @@ class _TapePainter extends CustomPainter {
       final at = xOf(min!);
       if (at > 0) {
         canvas.drawRect(
-            Rect.fromLTRB(0, 0, math.min(at, size.width), size.height),
-            Paint()..color = beyond);
+          Rect.fromLTRB(0, 0, math.min(at, size.width), size.height),
+          Paint()..color = beyond,
+        );
       }
     }
     if (max != null) {
       final at = xOf(max!);
       if (at < size.width) {
         canvas.drawRect(
-            Rect.fromLTRB(math.max(at, 0), 0, size.width, size.height),
-            Paint()..color = beyond);
+          Rect.fromLTRB(math.max(at, 0), 0, size.width, size.height),
+          Paint()..color = beyond,
+        );
       }
     }
 
@@ -1649,8 +1729,7 @@ class _TapePainter extends CustomPainter {
       if (x < -24 || x > size.width + 24) continue;
       final isMajor = n % 5 == 0;
       final height = (isMajor ? 0.42 : 0.22) * size.height;
-      canvas.drawLine(
-          Offset(x, 0), Offset(x, height), isMajor ? major : minor);
+      canvas.drawLine(Offset(x, 0), Offset(x, height), isMajor ? major : minor);
       if (!isMajor) continue;
 
       final painter = TextPainter(
@@ -1672,11 +1751,10 @@ class _TapePainter extends CustomPainter {
     canvas.drawRect(
       Rect.fromLTWH(0, 0, fade, size.height),
       Paint()
-        ..shader = ui.Gradient.linear(
-          Offset.zero,
-          const Offset(fade, 0),
-          [edge, edge.withValues(alpha: 0)],
-        ),
+        ..shader = ui.Gradient.linear(Offset.zero, const Offset(fade, 0), [
+          edge,
+          edge.withValues(alpha: 0),
+        ]),
     );
     canvas.drawRect(
       Rect.fromLTWH(size.width - fade, 0, fade, size.height),
@@ -1693,8 +1771,9 @@ class _TapePainter extends CustomPainter {
     final marker = Paint()..color = clay;
     final thickness = 2 + engaged;
     canvas.drawRect(
-        Rect.fromLTWH(centre - thickness / 2, 0, thickness, size.height),
-        marker);
+      Rect.fromLTWH(centre - thickness / 2, 0, thickness, size.height),
+      marker,
+    );
     final tab = 5 + engaged * 3;
     canvas.drawPath(
       Path()

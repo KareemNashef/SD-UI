@@ -90,18 +90,24 @@ class ComfyEditorNode {
   }
 
   List<Map<String, dynamic>> get inputs =>
-      ((raw['inputs'] as List?) ?? const [])
-          .cast<Map<String, dynamic>>();
+      ((raw['inputs'] as List?) ?? const []).cast<Map<String, dynamic>>();
 
   List<Map<String, dynamic>> get outputs =>
-      ((raw['outputs'] as List?) ?? const [])
-          .cast<Map<String, dynamic>>();
+      ((raw['outputs'] as List?) ?? const []).cast<Map<String, dynamic>>();
 
   /// The node's own declared input entry for [name], if the editor graph
-  /// recorded one (i.e. it's linked or was converted-to-input).
+  /// recorded one (i.e. it's linked or was converted-to-input). ComfyUI can
+  /// serialize dynamic socket inputs with a dotted suffix, such as
+  /// `images.image_1`, while `/object_info` declares the required base socket
+  /// as `images`; accept that representation as an alias.
   Map<String, dynamic>? inputEntry(String name) {
     for (final entry in inputs) {
       if (entry['name'] == name) return entry;
+    }
+    final prefix = '$name.';
+    for (final entry in inputs) {
+      final entryName = entry['name']?.toString() ?? '';
+      if (entryName.startsWith(prefix)) return entry;
     }
     return null;
   }
@@ -134,6 +140,87 @@ class ComfyWorkflowDocument {
     return raw.values.every((v) => v is Map && v.containsKey('class_type'));
   }
 
+  /// Converts ComfyUI's API prompt graph into the small editor-export shape
+  /// used by the analyser and graph converter.
+  ///
+  /// API graphs keep widget values inline under `inputs`, while editor
+  /// exports keep them in `widgets_values` and represent links separately.
+  /// Keeping direct values in `widgets_values_named` is important here: it
+  /// means names such as `prompt` survive even when a custom node has no
+  /// positional widget metadata in the export.
+  ComfyWorkflowDocument toEditorFormat() {
+    if (!isApiFormat) return this;
+
+    final nodes = <Map<String, dynamic>>[];
+    final links = <List<dynamic>>[];
+    var linkId = 1;
+
+    for (final entry in raw.entries) {
+      final node = (entry.value as Map).cast<String, dynamic>();
+      final id = int.tryParse(entry.key);
+      final type = node['class_type']?.toString() ?? '';
+      if (id == null || type.isEmpty) {
+        throw const ComfyWorkflowParseException(
+          'API workflow contains a node with an invalid id or class_type',
+        );
+      }
+
+      final apiInputs = (node['inputs'] as Map?)?.cast<String, dynamic>() ?? {};
+      final editorInputs = <Map<String, dynamic>>[];
+      final namedValues = <String, dynamic>{};
+
+      for (final input in apiInputs.entries) {
+        final value = input.value;
+        if (_isApiLink(value)) {
+          final originId = _apiNodeId(value[0]);
+          final originSlot = (value[1] as num).toInt();
+          if (originId == null) {
+            throw const ComfyWorkflowParseException(
+              'API workflow contains a link with an invalid source node id',
+            );
+          }
+          editorInputs.add({'name': input.key, 'link': linkId});
+          // The link type is not needed for active nodes, but retaining the
+          // API graph's topology is enough for the existing typed traversal.
+          links.add([
+            linkId,
+            originId,
+            originSlot,
+            id,
+            editorInputs.length - 1,
+            '',
+          ]);
+          linkId++;
+        } else {
+          namedValues[input.key] = value;
+        }
+      }
+
+      final converted = <String, dynamic>{
+        'id': id,
+        'type': type,
+        'inputs': editorInputs,
+        'widgets_values_named': namedValues,
+      };
+      final meta = node['_meta'];
+      if (meta is Map && meta['title'] is String) {
+        converted['title'] = meta['title'];
+      }
+      nodes.add(converted);
+    }
+
+    return ComfyWorkflowDocument({'nodes': nodes, 'links': links});
+  }
+
+  static bool _isApiLink(dynamic value) =>
+      value is List &&
+      value.length == 2 &&
+      _apiNodeId(value[0]) != null &&
+      value[1] is num;
+
+  static int? _apiNodeId(dynamic value) =>
+      value is num ? value.toInt() : int.tryParse(value?.toString() ?? '');
+
   List<ComfyEditorNode> get nodes => ((raw['nodes'] as List?) ?? const [])
       .cast<Map<String, dynamic>>()
       .map(ComfyEditorNode.new)
@@ -155,8 +242,9 @@ class ComfyWorkflowDocument {
 
   /// Deep clone so callers can apply per-generation overrides without ever
   /// mutating the stored document.
-  ComfyWorkflowDocument clone() =>
-      ComfyWorkflowDocument(jsonDecode(jsonEncode(raw)) as Map<String, dynamic>);
+  ComfyWorkflowDocument clone() => ComfyWorkflowDocument(
+    jsonDecode(jsonEncode(raw)) as Map<String, dynamic>,
+  );
 
   String encode() => jsonEncode(raw);
 }
@@ -192,19 +280,27 @@ class ComfyWorkflowValidation {
 
     final rawNodes = doc.raw['nodes'];
     if (rawNodes is! List) {
-      issues.add(const ComfyWorkflowIssue('Workflow is missing a "nodes" array'));
+      issues.add(
+        const ComfyWorkflowIssue('Workflow is missing a "nodes" array'),
+      );
       return ComfyWorkflowValidation(issues);
     }
 
     final seenIds = <int>{};
     for (final entry in rawNodes) {
       if (entry is! Map<String, dynamic>) {
-        issues.add(const ComfyWorkflowIssue('Found a node entry that is not an object'));
+        issues.add(
+          const ComfyWorkflowIssue('Found a node entry that is not an object'),
+        );
         continue;
       }
       final id = entry['id'];
       if (id is! num) {
-        issues.add(const ComfyWorkflowIssue('Found a node with a missing or non-numeric id'));
+        issues.add(
+          const ComfyWorkflowIssue(
+            'Found a node with a missing or non-numeric id',
+          ),
+        );
         continue;
       }
       if (!seenIds.add(id.toInt())) {
@@ -212,13 +308,17 @@ class ComfyWorkflowValidation {
       }
       final type = entry['type'];
       if (type is! String || type.isEmpty) {
-        issues.add(ComfyWorkflowIssue('Node ${id.toInt()} is missing a "type"'));
+        issues.add(
+          ComfyWorkflowIssue('Node ${id.toInt()} is missing a "type"'),
+        );
       }
     }
 
     final rawLinks = doc.raw['links'];
     if (rawLinks != null && rawLinks is! List) {
-      issues.add(const ComfyWorkflowIssue('"links" must be an array when present'));
+      issues.add(
+        const ComfyWorkflowIssue('"links" must be an array when present'),
+      );
     } else if (rawLinks is List) {
       for (final link in rawLinks) {
         if (link is! List || link.length < 6) {
@@ -228,10 +328,18 @@ class ComfyWorkflowValidation {
         final originId = (link[1] as num?)?.toInt();
         final targetId = (link[3] as num?)?.toInt();
         if (originId == null || !seenIds.contains(originId)) {
-          issues.add(ComfyWorkflowIssue('Link ${link[0]} references missing origin node $originId'));
+          issues.add(
+            ComfyWorkflowIssue(
+              'Link ${link[0]} references missing origin node $originId',
+            ),
+          );
         }
         if (targetId == null || !seenIds.contains(targetId)) {
-          issues.add(ComfyWorkflowIssue('Link ${link[0]} references missing target node $targetId'));
+          issues.add(
+            ComfyWorkflowIssue(
+              'Link ${link[0]} references missing target node $targetId',
+            ),
+          );
         }
       }
     }

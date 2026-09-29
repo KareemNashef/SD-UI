@@ -15,6 +15,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -75,6 +76,8 @@ const kInputPrintId = '__aperture_input__';
 /// lets the stage treat "watching this generate" as one more thing you can
 /// be looking at, rather than a mode that takes the screen for its duration.
 const kRunPrintId = '__aperture_run__';
+const _kPromptHeroTag = 'aperture-prompt-expansion';
+const _kPromptSurfaceColor = Color(0xFFD5CBB2);
 
 class FrontPage extends StatefulWidget {
   const FrontPage({super.key});
@@ -152,8 +155,6 @@ class _FrontPageState extends State<FrontPage> {
   ///
   /// Undo *swaps* rather than pops, so pressing it twice returns to where
   /// you were: an accidental undo cannot destroy anything either.
-  String? _promptUndo;
-
   /// Zoom and pan for the main display. Deliberately *one* controller shared
   /// by every image on the stage: holding compare must land the input at the
   /// exact same magnification and position, or the comparison is worthless.
@@ -385,23 +386,6 @@ class _FrontPageState extends State<FrontPage> {
     );
   }
 
-  /// A full-screen prompt editor.
-  ///
-  /// Two rows is right for the common case and hopeless for a long one -
-  /// editing the middle of a paragraph through a two-line window means
-  /// scrolling blind. This gives the whole screen to the text and hands it
-  /// back on close.
-  Future<void> _openPromptEditor() async {
-    final edited = await Navigator.of(context).push<String>(
-      DeskPageRoute(
-        builder: (_) => _PromptEditorPage(initial: _prompt.text),
-        fullscreenDialog: true,
-      ),
-    );
-    if (edited == null || !mounted) return;
-    _setPrompt(edited);
-  }
-
   /// CHECKLIST 7.1: the server's own output history.
   ///
   /// Whatever is chosen there comes back as `GeneratedImage`s and joins the
@@ -433,22 +417,40 @@ class _FrontPageState extends State<FrontPage> {
 
   /// Replaces the prompt wholesale, remembering what was there.
   /// [remember] is false only for the undo itself, which manages the swap.
-  void _setPrompt(String value, {bool remember = true}) {
-    final previous = _prompt.text;
+  void _setPrompt(String value) {
     _prompt.text = value;
     _prompt.selection = TextSelection.collapsed(offset: value.length);
     _rt.session.setPrompt(value);
-    if (remember && previous != value) {
-      setState(() => _promptUndo = previous);
-    }
   }
 
-  void _undoPrompt() {
-    final restore = _promptUndo;
-    if (restore == null) return;
-    final current = _prompt.text;
-    _setPrompt(restore, remember: false);
-    setState(() => _promptUndo = current);
+  Future<void> _openPromptPopup() {
+    final palette = DeskTheme.of(context);
+    final mode = DeskTheme.modeOf(context);
+    return Navigator.of(context).push<void>(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierDismissible: true,
+        barrierLabel: 'Close expanded prompt',
+        barrierColor: palette.ink.withValues(alpha: 0.38),
+        transitionDuration: Motion.arrival,
+        reverseTransitionDuration: Motion.arrival,
+        pageBuilder: (context, animation, _) => DeskTheme(
+          palette: palette,
+          mode: mode,
+          child: _PromptExpansionPopup(
+            controller: _prompt,
+            surfaceColor: _kPromptSurfaceColor,
+            reveal: animation,
+            onChanged: _rt.session.setPrompt,
+            onClear: () => _setPrompt(''),
+          ),
+        ),
+        transitionsBuilder: (context, animation, _, child) => FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: Motion.ease),
+          child: child,
+        ),
+      ),
+    );
   }
 
   Future<void> _openPromptBook() => showDeskDrawer<void>(
@@ -715,111 +717,104 @@ class _FrontPageState extends State<FrontPage> {
       title: 'Upscale',
       builder: (context) {
         final p = DeskTheme.of(context);
-        const minResolution = 512;
-        const maxResolution = 1440;
         const resolutionStep = 32;
-        final currentShorterSide = size == null
-            ? minResolution
+
+        int ceilToResolutionStep(int value) =>
+            ((value + resolutionStep - 1) ~/ resolutionStep) * resolutionStep;
+
+        // Resolution is defined by the input image's shorter side. Keep the
+        // fallback for formats whose dimensions cannot be read, then circle
+        // back to a stronger image-dimension error state later.
+        final sourceShorterSide = size == null
+            ? 512
             : (size.$1 < size.$2 ? size.$1 : size.$2);
-        final initialResolution = ((currentShorterSide - minResolution) /
-                    resolutionStep)
-                .round()
-                .clamp(0, (maxResolution - minResolution) ~/ resolutionStep)
-                .toInt() *
-            resolutionStep +
-            minResolution;
-        var selectedResolution = initialResolution;
+        // Both ends are fixed 32 px grid values. This prevents the image's
+        // exact dimensions from becoming the step origin.
+        final minResolution = ceilToResolutionStep(sourceShorterSide);
+        final maxResolution = ceilToResolutionStep(
+          math.max(2048, sourceShorterSide * 4),
+        );
+        // 1440 is the requested default, but an input larger than that must
+        // still be accepted at its native shorter side.
+        var selectedResolution = 1440.clamp(minResolution, maxResolution);
 
         return StatefulBuilder(
           builder: (context, setModalState) {
             final outputSize = size == null
                 ? null
                 : _upscaleOutputDimensions(
-                    size.$1, size.$2, selectedResolution);
+                    size.$1,
+                    size.$2,
+                    selectedResolution,
+                  );
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-            if (size != null) ...[
-              Text('CURRENT', style: Type.micro.copyWith(color: p.inkFaint)),
-              const SizedBox(height: 2),
-              Text(
-                '${size.$1} × ${size.$2}',
-                style: Type.readout.copyWith(color: p.ink, fontSize: 14),
-              ),
-              const SizedBox(height: Space.lg),
-            ],
-            Text(
-              'TARGET SHORTER SIDE',
-              style: Type.micro.copyWith(color: p.inkFaint),
-            ),
-            const SizedBox(height: Space.sm),
-            if (_rt.activeEngine is UpscaleWorkflowConfigurable) ...[
-              DeskButton(
-                label: 'Replace workflow',
-                icon: Icons.upload_file_rounded,
-                expand: true,
-                onPressed: () => _replaceUpscaleWorkflow(),
-              ),
-              const SizedBox(height: Space.sm),
-              Text(
-                (_rt.activeEngine as UpscaleWorkflowConfigurable)
-                            .upscaleWorkflowName ==
-                        null
-                    ? 'Using bundled SeedVR2 workflow'
-                    : 'Using ${(_rt.activeEngine as UpscaleWorkflowConfigurable).upscaleWorkflowName}',
-                style: Type.micro.copyWith(color: p.inkFaint),
-              ),
-              const SizedBox(height: Space.lg),
-            ],
-            Text(
-              '$selectedResolution px',
-              textAlign: TextAlign.center,
-              style: Type.readout.copyWith(color: p.ink, fontSize: 18),
-            ),
-            if (outputSize != null) ...[
-              const SizedBox(height: Space.xs),
-              Text(
-                'OUTPUT  ${outputSize.$1} × ${outputSize.$2}',
-                textAlign: TextAlign.center,
-                style: Type.micro.copyWith(color: p.inkMuted),
-              ),
-            ],
-            Slider(
-              min: minResolution.toDouble(),
-              max: maxResolution.toDouble(),
-              divisions: (maxResolution - minResolution) ~/ resolutionStep,
-              value: selectedResolution.toDouble(),
-              activeColor: p.clay,
-              onChanged: (value) {
-                final stepped = ((value - minResolution) / resolutionStep)
-                        .round() *
-                    resolutionStep +
-                    minResolution;
-                setModalState(() => selectedResolution = stepped);
-              },
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('$minResolution px',
-                    style: Type.micro.copyWith(color: p.inkFaint)),
-                Text('$maxResolution px',
-                    style: Type.micro.copyWith(color: p.inkFaint)),
+                if (size != null) ...[
+                  Text(
+                    'CURRENT',
+                    style: Type.micro.copyWith(color: p.inkFaint),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${size.$1} × ${size.$2}',
+                    style: Type.readout.copyWith(color: p.ink, fontSize: 14),
+                  ),
+                  const SizedBox(height: Space.lg),
+                ],
+                if (_rt.activeEngine is UpscaleWorkflowConfigurable) ...[
+                  DeskButton(
+                    label: 'Replace workflow',
+                    icon: Icons.upload_file_rounded,
+                    expand: true,
+                    onPressed: () => _replaceUpscaleWorkflow(),
+                  ),
+                  const SizedBox(height: Space.sm),
+                  Text(
+                    (_rt.activeEngine as UpscaleWorkflowConfigurable)
+                                .upscaleWorkflowName ==
+                            null
+                        ? 'Using bundled SeedVR2 workflow'
+                        : 'Using ${(_rt.activeEngine as UpscaleWorkflowConfigurable).upscaleWorkflowName}',
+                    style: Type.micro.copyWith(color: p.inkFaint),
+                  ),
+                  const SizedBox(height: Space.lg),
+                ],
+                if (outputSize != null) ...[
+                  const SizedBox(height: Space.xs),
+                  Text(
+                    'OUTPUT  ${outputSize.$1} × ${outputSize.$2}',
+                    textAlign: TextAlign.center,
+                    style: Type.micro.copyWith(color: p.inkMuted),
+                  ),
+                ],
+                DeskTape(
+                  label: 'TARGET SHORTER SIDE',
+                  value: selectedResolution.toDouble(),
+                  min: minResolution.toDouble(),
+                  max: maxResolution.toDouble(),
+                  steps: const [32.0],
+                  format: (value) => '${value.round()} px',
+                  onChanged: (value) => setModalState(
+                    () => selectedResolution = value.round().clamp(
+                      minResolution,
+                      maxResolution,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Space.md),
+                DeskButton(
+                  label: 'Upscale to $selectedResolution px',
+                  icon: Icons.zoom_in_rounded,
+                  expand: true,
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _runUpscale(target.$1, selectedResolution);
+                  },
+                ),
               ],
-            ),
-            const SizedBox(height: Space.md),
-            DeskButton(
-              label: 'Upscale to $selectedResolution px',
-              icon: Icons.zoom_in_rounded,
-              expand: true,
-              onPressed: () {
-                Navigator.of(context).pop();
-                _runUpscale(target.$1, selectedResolution);
-              },
-            ),
-          ],
-        );
+            );
           },
         );
       },
@@ -1757,7 +1752,6 @@ class _FrontPageState extends State<FrontPage> {
   }
 
   Widget _buildBody(BuildContext context, ComfyWorkflowService? workflows) {
-    final p = DeskTheme.of(context);
     final engineState = _rt.engine.state;
     final session = _rt.session.state;
     final run = _rt.run.state;
@@ -1930,40 +1924,17 @@ class _FrontPageState extends State<FrontPage> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Expanded(
-                      child: DeskField(
-                        label: _statusText(engineState, run),
-                        controller: _prompt,
-                        // Two at rest and six with the keyboard up. A field
-                        // grows to fit its text, so the second line costs
-                        // nothing on a short prompt and saves a long one
-                        // from being read through a slot.
-                        maxLines: 2,
-                        focusedMaxLines: 6,
-                        onChanged: _rt.session.setPrompt,
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Appears once there is something to go back
-                            // to: an accidental clear, or a written prompt
-                            // that turned out worse than what it replaced.
-                            if (_promptUndo != null &&
-                                _promptUndo != session.prompt)
-                              _labelAction(p, Icons.undo_rounded, _undoPrompt),
-                            // Only offered when there is something to
-                            // clear, so the row stays quiet on an empty
-                            // prompt.
-                            if (session.prompt.trim().isNotEmpty)
-                              _labelAction(
-                                p,
-                                Icons.backspace_outlined,
-                                () => _setPrompt(''),
-                              ),
-                            _labelAction(
-                              p,
-                              Icons.open_in_full_rounded,
-                              _openPromptEditor,
-                            ),
-                          ],
+                      child: Hero(
+                        tag: _kPromptHeroTag,
+                        createRectTween: (begin, end) =>
+                            MaterialRectArcTween(begin: begin, end: end),
+                        child: _PromptComposerField(
+                          controller: _prompt,
+                          surfaceColor: _kPromptSurfaceColor,
+                          onChanged: _rt.session.setPrompt,
+                          showClear: session.prompt.trim().isNotEmpty,
+                          onClear: () => _setPrompt(''),
+                          onExpand: _openPromptPopup,
                         ),
                       ),
                     ),
@@ -2001,20 +1972,6 @@ class _FrontPageState extends State<FrontPage> {
       ],
     );
   }
-
-  /// One of the small icons in the prompt field's own label row.
-  Widget _labelAction(DeskPalette p, IconData icon, VoidCallback onTap) =>
-      GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Space.sm,
-            vertical: 2,
-          ),
-          child: Icon(icon, size: 14, color: p.inkMuted),
-        ),
-      );
 
   void _onShelfSelect(String id) {
     if (id == _kInputId) {
@@ -3383,118 +3340,257 @@ class _CompareButtonState extends State<_CompareButton> {
 
 enum _PromptTask { generate, describe }
 
-/// The expanded prompt editor. Its own page rather than a drawer: a drawer
-/// caps at 88% of the screen and the keyboard would then own most of what is
-/// left, which is the problem this screen exists to solve.
-class _PromptEditorPage extends StatefulWidget {
-  final String initial;
+class _PromptComposerField extends StatelessWidget {
+  final TextEditingController controller;
+  final Color surfaceColor;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onExpand;
+  final VoidCallback onClear;
+  final bool showClear;
 
-  const _PromptEditorPage({required this.initial});
+  const _PromptComposerField({
+    required this.controller,
+    required this.surfaceColor,
+    required this.onChanged,
+    required this.onExpand,
+    required this.onClear,
+    required this.showClear,
+  });
 
   @override
-  State<_PromptEditorPage> createState() => _PromptEditorPageState();
+  Widget build(BuildContext context) {
+    final p = DeskTheme.of(context);
+    return Container(
+      height: Space.touch,
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(Corner.control),
+        border: Border.all(color: p.ink, width: Stroke.standard),
+        boxShadow: Elevation.raised.shadows(p.ink),
+      ),
+      padding: const EdgeInsets.only(left: Space.md, right: Space.xs),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              maxLines: 1,
+              onChanged: onChanged,
+              textInputAction: TextInputAction.done,
+              cursorColor: p.clay,
+              cursorWidth: 2,
+              style: Type.body.copyWith(color: p.ink),
+              decoration: InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+                hintText: 'Write a prompt…',
+                hintStyle: Type.body.copyWith(color: p.inkFaint),
+              ),
+            ),
+          ),
+          if (showClear)
+            _PromptFieldAction(
+              icon: Icons.backspace_outlined,
+              tooltip: 'Clear prompt',
+              onTap: onClear,
+            ),
+          _PromptFieldAction(
+            icon: Icons.open_in_full_rounded,
+            tooltip: 'Expand prompt',
+            onTap: onExpand,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _PromptEditorPageState extends State<_PromptEditorPage> {
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.initial,
-  );
+class _PromptFieldAction extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _PromptFieldAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = DeskTheme.of(context);
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Corner.control),
+        onTap: onTap,
+        child: SizedBox(
+          width: Space.touch - 8,
+          height: Space.touch,
+          child: Icon(icon, size: 16, color: p.inkMuted),
+        ),
+      ),
+    );
+  }
+}
+
+class _PromptExpansionPopup extends StatefulWidget {
+  final TextEditingController controller;
+  final Color surfaceColor;
+  final Animation<double> reveal;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  const _PromptExpansionPopup({
+    required this.controller,
+    required this.surfaceColor,
+    required this.reveal,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  @override
+  State<_PromptExpansionPopup> createState() => _PromptExpansionPopupState();
+}
+
+class _PromptExpansionPopupState extends State<_PromptExpansionPopup> {
+  final _focus = FocusNode();
+
+  void _close() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    Navigator.of(context).pop();
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _focus.unfocus();
+    _focus.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final brightness = MediaQuery.platformBrightnessOf(context);
-    return Desk(
-      mode: brightness == Brightness.dark ? DeskMode.night : DeskMode.day,
-      child: Builder(
-        builder: (context) {
-          final p = DeskTheme.of(context);
-          return Scaffold(
-            backgroundColor: Colors.transparent,
-            body: SafeArea(
-              top: false,
-              child: Column(
-                children: [
-                  DeskPageHeader(
-                    title: 'Prompt',
-                    onClose: () => Navigator.of(context).pop(),
-                    action: DeskButton(
-                      label: 'Done',
-                      icon: Icons.check_rounded,
-                      kind: DeskButtonKind.primary,
-                      onPressed: () =>
-                          Navigator.of(context).pop(_controller.text),
+    final p = DeskTheme.of(context);
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    return PopScope(
+      onPopInvokedWithResult: (_, __) =>
+          FocusManager.instance.primaryFocus?.unfocus(),
+      child: Material(
+        color: Colors.transparent,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _close,
+          child: AnimatedPadding(
+            duration: Motion.fade,
+            curve: Motion.ease,
+            padding: EdgeInsets.fromLTRB(
+              Space.gutter,
+              Space.gutter,
+              Space.gutter,
+              keyboardInset + Space.gutter,
+            ),
+            child: Center(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {},
+                child: Hero(
+                  tag: _kPromptHeroTag,
+                  createRectTween: (begin, end) =>
+                      MaterialRectArcTween(begin: begin, end: end),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 760,
+                      maxHeight: 520,
                     ),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(Space.gutter),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: p.paper,
-                          borderRadius: BorderRadius.circular(Corner.control),
-                          border: Border.all(
-                            color: p.ink,
-                            width: Stroke.standard,
-                          ),
-                          boxShadow: Elevation.raised.shadows(p.ink),
-                        ),
-                        padding: const EdgeInsets.all(Space.lg),
-                        child: TextField(
-                          controller: _controller,
-                          autofocus: true,
-                          maxLines: null,
-                          expands: true,
-                          textAlignVertical: TextAlignVertical.top,
-                          cursorColor: p.clay,
-                          cursorWidth: 2,
-                          style: Type.body.copyWith(color: p.ink, height: 1.6),
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
-                          ),
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: widget.surfaceColor,
+                        borderRadius: BorderRadius.circular(Corner.panel),
+                        border: Border.all(color: p.ink, width: Stroke.frame),
+                        boxShadow: Elevation.drawer.shadows(p.ink),
+                      ),
+                      padding: const EdgeInsets.all(Space.lg),
+                      child: AnimatedBuilder(
+                        animation: widget.reveal,
+                        builder: (context, child) {
+                          final progress = Curves.easeOut.transform(
+                            widget.reveal.value,
+                          );
+                          final opacity = ((progress - 0.72) / 0.28).clamp(
+                            0.0,
+                            1.0,
+                          );
+                          return Opacity(opacity: opacity, child: child);
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  'PROMPT',
+                                  style: Type.micro.copyWith(
+                                    color: p.inkFaint,
+                                    decoration: TextDecoration.none,
+                                  ),
+                                ),
+                                const Spacer(),
+                                ValueListenableBuilder<TextEditingValue>(
+                                  valueListenable: widget.controller,
+                                  builder: (context, value, _) => Text(
+                                    '${value.text.trim().length} CHARACTERS',
+                                    style: Type.micro.copyWith(
+                                      color: p.inkFaint,
+                                      decoration: TextDecoration.none,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: Space.sm),
+                                _PromptFieldAction(
+                                  icon: Icons.backspace_outlined,
+                                  tooltip: 'Clear prompt',
+                                  onTap: widget.onClear,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: Space.sm),
+                            Expanded(
+                              child: TextField(
+                                controller: widget.controller,
+                                focusNode: _focus,
+                                maxLines: null,
+                                expands: true,
+                                textAlignVertical: TextAlignVertical.top,
+                                onChanged: widget.onChanged,
+                                cursorColor: p.clay,
+                                cursorWidth: 2,
+                                style: Type.body.copyWith(
+                                  color: p.ink,
+                                  height: 1.55,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Describe what you want to create…',
+                                  hintStyle: Type.body.copyWith(
+                                    color: p.inkFaint,
+                                  ),
+                                  isDense: true,
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      Space.gutter,
-                      0,
-                      Space.gutter,
-                      Space.md,
-                    ),
-                    child: ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: _controller,
-                      builder: (context, value, _) => Row(
-                        children: [
-                          Text(
-                            '${value.text.trim().length} CHARACTERS',
-                            style: Type.micro.copyWith(color: p.inkFaint),
-                          ),
-                          const Spacer(),
-                          DeskButton(
-                            label: 'Clear',
-                            kind: DeskButtonKind.destructive,
-                            onPressed: value.text.isEmpty
-                                ? null
-                                : () => _controller.clear(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }

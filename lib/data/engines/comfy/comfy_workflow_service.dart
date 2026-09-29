@@ -62,7 +62,9 @@ class ComfyWorkflowService {
 
   final ValueNotifier<List<ComfyWorkflowRecord>> workflows = ValueNotifier([]);
   final ValueNotifier<String?> activeWorkflowId = ValueNotifier(null);
-  final ValueNotifier<DetectedWorkflowSettings?> activeDetected = ValueNotifier(null);
+  final ValueNotifier<DetectedWorkflowSettings?> activeDetected = ValueNotifier(
+    null,
+  );
   final ValueNotifier<String?> activeError = ValueNotifier(null);
 
   String? _loadedEndpointId;
@@ -88,15 +90,21 @@ class ComfyWorkflowService {
     final index = await ComfyWorkflowStorage.loadIndex(endpoint.id);
     final loaded = <ComfyWorkflowRecord>[];
     for (final entry in index) {
-      final data = await ComfyWorkflowStorage.loadWorkflow(endpoint.id, entry.id);
+      final data = await ComfyWorkflowStorage.loadWorkflow(
+        endpoint.id,
+        entry.id,
+      );
       if (data == null) continue; // skip corrupt/missing records, don't crash
       loaded.add(ComfyWorkflowRecord.fromData(data));
     }
     workflows.value = loaded;
 
-    final savedActiveId = await ComfyWorkflowStorage.loadActiveWorkflowId(endpoint.id);
-    activeWorkflowId.value =
-        loaded.any((w) => w.id == savedActiveId) ? savedActiveId : null;
+    final savedActiveId = await ComfyWorkflowStorage.loadActiveWorkflowId(
+      endpoint.id,
+    );
+    activeWorkflowId.value = loaded.any((w) => w.id == savedActiveId)
+        ? savedActiveId
+        : null;
     await _refreshDetected();
   }
 
@@ -105,7 +113,10 @@ class ComfyWorkflowService {
     required String name,
     required ComfyWorkflowType workflowType,
   }) async {
-    final doc = ComfyWorkflowDocument.parse(jsonText);
+    var doc = ComfyWorkflowDocument.parse(jsonText);
+    if (doc.isApiFormat) {
+      doc = doc.toEditorFormat();
+    }
     final validation = ComfyWorkflowValidation.of(doc);
     if (!validation.isValid) {
       throw ComfyWorkflowParseException(
@@ -185,7 +196,9 @@ class ComfyWorkflowService {
     }
     await _persistIndex();
     if (activeWorkflowId.value == id) {
-      activeWorkflowId.value = workflows.value.isEmpty ? null : workflows.value.first.id;
+      activeWorkflowId.value = workflows.value.isEmpty
+          ? null
+          : workflows.value.first.id;
       if (_loadedEndpointId != null) {
         await ComfyWorkflowStorage.saveActiveWorkflowId(
           _loadedEndpointId!,
@@ -200,7 +213,10 @@ class ComfyWorkflowService {
   /// latent) and persists it immediately. Prompt/negative-prompt/image are
   /// bound to the shared canvas fields instead and are applied at
   /// generation time (see ComfyBackend.generate), not edited here.
-  Future<void> updateDetectedSettingValue(DetectedWidget widget, dynamic value) async {
+  Future<void> updateDetectedSettingValue(
+    DetectedWidget widget,
+    dynamic value,
+  ) async {
     final record = activeRecord;
     if (record == null || widget.widgetSlotIndex == null) return;
     final node = record.current.nodeById(widget.node.id);
@@ -220,8 +236,11 @@ class ComfyWorkflowService {
     if (record == null || slotIndex == null) return;
     final node = record.current.nodeById(widget.node.id);
     if (node == null) return;
-    node.setWidgetValue('control_after_generate', slotIndex,
-        random ? 'randomize' : 'fixed');
+    node.setWidgetValue(
+      'control_after_generate',
+      slotIndex,
+      random ? 'randomize' : 'fixed',
+    );
     record.updatedAt = DateTime.now();
     await _persistRecord(record);
     await _refreshDetected();
@@ -241,8 +260,9 @@ class ComfyWorkflowService {
     final provider = _schemaProvider;
     if (record == null || detected == null || provider == null) return;
 
-    await ComfyLoraEditor(provider)
-        .add(record.current, detected, file: file, strength: strength);
+    await ComfyLoraEditor(
+      provider,
+    ).add(record.current, detected, file: file, strength: strength);
     record.updatedAt = DateTime.now();
     await _persistRecord(record);
     await _refreshDetected();
@@ -260,7 +280,9 @@ class ComfyWorkflowService {
     await _refreshDetected();
   }
 
-  Future<void> resetDetectedSettingToImportedValue(DetectedWidget widget) async {
+  Future<void> resetDetectedSettingToImportedValue(
+    DetectedWidget widget,
+  ) async {
     final record = activeRecord;
     if (record == null || widget.widgetSlotIndex == null) return;
     final importedNode = record.imported.nodeById(widget.node.id);
@@ -290,14 +312,23 @@ class ComfyWorkflowService {
 
   Future<void> _persistRecord(ComfyWorkflowRecord record) async {
     if (_loadedEndpointId == null) return;
-    await ComfyWorkflowStorage.saveWorkflow(_loadedEndpointId!, record.toData());
+    await ComfyWorkflowStorage.saveWorkflow(
+      _loadedEndpointId!,
+      record.toData(),
+    );
     workflows.value = [...workflows.value];
   }
 
   Future<void> _persistIndex() async {
     if (_loadedEndpointId == null) return;
     final index = workflows.value
-        .map((w) => ComfyWorkflowIndexEntry(id: w.id, name: w.name, updatedAt: w.updatedAt))
+        .map(
+          (w) => ComfyWorkflowIndexEntry(
+            id: w.id,
+            name: w.name,
+            updatedAt: w.updatedAt,
+          ),
+        )
         .toList();
     await ComfyWorkflowStorage.saveIndex(_loadedEndpointId!, index);
   }

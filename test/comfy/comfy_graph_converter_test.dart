@@ -18,8 +18,12 @@ void main() {
   late ComfyGraphConverter converter;
 
   setUp(() {
-    doc = ComfyWorkflowDocument(_loadFixture('krea2_identity_edit_workflow.json'));
-    schemaProvider = StaticComfyNodeSchemaProvider(_loadFixture('comfy_object_info.json'));
+    doc = ComfyWorkflowDocument(
+      _loadFixture('krea2_identity_edit_workflow.json'),
+    );
+    schemaProvider = StaticComfyNodeSchemaProvider(
+      _loadFixture('comfy_object_info.json'),
+    );
     converter = ComfyGraphConverter(schemaProvider);
   });
 
@@ -29,7 +33,11 @@ void main() {
 
     // Note nodes (100-107) are decorative and must be dropped.
     for (final noteId in [100, 101, 102, 103, 104, 105, 106, 107]) {
-      expect(graph.containsKey('$noteId'), isFalse, reason: 'Note $noteId should be dropped');
+      expect(
+        graph.containsKey('$noteId'),
+        isFalse,
+        reason: 'Note $noteId should be dropped',
+      );
     }
 
     // Bypassed nodes (90, 92) must not appear as graph entries.
@@ -104,9 +112,54 @@ void main() {
       },
     );
     final graph = result.apiGraph;
-    expect((graph['84'] as Map)['inputs']['prompt'], 'Give her a blue jacket instead.');
+    expect(
+      (graph['84'] as Map)['inputs']['prompt'],
+      'Give her a blue jacket instead.',
+    );
     expect((graph['72'] as Map)['inputs']['image'], 'uploaded_1234.png');
     expect((graph['53'] as Map)['inputs']['steps'], 24);
+  });
+
+  test('preserves dotted dynamic socket names in API output', () async {
+    final dynamicSchemas = StaticComfyNodeSchemaProvider({
+      'ImageSource': {
+        'input': {'required': {}},
+        'output': ['IMAGE'],
+        'output_name': ['IMAGE'],
+        'output_node': false,
+      },
+      'DynamicImageConsumer': {
+        'input': {
+          'required': {
+            'images': ['IMAGE', {}],
+          },
+        },
+        'output': [],
+        'output_name': [],
+        'output_node': true,
+      },
+    });
+    final dynamicConverter = ComfyGraphConverter(dynamicSchemas);
+    final dynamicDoc = ComfyWorkflowDocument({
+      'nodes': [
+        {'id': 1, 'type': 'ImageSource', 'inputs': []},
+        {
+          'id': 2,
+          'type': 'DynamicImageConsumer',
+          'inputs': [
+            {'name': 'images.image_1', 'link': 1},
+          ],
+        },
+      ],
+      'links': [
+        [1, 1, 0, 2, 0, 'IMAGE'],
+      ],
+    });
+
+    final graph = (await dynamicConverter.convert(dynamicDoc)).apiGraph;
+    expect((graph['2'] as Map<String, dynamic>)['inputs'], {
+      'images.image_1': ['1', 0],
+    });
   });
 
   test('never mutates the source document', () async {
@@ -115,26 +168,30 @@ void main() {
     expect(jsonEncode(doc.raw), before);
   });
 
-  test('throws a typed validation error for an unknown custom node with links', () async {
-    final raw = _loadFixture('krea2_identity_edit_workflow.json');
-    (raw['nodes'] as List).add({
-      'id': 999,
-      'type': 'SomeUnshippedCustomNode',
-      'mode': 0,
-      'inputs': [],
-      'outputs': [
-        {'name': 'IMAGE', 'type': 'IMAGE', 'links': [1000]},
-      ],
-      'widgets_values': [],
-    });
-    (raw['links'] as List).add([1000, 999, 0, 29, 0, 'IMAGE']);
-    final badDoc = ComfyWorkflowDocument(raw);
+  test(
+    'throws a typed validation error for an unknown custom node with links',
+    () async {
+      final raw = _loadFixture('krea2_identity_edit_workflow.json');
+      (raw['nodes'] as List).add({
+        'id': 999,
+        'type': 'SomeUnshippedCustomNode',
+        'mode': 0,
+        'inputs': [],
+        'outputs': [
+          {
+            'name': 'IMAGE',
+            'type': 'IMAGE',
+            'links': [1000],
+          },
+        ],
+        'widgets_values': [],
+      });
+      (raw['links'] as List).add([1000, 999, 0, 29, 0, 'IMAGE']);
+      final badDoc = ComfyWorkflowDocument(raw);
 
-    expect(
-      () => converter.convert(badDoc),
-      throwsA(isA<ValidationError>()),
-    );
-  });
+      expect(() => converter.convert(badDoc), throwsA(isA<ValidationError>()));
+    },
+  );
 
   test('drops an unknown decorative node type with no links', () async {
     final raw = _loadFixture('krea2_identity_edit_workflow.json');

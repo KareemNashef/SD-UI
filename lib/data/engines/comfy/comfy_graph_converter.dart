@@ -42,7 +42,9 @@ class ComfyGraphConverter {
         if (!participates) {
           continue; // decorative node (e.g. Note): safe to drop
         }
-        throw ValidationError('Node ${node.id} ("${node.type}"): could not load its node definition from the server');
+        throw ValidationError(
+          'Node ${node.id} ("${node.type}"): could not load its node definition from the server',
+        );
       }
 
       final inputsMap = <String, dynamic>{};
@@ -54,7 +56,9 @@ class ComfyGraphConverter {
         if (hasLink) {
           final link = _linkById(doc, entry['link'] as num);
           if (link == null) {
-            throw ValidationError('Node ${node.id}: input "${inputSpec.name}" references a missing link');
+            throw ValidationError(
+              'Node ${node.id}: input "${inputSpec.name}" references a missing link',
+            );
           }
           final resolved = _resolveEffectiveSource(
             doc,
@@ -64,12 +68,20 @@ class ComfyGraphConverter {
           );
           if (resolved == null) {
             if (inputSpec.isRequired) {
-              throw ValidationError('Node ${node.id}: required input "${inputSpec.name}" has no active source '
-                '(its connection passes through a bypassed/disabled node)');
+              throw ValidationError(
+                'Node ${node.id}: required input "${inputSpec.name}" has no active source '
+                '(its connection passes through a bypassed/disabled node)',
+              );
             }
             continue; // optional + unresolvable through bypass chain: omit
           }
-          inputsMap[inputSpec.name] = [resolved.$1.toString(), resolved.$2];
+          // Dynamic ComfyUI inputs can be declared by the schema as `images`
+          // but exported with a concrete key such as `images.image_1`.
+          // Preserve that concrete key when converting back to API format;
+          // collapsing it to `images` changes the value from the expected
+          // image map into a bare Tensor for nodes such as Qwen Image.
+          final outputName = entry['name']?.toString() ?? inputSpec.name;
+          inputsMap[outputName] = [resolved.$1.toString(), resolved.$2];
           continue;
         }
 
@@ -87,7 +99,9 @@ class ComfyGraphConverter {
         }
 
         if (inputSpec.isRequired) {
-          throw ValidationError('Node ${node.id} ("${node.type}"): required input "${inputSpec.name}" is not connected');
+          throw ValidationError(
+            'Node ${node.id} ("${node.type}"): required input "${inputSpec.name}" is not connected',
+          );
         }
         // optional, unconnected, socket-only: omit
       }
